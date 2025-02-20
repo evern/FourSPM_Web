@@ -1,7 +1,12 @@
 import { withNavigationWatcher } from './contexts/navigation';
 import { HomePage, TasksPage, ProfilePage } from './pages';
 
-const routes = [
+interface RouteConfig {
+  path: string;
+  component: React.ComponentType;
+}
+
+const routes: RouteConfig[] = [
   {
     path: '/tasks',
     component: TasksPage
@@ -16,9 +21,7 @@ const routes = [
   }
 ];
 
-export default routes.map(route => {
-  return {
-    ...route,
-    component: withNavigationWatcher(route.component)
-  };
-});
+export default routes.map(route => ({
+  ...route,
+  component: withNavigationWatcher(route.component)
+}));

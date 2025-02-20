@@ -5,16 +5,21 @@ import routes from './app-routes';
 import { SideNavOuterToolbar as SideNavBarLayout } from './layouts';
 import { Footer } from './components';
 
-export default function Content() {
+interface RouteConfig {
+  path: string;
+  component: React.ComponentType;
+}
+
+const Content: React.FC = () => {
   return (
     <SideNavBarLayout title={appInfo.title}>
       <Switch>
-        {routes.map(({ path, component }) => (
+        {(routes as RouteConfig[]).map(({ path, component: Component }) => (
           <Route
             exact
             key={path}
             path={path}
-            component={component}
+            component={Component}
           />
         ))}
         <Redirect to={'/home'} />
@@ -27,4 +32,6 @@ export default function Content() {
       </Footer>
     </SideNavBarLayout>
   );
-}
+};
+
+export default Content;
