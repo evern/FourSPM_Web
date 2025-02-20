@@ -1,5 +1,5 @@
-@import "../../themes/generated/variables.base.scss";
-@import "../../dx-styles.scss";
+@use "../../themes/generated/variables.base.scss" as vars;
+@use "../../dx-styles.scss" as *;
 
 .header-component {
   flex: 0 0 auto;
@@ -7,7 +7,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
 
   .dx-toolbar .dx-toolbar-item.menu-button>.dx-toolbar-item-content .dx-icon {
-    color: $base-accent;
+    color: vars.$base-accent;
   }
 }
 
@@ -37,5 +37,20 @@
 
   .user-button>.dx-button-content {
     padding: 3px;
+  }
+}
+
+.header-component {
+  .header-title {
+    .dx-item-content {
+      padding: 0;
+      margin: 0;
+    }
+  }
+
+  .dx-toolbar {
+    background-color: vars.$base-accent;
+    color: vars.$base-text-color;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   }
 }

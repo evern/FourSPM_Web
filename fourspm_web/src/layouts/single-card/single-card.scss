@@ -1,4 +1,5 @@
-@import "../../themes/generated/variables.base.scss";
+@use "sass:color";
+@use "../../themes/generated/variables.base.scss" as vars;
 
 .single-card {
 
@@ -22,14 +23,14 @@
       margin-bottom: 30px;
 
       .title {
-        color: $base-text-color;
+        color: vars.$base-text-color;
         line-height: 28px;
         font-weight: 500;
         font-size: 24px;
       }
 
       .description {
-        color: rgba($base-text-color, alpha($base-text-color) * 0.7);
+        color: color.adjust(vars.$base-text-color, $alpha: -0.3);
         line-height: 18px;
       }
     }

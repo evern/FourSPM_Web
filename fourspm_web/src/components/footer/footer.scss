@@ -1,9 +1,9 @@
-@import "../../themes/generated/variables.base.scss";
+@use "../../themes/generated/variables.base.scss" as vars;
 
 .footer {
   display: block;
-  color: rgba($base-text-color, alpha($base-text-color) * 0.7);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  color: vars.$base-text-color;
+  border-top: 1px solid vars.$base-border-color;
   padding-top: 20px;
   padding-bottom: 24px;
 }

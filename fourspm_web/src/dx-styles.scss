@@ -1,7 +1,14 @@
-@import "./themes/generated/variables.base.scss";
+@use "sass:color";
+@use "./themes/generated/variables.base.scss" as vars;
+
+$side-panel-min-width: 60px;
+
+:export {
+  sidePanelMinWidth: $side-panel-min-width;
+}
 
 .app {
-  background-color: darken($base-bg, 5.00);
+  background-color: color.adjust(vars.$base-bg, $lightness: -5%);
   display: flex;
   height: 100%;
   width: 100%;
@@ -58,8 +65,6 @@
     min-height: 100%;
   }
 }
-
-$side-panel-min-width: 60px;
 
 html, body {
   margin: 0px;
