@@ -9,22 +9,24 @@ export default function UserPanel({ menuMode }) {
   const { user, signOut } = useAuth();
   const history = useHistory();
 
-  const navigateToProfile = useCallback(() => {
-    history.push("/profile");
-  }, [history]);
+  const menuItems = useMemo(() => {
+    const navigateToProfile = () => {
+      history.push("/profile");
+    };
 
-  const menuItems = useMemo(() => ([
-    {
-      text: 'Profile',
-      icon: 'user',
-      onClick: navigateToProfile
-    },
-    {
-      text: 'Logout',
-      icon: 'runner',
-      onClick: signOut
-    }
-  ]), [signOut, navigateToProfile]);
+    return [
+      {
+        text: 'Profile',
+        icon: 'user',
+        onClick: navigateToProfile
+      },
+      {
+        text: 'Logout',
+        icon: 'runner',
+        onClick: signOut
+      }
+    ];
+  }, [history, signOut]);
 
   return (
     <div className={'user-panel'}>
