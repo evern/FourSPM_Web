@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, ReactElement, FormEvent } from 'react';
 import { Link, useHistory } from "react-router-dom";
 import Form, {
   Item,
@@ -13,26 +13,42 @@ import notify from 'devextreme/ui/notify';
 import { resetPassword } from '../../api/auth';
 import './reset-password-form.scss';
 
+interface FormData {
+  email?: string;
+}
+
+interface EditorOptions {
+  stylingMode: string;
+  placeholder: string;
+  mode: string;
+}
+
+interface ButtonAttributes {
+  class: string;
+}
+
 const notificationText = 'We\'ve sent a link to reset your password. Check your inbox.';
 
-export default function ResetPasswordForm(props) {
+export default function ResetPasswordForm(): ReactElement {
   const history = useHistory();
-  const [loading, setLoading] = useState(false);
-  const formData = useRef({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const formData = useRef<FormData>({});
 
-  const onSubmit = useCallback(async (e) => {
+  const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     const { email } = formData.current;
     setLoading(true);
 
-    const result = await resetPassword(email);
-    setLoading(false);
+    if (email) {
+      const result = await resetPassword(email);
+      setLoading(false);
 
-    if (result.isOk) {
-      history.push('/login');
-      notify(notificationText, 'success', 2500);
-    } else {
-      notify(result.message, 'error', 2000);
+      if (result.isOk) {
+        history.push('/login');
+        notify(notificationText, 'success', 2500);
+      } else {
+        notify(result.message, 'error', 2000);
+      }
     }
   }, [history]);
 
@@ -74,5 +90,12 @@ export default function ResetPasswordForm(props) {
   );
 }
 
-const emailEditorOptions = { stylingMode: 'filled', placeholder: 'Email', mode: 'email' };
-const submitButtonAttributes = { class: 'submit-button' };
+const emailEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Email', 
+  mode: 'email' 
+};
+
+const submitButtonAttributes: ButtonAttributes = { 
+  class: 'submit-button' 
+};

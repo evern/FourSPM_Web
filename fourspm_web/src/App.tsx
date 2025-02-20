@@ -11,7 +11,7 @@ import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
 
-function App() {
+const App: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -25,7 +25,7 @@ function App() {
   return <UnauthenticatedContent />;
 }
 
-export default function Root() {
+const Root: React.FC = () => {
   const screenSizeClass = useScreenSizeClass();
 
   return (
@@ -40,3 +40,5 @@ export default function Root() {
     </Router>
   );
 }
+
+export default Root;

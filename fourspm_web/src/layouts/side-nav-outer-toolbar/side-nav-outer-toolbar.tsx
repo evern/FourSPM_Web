@@ -1,6 +1,6 @@
 import Drawer from 'devextreme-react/drawer';
 import ScrollView from 'devextreme-react/scroll-view';
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, ReactElement } from 'react';
 import { useHistory } from 'react-router';
 import { Header, SideNavigationMenu, Footer } from '../../components';
 import './side-nav-outer-toolbar.scss';
@@ -8,16 +8,41 @@ import { useScreenSize } from '../../utils/media-query';
 import { Template } from 'devextreme-react/core/template';
 import { useMenuPatch } from '../../utils/patches';
 
-export default function SideNavOuterToolbar({ title, children }) {
-  const scrollViewRef = useRef();
+enum MenuStatus {
+  Closed = 1,
+  Opened = 2,
+  TemporaryOpened = 3
+}
+
+interface SideNavOuterToolbarProps {
+  title: string;
+  children?: ReactElement | ReactElement[];
+}
+
+interface NavigationChangedEvent {
+  itemData: {
+    path: string;
+  };
+  event: Event;
+  node: {
+    selected: boolean;
+  };
+}
+
+interface ToggleMenuEvent {
+  event: Event;
+}
+
+export default function SideNavOuterToolbar({ title, children }: SideNavOuterToolbarProps): ReactElement {
+  const scrollViewRef = useRef<ScrollView>(null);
   const history = useHistory();
   const { isXSmall, isLarge } = useScreenSize();
   const [patchCssClass, onMenuReady] = useMenuPatch();
-  const [menuStatus, setMenuStatus] = useState(
+  const [menuStatus, setMenuStatus] = useState<MenuStatus>(
     isLarge ? MenuStatus.Opened : MenuStatus.Closed
   );
 
-  const toggleMenu = useCallback(({ event }) => {
+  const toggleMenu = useCallback(({ event }: ToggleMenuEvent) => {
     setMenuStatus(
       prevMenuStatus => prevMenuStatus === MenuStatus.Closed
         ? MenuStatus.Opened
@@ -40,16 +65,17 @@ export default function SideNavOuterToolbar({ title, children }) {
         ? MenuStatus.Closed
         : prevMenuStatus
     );
+    return !isLarge;
   }, [isLarge]);
 
-  const onNavigationChanged = useCallback(({ itemData: { path }, event, node }) => {
+  const onNavigationChanged = useCallback(({ itemData: { path }, event, node }: NavigationChangedEvent) => {
     if (menuStatus === MenuStatus.Closed || !path || node.selected) {
       event.preventDefault();
       return;
     }
 
     history.push(path);
-    scrollViewRef.current.instance.scrollTo(0);
+    scrollViewRef.current?.instance?.scrollTo(0);
 
     if (!isLarge || menuStatus === MenuStatus.TemporaryOpened) {
       setMenuStatus(MenuStatus.Closed);
@@ -61,7 +87,7 @@ export default function SideNavOuterToolbar({ title, children }) {
     <div className={'side-nav-outer-toolbar'}>
       <Header
         className={'layout-header'}
-        menuToggleEnabled
+        menuToggleEnabled={true}
         toggleMenu={toggleMenu}
         title={title}
       />
@@ -73,20 +99,20 @@ export default function SideNavOuterToolbar({ title, children }) {
         revealMode={isXSmall ? 'slide' : 'expand'}
         minSize={isXSmall ? 0 : 60}
         maxSize={250}
-        shading={isLarge ? false : true}
-        opened={menuStatus === MenuStatus.Closed ? false : true}
+        shading={!isLarge}
+        opened={menuStatus !== MenuStatus.Closed}
         template={'menu'}
       >
         <div className={'container'}>
           <ScrollView ref={scrollViewRef} className={'layout-body with-footer'}>
             <div className={'content'}>
-              {React.Children.map(children, item => {
-                return item.type !== Footer && item;
+              {React.Children.map(children, (item) => {
+                return item && React.isValidElement(item) && item.type !== Footer && item;
               })}
             </div>
             <div className={'content-block'}>
-              {React.Children.map(children, item => {
-                return item.type === Footer && item;
+              {React.Children.map(children, (item) => {
+                return item && React.isValidElement(item) && item.type === Footer && item;
               })}
             </div>
           </ScrollView>
@@ -97,16 +123,9 @@ export default function SideNavOuterToolbar({ title, children }) {
             selectedItemChanged={onNavigationChanged}
             openMenu={temporaryOpenMenu}
             onMenuReady={onMenuReady}
-          >
-          </SideNavigationMenu>
+          />
         </Template>
       </Drawer>
     </div>
   );
 }
-
-const MenuStatus = {
-  Closed: 1,
-  Opened: 2,
-  TemporaryOpened: 3
-};

@@ -1,4 +1,12 @@
-export const navigation = [
+export interface NavigationItem {
+  text: string;
+  path?: string;
+  icon?: string;
+  items?: NavigationItem[];
+  expanded?: boolean;
+}
+
+export const navigation: NavigationItem[] = [
   {
     text: 'Home',
     path: '/home',
@@ -18,4 +26,4 @@ export const navigation = [
       }
     ]
   }
-  ];
+];

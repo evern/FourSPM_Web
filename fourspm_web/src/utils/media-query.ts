@@ -1,7 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
 
-export const useScreenSize = () => {
-  const [screenSize, setScreenSize] = useState(getScreenSize());
+interface ScreenSize {
+  isXSmall: boolean;
+  isSmall: boolean;
+  isMedium: boolean;
+  isLarge: boolean;
+}
+
+type ScreenSizeClass = 'screen-x-small' | 'screen-small' | 'screen-medium' | 'screen-large';
+type MediaQueryHandler = () => void;
+
+export const useScreenSize = (): ScreenSize => {
+  const [screenSize, setScreenSize] = useState<ScreenSize>(getScreenSize());
   const onSizeChanged = useCallback(() => {
     setScreenSize(getScreenSize());
   }, []);
@@ -17,7 +27,7 @@ export const useScreenSize = () => {
   return screenSize;
 };
 
-export const useScreenSizeClass = () => {
+export const useScreenSizeClass = (): ScreenSizeClass => {
   const screenSize = useScreenSize();
 
   if (screenSize.isLarge) {
@@ -35,25 +45,27 @@ export const useScreenSizeClass = () => {
   return 'screen-x-small';
 }
 
-let handlers = [];
+let handlers: MediaQueryHandler[] = [];
 const xSmallMedia = window.matchMedia('(max-width: 599.99px)');
 const smallMedia = window.matchMedia('(min-width: 600px) and (max-width: 959.99px)');
 const mediumMedia = window.matchMedia('(min-width: 960px) and (max-width: 1279.99px)');
 const largeMedia = window.matchMedia('(min-width: 1280px)');
 
 [xSmallMedia, smallMedia, mediumMedia, largeMedia].forEach(media => {
-  media.addListener((e) => {
+  media.addListener((e: MediaQueryListEvent) => {
     e.matches && handlers.forEach(handler => handler());
   });
 });
 
-const subscribe = handler => handlers.push(handler);
+const subscribe = (handler: MediaQueryHandler): void => {
+  handlers.push(handler);
+};
 
-const unsubscribe = handler => {
+const unsubscribe = (handler: MediaQueryHandler): void => {
   handlers = handlers.filter(item => item !== handler);
 };
 
-function getScreenSize() {
+function getScreenSize(): ScreenSize {
   return {
     isXSmall: xSmallMedia.matches,
     isSmall: smallMedia.matches,

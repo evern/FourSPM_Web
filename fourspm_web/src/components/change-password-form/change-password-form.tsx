@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, ReactElement, FormEvent } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import Form, {
   Item,
@@ -12,29 +12,51 @@ import LoadIndicator from 'devextreme-react/load-indicator';
 import notify from 'devextreme/ui/notify';
 import { changePassword } from '../../api/auth';
 
-export default function ChangePasswordForm(props) {
-  const history = useHistory();
-  const [loading, setLoading] = useState(false);
-  const formData = useRef({});
-  const { recoveryCode } = useParams();
+interface FormData {
+  password?: string;
+  confirmedPassword?: string;
+}
 
-  const onSubmit = useCallback(async (e) => {
+interface EditorOptions {
+  stylingMode: string;
+  placeholder: string;
+  mode: string;
+}
+
+interface ValidationCallbackData {
+  value: string;
+}
+
+interface RouteParams {
+  recoveryCode: string;
+}
+
+export default function ChangePasswordForm(): ReactElement {
+  const history = useHistory();
+  const [loading, setLoading] = useState<boolean>(false);
+  const formData = useRef<FormData>({});
+  const { recoveryCode } = useParams<RouteParams>();
+
+  const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     const { password } = formData.current;
     setLoading(true);
 
-    const result = await changePassword(password, recoveryCode);
-    setLoading(false);
+    if (password) {
+      const result = await changePassword(password, recoveryCode);
+      setLoading(false);
 
-    if (result.isOk) {
-      history.push('/login');
-    } else {
-      notify(result.message, 'error', 2000);
+      if (result.isOk) {
+        history.push('/login');
+      } else {
+        notify(result.message, 'error', 2000);
+      }
     }
   }, [history, recoveryCode]);
 
   const confirmPassword = useCallback(
-    ({ value }) => value === formData.current.password,
+    ({ value }: ValidationCallbackData): boolean => 
+      value === formData.current.password,
     []
   );
 
@@ -81,5 +103,14 @@ export default function ChangePasswordForm(props) {
   );
 }
 
-const passwordEditorOptions = { stylingMode: 'filled', placeholder: 'Password', mode: 'password' };
-const confirmedPasswordEditorOptions = { stylingMode: 'filled', placeholder: 'Confirm Password', mode: 'password' };
+const passwordEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Password', 
+  mode: 'password' 
+};
+
+const confirmedPasswordEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Confirm Password', 
+  mode: 'password' 
+};

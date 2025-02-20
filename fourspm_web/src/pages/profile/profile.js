@@ -19,6 +19,13 @@ export default function Profile() {
     Address: '4600 N Virginia Rd.'
   };
 
+  const colCountByScreen = {
+    xs: 1,
+    sm: 2,
+    md: 3,
+    lg: 4
+  };
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>Profile</h2>
@@ -47,10 +54,3 @@ export default function Profile() {
     </React.Fragment>
   );
 }
-
-const colCountByScreen = {
-  xs: 1,
-  sm: 2,
-  md: 3,
-  lg: 4
-};

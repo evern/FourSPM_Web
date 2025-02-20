@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, ReactElement, FormEvent } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import Form, {
   Item,
@@ -14,28 +14,47 @@ import LoadIndicator from 'devextreme-react/load-indicator';
 import { createAccount } from '../../api/auth';
 import './create-account-form.scss';
 
-export default function CreateAccountForm(props) {
-  const history = useHistory();
-  const [loading, setLoading] = useState(false);
-  const formData = useRef({});
+interface FormData {
+  email?: string;
+  password?: string;
+  confirmedPassword?: string;
+}
 
-  const onSubmit = useCallback(async (e) => {
+interface EditorOptions {
+  stylingMode: string;
+  placeholder: string;
+  mode: string;
+}
+
+interface ValidationCallbackData {
+  value: string;
+}
+
+export default function CreateAccountForm(): ReactElement {
+  const history = useHistory();
+  const [loading, setLoading] = useState<boolean>(false);
+  const formData = useRef<FormData>({});
+
+  const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     const { email, password } = formData.current;
     setLoading(true);
 
-    const result = await createAccount(email, password);
-    setLoading(false);
+    if (email && password) {
+      const result = await createAccount(email, password);
+      setLoading(false);
 
-    if (result.isOk) {
-      history.push('/login');
-    } else {
-      notify(result.message, 'error', 2000);
+      if (result.isOk) {
+        history.push('/login');
+      } else {
+        notify(result.message, 'error', 2000);
+      }
     }
   }, [history]);
 
   const confirmPassword = useCallback(
-    ({ value }) => value === formData.current.password,
+    ({ value }: ValidationCallbackData): boolean => 
+      value === formData.current.password,
     []
   );
 
@@ -101,6 +120,20 @@ export default function CreateAccountForm(props) {
   );
 }
 
-const emailEditorOptions = { stylingMode: 'filled', placeholder: 'Email', mode: 'email' };
-const passwordEditorOptions = { stylingMode: 'filled', placeholder: 'Password', mode: 'password' };
-const confirmedPasswordEditorOptions = { stylingMode: 'filled', placeholder: 'Confirm Password', mode: 'password' };
+const emailEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Email', 
+  mode: 'email' 
+};
+
+const passwordEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Password', 
+  mode: 'password' 
+};
+
+const confirmedPasswordEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Confirm Password', 
+  mode: 'password' 
+};

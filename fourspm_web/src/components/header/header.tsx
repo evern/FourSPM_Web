@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 import Toolbar, { Item } from 'devextreme-react/toolbar';
 import Button from 'devextreme-react/button';
 import UserPanel from '../user-panel/user-panel';
 import './header.scss';
 import { Template } from 'devextreme-react/core/template';
 
-export default function Header({ menuToggleEnabled, title, toggleMenu }) {
+interface HeaderProps {
+  menuToggleEnabled: boolean;
+  title: string;
+  toggleMenu: (e: any) => void;
+  className?: string;
+}
+
+export default function Header({ 
+  menuToggleEnabled, 
+  title, 
+  toggleMenu,
+  className 
+}: HeaderProps): ReactElement {
   return (
-    <header className={'header-component'}>
+    <header className={`header-component ${className || ''}`}>
       <Toolbar className={'header-toolbar'}>
         <Item
           visible={menuToggleEnabled}
@@ -42,4 +54,5 @@ export default function Header({ menuToggleEnabled, title, toggleMenu }) {
         </Template>
       </Toolbar>
     </header>
-)}
+  );
+}

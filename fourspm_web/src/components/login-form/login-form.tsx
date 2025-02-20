@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, ReactElement, FormEvent } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import Form, {
   Item,
@@ -14,21 +14,39 @@ import { useAuth } from '../../contexts/auth';
 
 import './login-form.scss';
 
-export default function LoginForm() {
+interface FormData {
+  email?: string;
+  password?: string;
+  rememberMe?: boolean;
+}
+
+interface EditorOptions {
+  stylingMode?: string;
+  placeholder?: string;
+  mode?: string;
+  text?: string;
+  elementAttr?: {
+    class: string;
+  };
+}
+
+export default function LoginForm(): ReactElement {
   const history = useHistory();
   const { signIn } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const formData = useRef({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const formData = useRef<FormData>({});
 
-  const onSubmit = useCallback(async (e) => {
+  const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     const { email, password } = formData.current;
     setLoading(true);
 
-    const result = await signIn(email, password);
-    if (!result.isOk) {
-      setLoading(false);
-      notify(result.message, 'error', 2000);
+    if (email && password) {
+      const result = await signIn(email, password);
+      if (!result.isOk) {
+        setLoading(false);
+        notify(result.message, 'error', 2000);
+      }
     }
   }, [signIn]);
 
@@ -95,6 +113,21 @@ export default function LoginForm() {
   );
 }
 
-const emailEditorOptions = { stylingMode: 'filled', placeholder: 'Email', mode: 'email' };
-const passwordEditorOptions = { stylingMode: 'filled', placeholder: 'Password', mode: 'password' };
-const rememberMeEditorOptions = { text: 'Remember me', elementAttr: { class: 'form-text' } };
+const emailEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Email', 
+  mode: 'email' 
+};
+
+const passwordEditorOptions: EditorOptions = { 
+  stylingMode: 'filled', 
+  placeholder: 'Password', 
+  mode: 'password' 
+};
+
+const rememberMeEditorOptions: EditorOptions = { 
+  text: 'Remember me', 
+  elementAttr: { 
+    class: 'form-text' 
+  } 
+};

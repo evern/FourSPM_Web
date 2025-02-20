@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
 import { useScreenSize } from './media-query';
 
-export function useMenuPatch() {
+type MenuPatchReturnType = [string, () => void];
+
+export function useMenuPatch(): MenuPatchReturnType {
   const { isSmall, isMedium } = useScreenSize();
-  const [enabled, setEnabled] = useState(isSmall || isMedium);
-  const onMenuReady = useCallback(() => {
+  const [enabled, setEnabled] = useState<boolean>(isSmall || isMedium);
+  
+  const onMenuReady = useCallback((): void => {
     if (!enabled) {
       return;
     }
