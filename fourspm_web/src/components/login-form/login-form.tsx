@@ -11,6 +11,7 @@ import Form, {
 import LoadIndicator from 'devextreme-react/load-indicator';
 import notify from 'devextreme/ui/notify';
 import { useAuth } from '../../contexts/auth';
+import defaultUser from '../../utils/default-user';
 
 import './login-form.scss';
 
@@ -34,7 +35,11 @@ export default function LoginForm(): ReactElement {
   const history = useHistory();
   const { signIn } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
-  const formData = useRef<FormData>({});
+  const formData = useRef<FormData>({
+    email: defaultUser.email,
+    password: 'password',
+    rememberMe: false
+  });
 
   const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();

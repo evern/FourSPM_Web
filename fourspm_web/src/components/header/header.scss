@@ -5,9 +5,51 @@
   flex: 0 0 auto;
   z-index: 1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  background-color: #2d4277;  /* Lighter shade of blue */
+  color: white;
 
   .dx-toolbar .dx-toolbar-item.menu-button>.dx-toolbar-item-content .dx-icon {
-    color: vars.$base-accent;
+    color: white;
+  }
+
+  .dx-toolbar {
+    background-color: transparent;
+  }
+
+  .header-title {
+    color: white;
+    font-weight: 500;
+  }
+
+  .user-button {
+    .dx-button-content {
+      color: white;
+    }
+  }
+}
+
+.dx-overlay-content {
+  .dx-list {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+    
+    .dx-list-item {
+      color: #2d4277;
+      
+      &:hover {
+        background-color: #f5f6fa;
+      }
+    }
+  }
+}
+
+.header-logo {
+  .header-logo-image {
+    height: 30px;
+    width: auto;
+    object-fit: contain;
+    margin: 0 10px;
   }
 }
 
@@ -37,20 +79,5 @@
 
   .user-button>.dx-button-content {
     padding: 3px;
-  }
-}
-
-.header-component {
-  .header-title {
-    .dx-item-content {
-      padding: 0;
-      margin: 0;
-    }
-  }
-
-  .dx-toolbar {
-    background-color: vars.$base-accent;
-    color: vars.$base-text-color;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   }
 }

@@ -1,13 +1,8 @@
 import React, { useState, useEffect, createContext, useContext, useCallback, PropsWithChildren } from 'react';
 import { getUser, signIn as sendSignInRequest } from '../api/auth';
+import { User } from '@/types';
 
 // Define interfaces for our types
-interface User {
-  email?: string;
-  token?: string;
-  [key: string]: any; // For other properties that might be in the user object
-}
-
 interface AuthContextType {
   user?: User;
   loading: boolean;

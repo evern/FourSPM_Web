@@ -3,7 +3,7 @@ interface AppInfo {
 }
 
 const appInfo: AppInfo = {
-  title: 'Fourspm_web'
+  title: '4SPM'
 };
 
 export default appInfo;

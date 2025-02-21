@@ -1,12 +1,11 @@
-interface DefaultUser {
-  email: string;
-  avatarUrl: string;
-}
+import { User } from '@/types';
 
-const defaultUser: DefaultUser = {
-  email: 'sandra@example.com',
-  avatarUrl: 'https://js.devexpress.com/Demos/WidgetsGallery/JSDemos/images/employees/06.png'
+const defaultUser: User = {
+  id: '1',
+  email: 'user@example.com',
+  avatarUrl: 'https://js.devexpress.com/Demos/WidgetsGallery/JSDemos/images/employees/06.png',
+  token: '',
+  name: 'Sandra Adams'
 };
 
 export default defaultUser;
-export type { DefaultUser };

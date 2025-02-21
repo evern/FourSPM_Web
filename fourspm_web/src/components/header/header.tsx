@@ -4,6 +4,7 @@ import Button from 'devextreme-react/button';
 import UserPanel from '../user-panel/user-panel';
 import './header.scss';
 import { Template } from 'devextreme-react/core/template';
+import logo from '@/assets/images/logo.avif';
 
 interface HeaderProps {
   menuToggleEnabled: boolean;
@@ -28,6 +29,12 @@ export default function Header({
           cssClass={'menu-button'}
         >
           <Button icon="menu" stylingMode="text" onClick={toggleMenu} />
+        </Item>
+        <Item
+          location={'before'}
+          cssClass={'header-logo'}
+        >
+          <img src={logo} alt="4SPM Logo" className="header-logo-image" />
         </Item>
         <Item
           location={'before'}
