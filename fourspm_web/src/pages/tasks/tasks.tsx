@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import 'devextreme/data/odata/store';
 import DataGrid, {
   Column,
@@ -7,10 +7,30 @@ import DataGrid, {
   FilterRow,
   Lookup
 } from 'devextreme-react/data-grid';
+import { Options } from 'devextreme/data/odata/store';
 
-const dataSource = {
+interface DataSource {
   store: {
-    type: 'odata',
+    type: 'odata';  // Literal type for OData store
+    key: string;
+    url: string;
+  };
+  expand: string;
+  select: string[];
+}
+
+interface Priority {
+  name: string;
+  value: number;
+}
+
+interface ThemeContextValue {
+  theme: string;
+}
+
+const dataSource: DataSource = {
+  store: {
+    type: 'odata',  // This now matches the literal type
     key: 'Task_ID',
     url: 'https://js.devexpress.com/Demos/DevAV/odata/Tasks'
   },
@@ -27,14 +47,14 @@ const dataSource = {
   ]
 };
 
-const priorities = [
+const priorities: Priority[] = [
   { name: 'High', value: 4 },
   { name: 'Urgent', value: 3 },
   { name: 'Normal', value: 2 },
   { name: 'Low', value: 1 }
 ];
 
-export default function Task() {
+const Task: React.FC = () => {
   return (
     <React.Fragment>
       <h2 className={'content-block'}>Tasks</h2>
@@ -98,7 +118,7 @@ export default function Task() {
           caption={'Priority'}
           name={'Priority'}
           hidingPriority={1}
-        />
+        />        
         <Column
           dataField={'Task_Completion'}
           caption={'Completion'}
@@ -108,3 +128,5 @@ export default function Task() {
     </React.Fragment>
   );
 }
+
+export default Task;
