@@ -5,6 +5,7 @@ import UserPanel from '../user-panel/user-panel';
 import './header.scss';
 import { Template } from 'devextreme-react/core/template';
 import logo from '@/assets/images/logo.avif';
+import { ThemeSwitcher } from '../theme-switcher/ThemeSwitcher';
 
 interface HeaderProps {
   menuToggleEnabled: boolean;
@@ -42,6 +43,9 @@ export default function Header({
           text={title}
           visible={!!title}
         />
+        <Item location='after' locateInMenu='never'>
+          <ThemeSwitcher />
+        </Item>
         <Item
           location={'after'}
           locateInMenu={'auto'}

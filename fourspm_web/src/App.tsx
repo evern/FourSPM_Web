@@ -10,35 +10,47 @@ import { AuthProvider, useAuth } from './contexts/auth';
 import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
+import { useThemeContext, ThemeContext } from './theme/theme';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const screenSizeClass = useScreenSizeClass();
+  const themeContext = useThemeContext();
 
   if (loading) {
     return <LoadPanel visible={true} />;
   }
 
   if (user) {
-    return <Content />;
+    return (
+      <div className={`app dx-theme-material-${themeContext.theme} app-theme-${themeContext.theme} ${screenSizeClass}`} style={{ backgroundColor: 'var(--dx-surface-color)' }}>
+        <Content />
+      </div>
+    );
   }
 
   return <UnauthenticatedContent />;
 }
 
-const Root: React.FC = () => {
-  const screenSizeClass = useScreenSizeClass();
+const RootApp = () => {
+  const themeContext = useThemeContext();
 
   return (
     <Router>
-      <AuthProvider>
-        <NavigationProvider>
-          <div className={`app ${screenSizeClass}`}>
-            <App />
-          </div>
-        </NavigationProvider>
-      </AuthProvider>
+      <ThemeContext.Provider value={themeContext}>
+        <AuthProvider>
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
+        </AuthProvider>
+      </ThemeContext.Provider>
     </Router>
   );
+}
+
+const Root: React.FC = () => {
+  const themeContext = useThemeContext();
+  return themeContext.isLoaded ? <RootApp /> : '';
 }
 
 export default Root;
