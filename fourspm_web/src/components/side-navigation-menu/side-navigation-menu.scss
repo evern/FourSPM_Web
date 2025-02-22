@@ -14,7 +14,7 @@
     min-height: 100%;
     display: flex;
     flex: 1;
-
+    background-color: var(--side-panel-background);
     .dx-treeview {
       // ## Long text positioning
       white-space: nowrap;
