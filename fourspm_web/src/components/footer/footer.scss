@@ -2,8 +2,8 @@
 
 .footer {
   display: block;
-  color: vars.$base-text-color;
-  border-top: 1px solid vars.$base-border-color;
+  color: var(--dx-color-text);
+  border-top: 1px solid var(--dx-color-border);
   padding-top: 20px;
   padding-bottom: 24px;
 }
