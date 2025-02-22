@@ -3,6 +3,7 @@
 @use "../../themes/generated/variables.additional.scss" as vars;
 @use "../../utils/patches.scss" as patches;
 
+
 .side-navigation-menu {
   display: flex;
   flex-direction: column;
@@ -11,12 +12,13 @@
   width: 250px !important;
 
   .menu-container {
-    min-height: 100%;
     display: flex;
     flex: 1;
     background-color: var(--side-panel-background);
+    color: var(--dx-color-text);
+    
     .dx-treeview {
-      // ## Long text positioning
+      // ## Long text positioning 
       white-space: nowrap;
       // ##
 
@@ -24,6 +26,10 @@
       .dx-treeview-item {
         padding-left: 0;
         padding-right: 0;
+
+        &.dx-state-hover {
+          background-color: rgba(vars.$base-bg, 0.35) !important;
+        }
 
         .dx-icon {
           width: $side-panel-min-width !important;
@@ -63,7 +69,7 @@
       // ##
     }
 
-    // ## Selected & Focuced items customization
+    // ## Selected & Focused items customization
     .dx-treeview {
       .dx-treeview-node-container {
         .dx-treeview-node {
