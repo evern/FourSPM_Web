@@ -1,6 +1,6 @@
 import Drawer from 'devextreme-react/drawer';
 import ScrollView from 'devextreme-react/scroll-view';
-import React, { useState, useCallback, useRef, ReactElement } from 'react';
+import React, { useState, useCallback, useRef, ReactElement, useEffect } from 'react';
 import { useHistory } from 'react-router';
 import { Header, SideNavigationMenu, Footer } from '../../components';
 import './side-nav-outer-toolbar.scss';
@@ -41,6 +41,28 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   const [menuStatus, setMenuStatus] = useState<MenuStatus>(
     isLarge ? MenuStatus.Opened : MenuStatus.Closed
   );
+
+  // Close menu when screen becomes small and reopen when becomes large
+  useEffect(() => {
+    if (!isLarge) {
+      setMenuStatus(MenuStatus.Closed);
+    } else if (menuStatus === MenuStatus.Closed) {
+      setMenuStatus(MenuStatus.Opened);
+    }
+  }, [isLarge, menuStatus]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 960) { // Same breakpoint as isLarge in media-query.ts
+        setMenuStatus(MenuStatus.Closed);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleMenu = useCallback(({ event }: ToggleMenuEvent) => {
     setMenuStatus(
