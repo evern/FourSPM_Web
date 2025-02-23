@@ -1,7 +1,7 @@
 import defaultUser from '../utils/default-user';
-import { API_CONFIG } from "@/config/api";
+import { API_CONFIG } from "../config/api";
 import { apiRequest, RequestOptions } from './apiClient';
-import { User } from '@/types';
+import { User } from '../types';
 
 // Define interfaces for our types
 interface ApiResponse<T = any> {
