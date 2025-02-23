@@ -14,6 +14,6 @@ export const API_CONFIG: ApiConfig = {
     endpoints: {
         login: '/api/auth/login',
         logout: '/api/auth/logout',
-        projects: '/odata/v1/Projects'
+        projects: '/Projects'  // Remove odata/v1 prefix since it's handled in the ODataStore config
     }
 }

@@ -4,15 +4,55 @@ import DataGrid, { Column, Paging, Pager, FilterRow, Lookup } from 'devextreme-r
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource from 'devextreme/data/data_source';
 import { projectStatuses } from './project-statuses';
+import { v4 as uuidv4 } from 'uuid';
 
 interface User {
   email: string;
   token: string;
 }
 
+interface UpdateData {
+  projectStatus?: string;
+  clientNumber?: string;
+  projectNumber?: string;
+  name?: string;
+  clientContact?: string;
+}
+
 const Projects: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nextProjectNumber, setNextProjectNumber] = useState<string>('01');
+  const gridRef = React.useRef<any>(null);
+
+  const getNextProjectNumber = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects?$orderby=projectNumber desc&$top=1`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch latest project number');
+      }
+
+      const data = await response.json();
+      const projects = data.value || [];
+      
+      if (projects.length === 0) {
+        return '01'; // Start with 01 if no projects exist
+      }
+
+      const lastProjectNumber = projects[0].projectNumber;
+      const nextNumber = parseInt(lastProjectNumber, 10) + 1;
+      return nextNumber.toString().padStart(2, '0'); // Ensure 2 digits with leading zero
+    } catch (error) {
+      console.error('Error getting next project number:', error);
+      return '01'; // Fallback to 01 if there's an error
+    }
+  };
 
   useEffect(() => {
     // Get token from user object in localStorage
@@ -42,60 +82,107 @@ const Projects: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (token) {
+      getNextProjectNumber().then(number => setNextProjectNumber(number));
+    }
+  }, [token]);
+
+  // Log token state early
+  console.log('Token state:', {
+    exists: !!token,
+    length: token?.length,
+    preview: token ? `${token.substring(0, 10)}...` : 'none'
+  });
+
   const store = new ODataStore({
-    url: `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.projects}`,
+    url: `${API_CONFIG.baseUrl}/odata/v1/Projects`,
     version: 4,
     key: 'guid',
-    keyType: 'String',
-    beforeSend: (options: any) => {
-      if (!token) {
-        console.log('No token available in beforeSend');
-        return;
-      }
+    keyType: 'Guid',
+    onUpdating: (key, values) => {
+      console.log('%c OnUpdating called with:', 'background: #222; color: #bada55');
+      console.log('Key:', key);
+      console.log('Values:', values);
 
-      // Add authentication header
-      options.headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      };
-      
-      const originalSuccess = options.success;
-      options.success = (data: any) => {
-        console.log('Projects Data:', data.value);
-        if (originalSuccess) {
-          originalSuccess(data);
+      // Create a clean update object with only non-null/undefined values
+      const updateData = {};
+      Object.keys(values).forEach(key => {
+        if (values[key] !== undefined && values[key] !== null) {
+          updateData[key] = values[key];
         }
-      };
-      
-      console.log('Sending request to Projects API');
+      });
+
+      console.log('%c Clean update data:', 'background: #222; color: #bada55', updateData);
+      return updateData;
     },
-    errorHandler: (error: any) => {
-      console.error('Store Error:', error);
+    beforeSend: (options: any) => {
+      console.log('%c BeforeSend called with:', 'background: #222; color: #bada55', options);
       
-      // Don't treat empty results as an error
-      if (error.httpStatus === 200 || error.httpStatus === 204) {
-        console.log('Received successful response with no data');
+      if (!token) {
+        console.error('No token available');
         return false;
       }
 
-      const errorMessage = error.message || 'An error occurred while fetching data';
-      console.error('Error details:', {
-        message: errorMessage,
-        status: error.status,
-        httpStatus: error.httpStatus,
-        response: error.response,
-        data: error.data
-      });
-
-      if (error.response?.status === 401 || errorMessage === 'Invalid or expired token') {
-        console.log('Token invalid, redirecting to login...');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return true;
-      }
+      // Set proper OData headers
+      options.headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      };
       
-      setError(`Error: ${errorMessage}. Status: ${error.httpStatus || error.status || 'unknown'}`);
+      if (options.method === 'PATCH') {
+        // Extract GUID from URL
+        const matches = options.url.match(/Projects\(([\w-]+)\)/);
+        const guid = matches ? matches[1] : null;
+
+        if (!guid) {
+          console.error('No GUID found in URL');
+          return false;
+        }
+
+        // Get the patch data from the appropriate location
+        const patchData = options.data || options.payload || (options.params?.values);
+
+        if (!patchData || Object.keys(patchData).length === 0) {
+          console.error('No data provided for PATCH request');
+          return false;
+        }
+
+        console.log('%c Raw patch data:', 'background: #ff0000; color: #ffffff', patchData);
+
+        // Keep the GUID in the URL as required by the controller
+        const baseUrl = API_CONFIG.baseUrl.replace(/\/$/, '');
+        options.url = `${baseUrl}/odata/v1/Projects(${guid})`;
+
+        // Clean the data by removing undefined/null values
+        const cleanPatchData = {};
+        Object.keys(patchData).forEach(key => {
+          if (patchData[key] !== undefined && patchData[key] !== null) {
+            cleanPatchData[key] = patchData[key];
+          }
+        });
+
+        // Set the data back to options
+        options.data = cleanPatchData;
+
+        // Set proper OData headers
+        options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
+        options.headers['Accept'] = 'application/json';
+        options.headers['Prefer'] = 'return=minimal';
+
+        // Log everything about the request
+        console.log('%c Final PATCH request details:', 'background: #222; color: #bada55', {
+          url: options.url,
+          method: options.method,
+          headers: options.headers,
+          data: cleanPatchData
+        });
+
+        // Log the exact payload being sent
+        console.log('%c Request payload:', 'background: #ff0000; color: #ffffff', 
+          JSON.stringify(cleanPatchData, null, 2));
+      }
+
       return true;
     }
   });
@@ -112,13 +199,20 @@ const Projects: React.FC = () => {
       'purchaseOrderNumber',
       'projectStatus',
       'created'
-    ],
-    map: function(item) {
-      // Log the item for debugging
-      console.log('Mapping item:', item);
-      return item;
-    }
+    ]
   });
+
+  // Function to inspect a specific item by GUID
+  const inspectItem = async (guid: string) => {
+    try {
+      const item = await store.byKey(guid);
+      console.log('Inspected item:', item);
+      return item;
+    } catch (error) {
+      console.error('Error inspecting item:', error);
+      return null;
+    }
+  };
 
   if (!token) {
     console.log('Rendering loading state...');
@@ -148,11 +242,75 @@ const Projects: React.FC = () => {
     <div>
       <h2>Projects</h2>
       <DataGrid
+        ref={gridRef}
         dataSource={dataSource}
         showBorders={true}
         remoteOperations={true}
         height="100%"
         noDataText="No projects found. Create a new project to get started."
+        editing={{
+          mode: 'row',
+          allowAdding: true,
+          allowUpdating: true,
+          useIcons: true,
+          newRowPosition: 'pageTop',
+          texts: {
+            saveRowChanges: 'Save',
+            cancelRowChanges: 'Cancel',
+            editRow: 'Edit'
+          }
+        }}
+        onInitNewRow={(e) => {
+          e.data = {
+            guid: uuidv4(),
+            projectNumber: nextProjectNumber
+          };
+          getNextProjectNumber().then(number => setNextProjectNumber(number));
+        }}
+        onRowUpdating={(e) => {
+          const guid = e.oldData.guid;
+          // Log the full event object
+          console.log('Row updating event (full):', e);
+          console.log('Row updating newData:', e.newData);
+
+          // Ensure we're working with actual changed values
+          const updateData: UpdateData = {};
+          Object.keys(e.newData || {}).forEach(key => {
+            if (e.newData[key] !== undefined && e.newData[key] !== null) {
+              updateData[key as keyof UpdateData] = e.newData[key];
+            }
+          });
+
+          console.log('Cleaned update data:', updateData);
+          e.newData = updateData;
+        }}
+        onRowValidating={(e) => {
+          if (e.isValid) {
+            const data = e.newData;
+            
+            if (e.oldData) {
+              Object.assign(data, { ...e.oldData, ...data });
+            }
+
+            if (!data.clientNumber || !data.projectNumber) {
+              e.isValid = false;
+              e.errorText = 'Client Number and Project Number are required';
+              return;
+            }
+
+            if (data.clientNumber.length > 3) {
+              e.isValid = false;
+              e.errorText = 'Client Number must be at most 3 characters';
+              return;
+            }
+
+            if (data.projectNumber.length > 2) {
+              e.isValid = false;
+              e.errorText = 'Project Number must be at most 2 characters';
+              return;
+            }
+          }
+        }}
       >
         <Column dataField="projectNumber" caption="Project #" />
         <Column dataField="clientNumber" caption="Client #" />
@@ -173,7 +331,6 @@ const Projects: React.FC = () => {
             displayExpr="name"
           />
         </Column>
-        <Column dataField="created" caption="Created Date" dataType="date" />
         <FilterRow visible={true} />
         <Paging defaultPageSize={10} />
         <Pager
