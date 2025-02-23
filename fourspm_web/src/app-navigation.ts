@@ -13,6 +13,16 @@ export const navigation: NavigationItem[] = [
     icon: 'home'
   },
   {
+    text: 'Project',
+    icon: 'activefolder',
+    items: [
+      {
+        text: 'Project List',
+        path: '/projects'
+      }
+    ]
+  },
+  {
     text: 'Examples',
     icon: 'folder',
     items: [
