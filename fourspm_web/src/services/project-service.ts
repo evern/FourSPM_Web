@@ -108,3 +108,33 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
     throw error;
   }
 };
+
+export async function updateProject(projectId: string, data: Partial<ProjectDetails>, token: string): Promise<ProjectDetails> {
+  const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Failed to update project');
+  }
+
+  // If status is 204 No Content, return the data we sent as it was successfully updated
+  if (response.status === 204) {
+    return { ...data } as ProjectDetails;
+  }
+
+  // Otherwise try to parse the response as JSON
+  try {
+    return await response.json();
+  } catch (error) {
+    console.error('Error parsing response:', error);
+    // If we can't parse the response but the status was OK, return the data we sent
+    return { ...data } as ProjectDetails;
+  }
+}

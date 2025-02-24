@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import './project-profile.scss';
 import Form, { SimpleItem, GroupItem } from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
-import { getProjectDetails, ProjectDetails } from '../../services/project-service';
+import { getProjectDetails, ProjectDetails, updateProject } from '../../services/project-service';
 import { useAuth } from '../../contexts/auth';
 import { dxFormGroupItem } from 'devextreme/ui/form';
+import Button from 'devextreme-react/button';
+import notify from 'devextreme/ui/notify';
 
 export default function ProjectProfile() {
   const { projectId } = useParams<{ projectId: string }>();
   const [projectData, setProjectData] = useState<ProjectDetails | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formRef, setFormRef] = useState<Form | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -19,11 +23,29 @@ export default function ProjectProfile() {
           setProjectData(data);
         } catch (error) {
           console.error('Error fetching project data:', error);
+          notify('Error loading project data', 'error', 3000);
         }
       }
     };
     fetchProjectData();
   }, [projectId, user?.token]);
+
+  const handleSave = async () => {
+    if (!formRef || !projectData || !user?.token) return;
+
+    try {
+      const formData = formRef.instance.option('formData');
+      const result = await updateProject(projectId!, formData, user.token);
+      if (result) {
+        setProjectData(result);
+        setIsEditing(false);
+        notify('Project updated successfully', 'success', 3000);
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      notify('Error updating project', 'error', 3000);
+    }
+  };
 
   if (!projectData) {
     return <div>Loading...</div>;
@@ -41,12 +63,12 @@ export default function ProjectProfile() {
       {
         itemType: 'simple',
         dataField: 'name',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
         dataField: 'projectStatus',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: !isEditing }
       }
     ]
   },
@@ -57,17 +79,17 @@ export default function ProjectProfile() {
       {
         itemType: 'simple',
         dataField: 'clientNumber',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
         dataField: 'clientContact',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
         dataField: 'purchaseOrderNumber',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: !isEditing }
       }
     ]
   }];
@@ -96,10 +118,27 @@ export default function ProjectProfile() {
       </div>
 
       <div className={'content-block dx-card responsive-paddings'}>
+        <div className="form-actions">
+          <Button
+            text={isEditing ? "Cancel" : "Edit"}
+            type={isEditing ? "normal" : "default"}
+            stylingMode="contained"
+            onClick={() => setIsEditing(!isEditing)}
+          />
+          {isEditing && (
+            <Button
+              text="Save"
+              type="success"
+              stylingMode="contained"
+              onClick={handleSave}
+              className="save-button"
+            />
+          )}
+        </div>
         <Form
+          ref={(ref) => setFormRef(ref)}
           formData={projectData}
           labelLocation={'top'}
-          colCount={2}
           items={formItems}
         />
       </div>
