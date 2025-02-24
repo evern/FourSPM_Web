@@ -149,20 +149,35 @@ export async function createAccount(
   }
 }
 
-export async function changePassword(email: string, recoveryCode: string): Promise<ApiResponse> {
+export async function changePassword(
+  password: string,
+  recoveryCode: string = '',
+  currentPassword?: string
+): Promise<ApiResponse> {
   try {
-    // Send request
-    console.log(email, recoveryCode);
+    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.changePassword}`, {
+      method: 'POST',
+      body: JSON.stringify({ password, recoveryCode, currentPassword })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        isOk: false,
+        message: data.message || 'Failed to change password'
+      };
+    }
 
     return {
-      isOk: true
+      isOk: true,
+      message: data.message || 'Password changed successfully'
     };
   }
-  catch {
+  catch (error) {
     return {
       isOk: false,
-      message: "Failed to change password"
-    }
+      message: error instanceof Error ? error.message : "Failed to change password"
+    };
   }
 }
 
