@@ -119,7 +119,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         columnAutoWidth={true}
         columnHidingEnabled={true}
         remoteOperations={true}
-        height={600}
+        height={1000}
         noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
         editing={{
           mode: 'row',
