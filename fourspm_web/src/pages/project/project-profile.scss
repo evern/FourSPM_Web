@@ -1,0 +1,53 @@
+.project-summary {
+  padding: 20px;
+
+  .project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+
+    .project-status {
+      flex: 1;
+      
+      h3 {
+        margin-bottom: 15px;
+      }
+
+      .status-value {
+        font-size: 1.2em;
+        font-weight: 500;
+        color: #03a9f4;
+        padding: 8px 16px;
+        background: rgba(3, 169, 244, 0.1);
+        border-radius: 4px;
+        display: inline-block;
+      }
+    }
+
+    .project-dates {
+      text-align: right;
+      margin-left: 20px;
+
+      p {
+        margin: 5px 0;
+        color: #666;
+        
+        strong {
+          color: #333;
+        }
+      }
+    }
+  }
+}
+
+.dx-form {
+  padding: 20px;
+
+  .dx-form-group-caption {
+    font-size: 1.2em;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 500;
+  }
+}

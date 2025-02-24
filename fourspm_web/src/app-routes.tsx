@@ -3,6 +3,7 @@ import { RouteComponentProps } from 'react-router-dom';
 import { withNavigationWatcher } from './contexts/navigation';
 import { HomePage, TasksPage, ProfilePage, ProjectsPage } from './pages';
 import Deliverables from './pages/deliverables/deliverables';
+import ProjectProfile from './pages/project/project-profile';
 
 interface RouteConfig {
   path: string;
@@ -11,12 +12,12 @@ interface RouteConfig {
 
 const routes: RouteConfig[] = [
   {
-    path: '/projects/:projectId/deliverables',
-    component: Deliverables
+    path: '/projects/:projectId/profile',
+    component: ProjectProfile
   },
   {
-    path: '/projects/:id',
-    component: ProjectsPage
+    path: '/projects/:projectId/deliverables',
+    component: Deliverables
   },
   {
     path: '/projects',

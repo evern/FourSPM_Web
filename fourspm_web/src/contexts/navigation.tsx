@@ -41,7 +41,19 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
         text: 'Project Status',
         icon: 'activefolder',
         expanded: true,
-        items: projectNav
+        items: projectNav.map(project => {
+          const basePath = project.items?.[0]?.path?.replace('/deliverables', '') || project.path;
+          return {
+            text: project.text,
+            icon: project.icon,
+            path: basePath,
+            id: `status_${basePath}`, // Add unique id for each item
+            items: project.items?.map(item => ({
+              ...item,
+              id: `status_${item.path}` // Add unique id for sub-items
+            }))
+          };
+        })
       };
 
       // Insert project status nav after "Project List"
