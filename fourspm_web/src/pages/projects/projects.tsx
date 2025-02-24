@@ -202,15 +202,28 @@ const Projects: React.FC = () => {
     ]
   });
 
-  // Function to inspect a specific item by GUID
-  const inspectItem = async (guid: string) => {
-    try {
-      const item = await store.byKey(guid);
-      console.log('Inspected item:', item);
-      return item;
-    } catch (error) {
-      console.error('Error inspecting item:', error);
-      return null;
+  const handleDeleteProject = async (projectId: string) => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          // Refresh project list after successful deletion
+          dataSource.reload();
+          alert('Project deleted successfully');
+        } else {
+          throw new Error('Failed to delete project');
+        }
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        alert('Error deleting project');
+      }
     }
   };
 
@@ -239,25 +252,32 @@ const Projects: React.FC = () => {
   }
 
   return (
-    <div>
-      <h2>Projects</h2>
+    <React.Fragment>
+      <h2 className={'content-block'}>Projects</h2>
       <DataGrid
+        className={'dx-card wide-card'}
         ref={gridRef}
         dataSource={dataSource}
-        showBorders={true}
+        showBorders={false}
+        focusedRowEnabled={true}
+        defaultFocusedRowIndex={0}
+        columnAutoWidth={true}
+        columnHidingEnabled={true}
         remoteOperations={true}
-        height="100%"
+        height={600}
         noDataText="No projects found. Create a new project to get started."
         editing={{
           mode: 'row',
           allowAdding: true,
           allowUpdating: true,
+          allowDeleting: true,
           useIcons: true,
           newRowPosition: 'pageTop',
           texts: {
             saveRowChanges: 'Save',
             cancelRowChanges: 'Cancel',
-            editRow: 'Edit'
+            editRow: 'Edit',
+            deleteRow: 'Delete'
           }
         }}
         onInitNewRow={(e) => {
@@ -311,35 +331,27 @@ const Projects: React.FC = () => {
             }
           }
         }}
+        onRowRemoving={(e) => {
+          handleDeleteProject(e.data.guid);
+        }}
       >
-        <Column dataField="projectNumber" caption="Project #" />
-        <Column dataField="clientNumber" caption="Client #" />
-        <Column 
-          dataField="name" 
-          caption="Project Name"
-          calculateDisplayValue={(data: any) => data.name || '-'}
-        />
-        <Column dataField="clientContact" caption="Client Contact" />
-        <Column dataField="purchaseOrderNumber" caption="PO #" />
-        <Column
-          dataField="projectStatus"
-          caption="Status"
-        >
+        <Paging defaultPageSize={10} />
+        <Pager showPageSizeSelector={true} showInfo={true} />
+        <FilterRow visible={true} />
+
+        <Column dataField="projectNumber" caption="Project #" hidingPriority={2} />
+        <Column dataField="clientNumber" caption="Client #" hidingPriority={3} />
+        <Column dataField="name" caption="Name" hidingPriority={8} />
+        <Column dataField="clientContact" caption="Client Contact" hidingPriority={5} />
+        <Column dataField="projectStatus" caption="Status" hidingPriority={4}>
           <Lookup
             dataSource={projectStatuses}
-            valueExpr="id"
+            valueExpr="value"
             displayExpr="name"
           />
         </Column>
-        <FilterRow visible={true} />
-        <Paging defaultPageSize={10} />
-        <Pager
-          showPageSizeSelector={true}
-          allowedPageSizes={[5, 10, 20]}
-          showInfo={true}
-        />
       </DataGrid>
-    </div>
+    </React.Fragment>
   );
 };
 
