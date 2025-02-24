@@ -47,23 +47,19 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
             text: project.text,
             icon: project.icon,
             path: basePath,
-            id: `status_${basePath}`, // Add unique id for each item
+            id: `status_${basePath}`,
             items: project.items?.map(item => ({
               ...item,
-              id: `status_${item.path}` // Add unique id for sub-items
+              id: `${item.id}_${basePath}`,
+              icon: item.icon || 'bulletlist',
+              text: `    ${item.text}`
             }))
           };
         })
       };
 
-      // Insert project status nav after "Project List"
-      const mergedNav = [...staticNav];
-      const projectListIndex = mergedNav.findIndex(item => item.path === '/projects');
-      if (projectListIndex !== -1 && projectNav.length > 0) {
-        mergedNav.splice(projectListIndex + 1, 0, projectStatusNav);
-      }
-      
-      setNavigation(mergedNav);
+      // Update navigation with project status
+      setNavigation([...staticNav, projectStatusNav]);
     } catch (error) {
       console.error('Error refreshing navigation:', error);
     }

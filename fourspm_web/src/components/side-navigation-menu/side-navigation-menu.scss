@@ -72,6 +72,10 @@
       .dx-treeview-node[aria-level="3"] .dx-treeview-item-content {
         padding-left: 80px;  
       }
+
+      .dx-treeview-node[aria-level="4"] .dx-treeview-item-content {
+        padding-left: 120px;  
+      }
       // ##
     }
   }
