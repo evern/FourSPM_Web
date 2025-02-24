@@ -1,4 +1,6 @@
 import React from 'react';
+import { EventInfo } from 'devextreme/events';
+import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
   Column,
   Paging,
@@ -7,10 +9,8 @@ import DataGrid, {
   Editing,
   Lookup
 } from 'devextreme-react/data-grid';
-import { EventInfo } from 'devextreme/events';
-import { Properties } from 'devextreme/ui/data_grid';
 import ODataStore from 'devextreme/data/odata/store';
-import DataSource from 'devextreme/data/data_source';
+import DataSource, { Options } from 'devextreme/data/data_source';
 import { useAuth } from '../../contexts/auth';
 
 export interface ODataGridColumn {
@@ -18,7 +18,7 @@ export interface ODataGridColumn {
   caption: string;
   hidingPriority?: number;
   lookup?: {
-    dataSource: any[];
+    dataSource: any | { store: ODataStore };
     valueExpr: string;
     displayExpr: string;
   };
@@ -38,6 +38,7 @@ interface ODataGridProps {
   onRowRemoving?: Properties['onRowRemoving'];
   onInitNewRow?: Properties['onInitNewRow'];
   onRowValidating?: Properties['onRowValidating'];
+  defaultFilter?: Array<[string, string, any]>;
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -53,7 +54,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onRowInserting,
   onRowRemoving,
   onInitNewRow,
-  onRowValidating
+  onRowValidating,
+  defaultFilter = []
 }) => {
   const { user } = useAuth();
   const token = user?.token;
@@ -92,10 +94,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
   });
 
-  const dataSource = new DataSource({
-    store,
-    expand: [],
-  });
+  const dataSourceOptions: Options = {
+    store
+  };
+
+  if (defaultFilter.length > 0) {
+    dataSourceOptions.filter = defaultFilter;
+  }
+
+  const dataSource = new DataSource(dataSourceOptions);
 
   return (
     <React.Fragment>

@@ -32,7 +32,14 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
         .filter(p => p.projectStatus === status.id)
         .map(project => ({
           text: `${project.projectNumber} - ${project.name}`,
-          path: `/projects/${project.guid}`
+          path: `/projects/${project.guid}`,
+          items: [
+            {
+              text: 'Deliverables',
+              path: `/projects/${project.guid}/deliverables`,
+              icon: 'doc'
+            }
+          ]
         }))
     }));
 

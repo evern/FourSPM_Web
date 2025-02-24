@@ -91,7 +91,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   }, [isLarge]);
 
   const onNavigationChanged = useCallback(({ itemData: { path }, event, node }: NavigationChangedEvent) => {
-    if (menuStatus === MenuStatus.Closed || !path || node.selected) {
+    if (!path || node.selected) {
       event.preventDefault();
       return;
     }
