@@ -116,11 +116,22 @@ const Projects: React.FC = () => {
       console.log('%c Clean update data:', 'background: #222; color: #bada55', updateData);
       return updateData;
     },
+    errorHandler: (error) => {
+      if (error.httpStatus === 401) {
+        console.log('Token expired, redirecting to login...');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return true; // Handled
+      }
+      return false; // Not handled
+    },
     beforeSend: (options: any) => {
       console.log('%c BeforeSend called with:', 'background: #222; color: #bada55', options);
       
       if (!token) {
         console.error('No token available');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
         return false;
       }
 

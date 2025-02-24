@@ -58,15 +58,52 @@ export async function signOut() {
 
 export async function getUser(): Promise<ApiResponse<User>> {
   try {
-    // Send request
-    return {
-      isOk: true,
-      data: defaultUser
-    };
+    // Get user from localStorage
+    const userJson = localStorage.getItem('user');
+    if (!userJson) {
+      return {
+        isOk: false,
+        message: 'No user found'
+      };
+    }
+
+    const user: User = JSON.parse(userJson);
+
+    // Validate token with a backend request
+    try {
+      const response = await apiRequest(`${API_CONFIG.baseUrl}/odata/v1/Projects`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (response.ok) {
+        return {
+          isOk: true,
+          data: user
+        };
+      } else {
+        // Token is invalid
+        localStorage.removeItem('user');
+        return {
+          isOk: false,
+          message: 'Token expired'
+        };
+      }
+    } catch (error) {
+      // Network or other error
+      localStorage.removeItem('user');
+      return {
+        isOk: false,
+        message: 'Failed to validate token'
+      };
+    }
   }
-  catch {
+  catch (error) {
     return {
-      isOk: false
+      isOk: false,
+      message: 'Invalid user data'
     };
   }
 }
