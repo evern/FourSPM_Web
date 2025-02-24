@@ -18,12 +18,14 @@ interface FormData {
   email?: string;
   password?: string;
   confirmedPassword?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface EditorOptions {
   stylingMode: string;
   placeholder: string;
-  mode: string;
+  mode?: string;
 }
 
 interface ValidationCallbackData {
@@ -37,11 +39,11 @@ export default function CreateAccountForm(): ReactElement {
 
   const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    const { email, password } = formData.current;
+    const { email, password, firstName, lastName } = formData.current;
     setLoading(true);
 
     if (email && password) {
-      const result = await createAccount(email, password);
+      const result = await createAccount(email, password, firstName, lastName);
       setLoading(false);
 
       if (result.isOk) {
@@ -53,8 +55,7 @@ export default function CreateAccountForm(): ReactElement {
   }, [history]);
 
   const confirmPassword = useCallback(
-    ({ value }: ValidationCallbackData): boolean => 
-      value === formData.current.password,
+    ({ value }: ValidationCallbackData) => value === formData.current.password,
     []
   );
 
@@ -62,8 +63,21 @@ export default function CreateAccountForm(): ReactElement {
     <form className={'create-account-form'} onSubmit={onSubmit}>
       <Form formData={formData.current} disabled={loading}>
         <Item
+          dataField={'firstName'}
+          editorOptions={firstNameEditorOptions}
+        >
+          <RequiredRule message="First Name is required" />
+          <Label visible={false} />
+        </Item>
+        <Item
+          dataField={'lastName'}
+          editorOptions={lastNameEditorOptions}
+        >
+          <RequiredRule message="Last Name is required" />
+          <Label visible={false} />
+        </Item>
+        <Item
           dataField={'email'}
-          editorType={'dxTextBox'}
           editorOptions={emailEditorOptions}
         >
           <RequiredRule message="Email is required" />
@@ -83,7 +97,7 @@ export default function CreateAccountForm(): ReactElement {
           editorType={'dxTextBox'}
           editorOptions={confirmedPasswordEditorOptions}
         >
-          <RequiredRule message="Password is required" />
+          <RequiredRule message="Password confirmation is required" />
           <CustomRule
             message={'Passwords do not match'}
             validationCallback={confirmPassword}
@@ -126,14 +140,24 @@ const emailEditorOptions: EditorOptions = {
   mode: 'email' 
 };
 
-const passwordEditorOptions: EditorOptions = { 
-  stylingMode: 'filled', 
-  placeholder: 'Password', 
-  mode: 'password' 
+const passwordEditorOptions: EditorOptions = {
+  stylingMode: 'filled',
+  placeholder: 'Password',
+  mode: 'password'
 };
 
-const confirmedPasswordEditorOptions: EditorOptions = { 
-  stylingMode: 'filled', 
-  placeholder: 'Confirm Password', 
-  mode: 'password' 
+const confirmedPasswordEditorOptions: EditorOptions = {
+  stylingMode: 'filled',
+  placeholder: 'Confirm Password',
+  mode: 'password'
+};
+
+const firstNameEditorOptions: EditorOptions = {
+  stylingMode: 'filled',
+  placeholder: 'First Name'
+};
+
+const lastNameEditorOptions: EditorOptions = {
+  stylingMode: 'filled',
+  placeholder: 'Last Name'
 };

@@ -108,19 +108,43 @@ export async function getUser(): Promise<ApiResponse<User>> {
   }
 }
 
-export async function createAccount(email: string, password: string): Promise<ApiResponse> {
+export async function createAccount(
+  email: string, 
+  password: string,
+  firstName?: string,
+  lastName?: string
+): Promise<ApiResponse> {
   try {
-    // Send request
-    console.log(email, password);
+    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.create}`, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        email, 
+        password,
+        firstName,
+        lastName
+      })
+    });
+
+    const data = await response.json();
+    const user = {
+      ...defaultUser,
+      token: data.token,
+      email,
+      firstName: data.user.firstName,
+      lastName: data.user.lastName
+    };
+    // Store user in localStorage after successful account creation
+    localStorage.setItem('user', JSON.stringify(user));
 
     return {
-      isOk: true
+      isOk: true,
+      data: user
     };
   }
-  catch {
+  catch (error) {
     return {
       isOk: false,
-      message: "Failed to create account"
+      message: error instanceof Error ? error.message : "Account creation failed"
     };
   }
 }
