@@ -75,7 +75,7 @@ export default function SideNavigationMenu(props: Props): ReactElement {
   return (
     <div
       ref={getWrapperRef}
-      className={'dx-swatch-additional side-navigation-menu'}
+      className={'side-navigation-menu'}
     >
       {children}
       <div className={'menu-container'}>
