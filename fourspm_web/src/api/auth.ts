@@ -168,17 +168,29 @@ export async function changePassword(email: string, recoveryCode: string): Promi
 
 export async function resetPassword(email: string): Promise<ApiResponse> {
   try {
-    // Send request
-    console.log(email);
+    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.resetPassword}`, {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        isOk: false,
+        message: data.message || 'Failed to send reset password email'
+      };
+    }
 
     return {
-      isOk: true
+      isOk: true,
+      data,
+      message: data.message
     };
   }
-  catch {
+  catch (error) {
     return {
       isOk: false,
-      message: "Failed to reset password"
+      message: error instanceof Error ? error.message : "Failed to send reset password email"
     };
   }
 }

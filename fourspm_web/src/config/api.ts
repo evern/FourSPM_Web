@@ -3,6 +3,7 @@ interface ApiEndpoints {
     logout: string;
     create: string;
     projects: string;
+    resetPassword: string;
 }
 
 interface ApiConfig {
@@ -16,6 +17,7 @@ export const API_CONFIG: ApiConfig = {
         login: '/api/auth/login',
         logout: '/api/auth/logout',
         create: '/api/auth/create',
+        resetPassword: '/api/auth/reset-password',
         projects: '/Projects'  // Remove odata/v1 prefix since it's handled in the ODataStore config
     }
 }
