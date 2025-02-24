@@ -65,6 +65,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     version: 4,
     key: keyField,
     keyType: 'Guid',
+    fieldTypes: {
+      projectGuid: 'Guid'
+    },
     beforeSend: (options: any) => {
       if (!token) {
         console.error('No token available');

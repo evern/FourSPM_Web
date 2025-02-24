@@ -4,6 +4,7 @@ export interface ValidationRule {
   field: string;
   required?: boolean;
   maxLength?: number;
+  pattern?: RegExp;
   errorText?: string;
 }
 
@@ -22,6 +23,12 @@ export const useGridValidation = (rules: ValidationRule[]) => {
         if (rule.required && (!value || value.toString().trim() === '')) {
           e.isValid = false;
           e.errorText = rule.errorText || `${rule.field} is required`;
+          return;
+        }
+
+        if (value && rule.pattern && !rule.pattern.test(value.toString())) {
+          e.isValid = false;
+          e.errorText = rule.errorText || `${rule.field} format is invalid`;
           return;
         }
 

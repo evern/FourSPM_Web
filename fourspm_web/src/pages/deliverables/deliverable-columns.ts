@@ -5,26 +5,38 @@ import ODataStore from 'devextreme/data/odata/store';
 const departmentStore = new ODataStore({
   url: `${API_CONFIG.baseUrl}/odata/v1/Departments`,
   version: 4,
-  key: 'id',
-  keyType: 'Guid'
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).token : null;
+    if (!token) return false;
+    
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+    return true;
+  }
 });
 
 const deliverableTypeStore = new ODataStore({
   url: `${API_CONFIG.baseUrl}/odata/v1/DeliverableTypes`,
   version: 4,
-  key: 'id',
-  keyType: 'Guid'
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).token : null;
+    if (!token) return false;
+    
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+    return true;
+  }
 });
 
 export const deliverableColumns: ODataGridColumn[] = [
-  {
-    dataField: 'clientNumber',
-    caption: 'Client No.'
-  },
-  {
-    dataField: 'projectNumber',
-    caption: 'Project No.'
-  },
   {
     dataField: 'areaNumber',
     caption: 'Area No.'
@@ -42,7 +54,7 @@ export const deliverableColumns: ODataGridColumn[] = [
     caption: 'Department',
     lookup: {
       dataSource: departmentStore,
-      valueExpr: 'id',
+      valueExpr: 'guid',
       displayExpr: 'name'
     }
   },
@@ -51,7 +63,7 @@ export const deliverableColumns: ODataGridColumn[] = [
     caption: 'Deliverable Type',
     lookup: {
       dataSource: deliverableTypeStore,
-      valueExpr: 'id',
+      valueExpr: 'guid',
       displayExpr: 'name'
     }
   },
@@ -74,10 +86,6 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'variationHours',
     caption: 'Variation Hours'
-  },
-  {
-    dataField: 'totalHours',
-    caption: 'Total Hours'
   },
   {
     dataField: 'totalCost',
