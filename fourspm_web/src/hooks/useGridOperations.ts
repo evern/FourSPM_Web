@@ -5,12 +5,20 @@ interface GridOperationsConfig {
   endpoint: string;
   onDeleteSuccess?: () => void;
   onDeleteError?: (error: Error) => void;
+  onUpdateSuccess?: () => void;
+  onUpdateError?: (error: Error) => void;
 }
 
-export const useGridOperations = ({ endpoint, onDeleteSuccess, onDeleteError }: GridOperationsConfig) => {
+export const useGridOperations = ({ 
+  endpoint, 
+  onDeleteSuccess, 
+  onDeleteError,
+  onUpdateSuccess,
+  onUpdateError 
+}: GridOperationsConfig) => {
   const { user } = useAuth();
 
-  const handleRowUpdating: Properties['onRowUpdating'] = (e) => {
+  const handleRowUpdating: Properties['onRowUpdating'] = async (e) => {
     const updateData = {};
     Object.keys(e.newData || {}).forEach(key => {
       if (e.newData[key] !== undefined && e.newData[key] !== null) {
@@ -18,6 +26,28 @@ export const useGridOperations = ({ endpoint, onDeleteSuccess, onDeleteError }: 
       }
     });
     e.newData = updateData;
+
+    try {
+      const response = await fetch(`${endpoint}(${e.key})`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update item');
+      }
+
+      onUpdateSuccess?.();
+    } catch (error) {
+      console.error('Error updating item:', error);
+      e.cancel = true;
+      onUpdateError?.(error as Error);
+      window.alert('Error updating item');
+    }
   };
 
   const handleRowRemoving: Properties['onRowRemoving'] = async (e) => {

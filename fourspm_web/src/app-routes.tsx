@@ -10,12 +10,12 @@ interface RouteConfig {
 
 const routes: RouteConfig[] = [
   {
-    path: '/projects',
+    path: '/projects/:id',
     component: ProjectsPage
   },
   {
-    path: '/tasks',
-    component: TasksPage
+    path: '/projects',
+    component: ProjectsPage
   },
   {
     path: '/profile',

@@ -6,9 +6,11 @@ import { useAutoIncrement } from '../../hooks/useAutoIncrement';
 import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { projectColumns } from './project-columns';
+import { useNavigation } from '../../contexts/navigation';
 
 const Projects: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Projects`;
+  const { refreshNavigation } = useNavigation();
   
   const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
     endpoint,
@@ -17,7 +19,10 @@ const Projects: React.FC = () => {
 
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
     endpoint,
-    onDeleteError: (error) => console.error('Failed to delete project:', error)
+    onDeleteError: (error) => console.error('Failed to delete project:', error),
+    onDeleteSuccess: refreshNavigation,
+    onUpdateSuccess: refreshNavigation,
+    onUpdateError: (error) => console.error('Failed to update project:', error)
   });
 
   const handleRowValidating = useGridValidation([

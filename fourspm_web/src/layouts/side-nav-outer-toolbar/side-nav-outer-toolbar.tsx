@@ -120,7 +120,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
         openedStateMode={isLarge ? 'shrink' : 'overlap'}
         revealMode={isXSmall ? 'slide' : 'expand'}
         minSize={isXSmall ? 0 : 60}
-        maxSize={250}
+        maxSize={400}
         shading={!isLarge}
         opened={menuStatus !== MenuStatus.Closed}
         template={'menu'}

@@ -6,34 +6,17 @@ export interface NavigationItem {
   expanded?: boolean;
 }
 
-export const navigation: NavigationItem[] = [
+export const getStaticNavigation = (): NavigationItem[] => [
   {
     text: 'Home',
     path: '/home',
     icon: 'home'
   },
   {
-    text: 'Project',
-    icon: 'activefolder',
-    items: [
-      {
-        text: 'Project List',
-        path: '/projects'
-      }
-    ]
-  },
-  {
-    text: 'Examples',
-    icon: 'folder',
-    items: [
-      {
-        text: 'Profile',
-        path: '/profile'
-      },
-      {
-        text: 'Tasks',
-        path: '/tasks'
-      }
-    ]
+    text: 'Project List',
+    path: '/projects',
+    icon: 'activefolder'
   }
 ];
+
+export const navigation: NavigationItem[] = getStaticNavigation();
