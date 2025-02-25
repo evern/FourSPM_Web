@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import './project-profile.scss';
-import Form, { SimpleItem, GroupItem } from 'devextreme-react/form';
+import Form from 'devextreme-react/form';
+import type { IGroupItemProps } from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
 import { getProjectDetails, ProjectDetails, updateProject } from '../../services/project-service';
 import { useAuth } from '../../contexts/auth';
-import { dxFormGroupItem } from 'devextreme/ui/form';
 import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
+import { projectStatuses } from '../projects/project-statuses';
+
+const getStatusDisplayName = (statusId: string) => {
+  const status = projectStatuses.find(s => s.id === statusId);
+  return status ? status.name : statusId;
+};
 
 export default function ProjectProfile() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -51,7 +57,7 @@ export default function ProjectProfile() {
     return <div>Loading...</div>;
   }
 
-  const formItems: dxFormGroupItem[] = [{
+  const formItems: IGroupItemProps[] = [{
     itemType: 'group',
     caption: 'Project Information',
     items: [
@@ -102,9 +108,9 @@ export default function ProjectProfile() {
         <div className={'project-summary'}>
           <div className={'project-header'}>
             <div className={'project-status'}>
-              <h3>Project Status</h3>
+              <h3>Status</h3>
               <div className={'status-value'}>
-                {projectData.projectStatus}
+                {getStatusDisplayName(projectData.projectStatus)}
               </div>
             </div>
             <div className={'project-dates'}>
@@ -118,6 +124,12 @@ export default function ProjectProfile() {
       </div>
 
       <div className={'content-block dx-card responsive-paddings'}>
+        <Form
+          ref={(ref) => setFormRef(ref)}
+          formData={projectData}
+          labelLocation={'top'}
+          items={formItems}
+        />
         <div className="form-actions">
           <Button
             text={isEditing ? "Cancel" : "Edit"}
@@ -135,12 +147,6 @@ export default function ProjectProfile() {
             />
           )}
         </div>
-        <Form
-          ref={(ref) => setFormRef(ref)}
-          formData={projectData}
-          labelLocation={'top'}
-          items={formItems}
-        />
       </div>
     </React.Fragment>
   );

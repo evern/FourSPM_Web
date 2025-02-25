@@ -52,14 +52,17 @@
     margin-bottom: 15px;
     font-weight: 500;
   }
+}
 
-  .form-actions {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    
-    .save-button {
-      margin-left: auto;
-    }
+.dx-form .form-actions {
+  padding: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+  border-top: 1px solid var(--base-border-color);
+  
+  .save-button {
+    margin-left: 0;
   }
 }
