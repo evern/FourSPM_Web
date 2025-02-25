@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/auth';
 import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { projectStatuses } from '../projects/project-statuses';
+import { useScreenSize } from '../../utils/media-query';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
@@ -20,6 +21,7 @@ export default function ProjectProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [formRef, setFormRef] = useState<Form | null>(null);
   const { user } = useAuth();
+  const { isXSmall, isSmall } = useScreenSize();
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -60,6 +62,12 @@ export default function ProjectProfile() {
   const formItems: IGroupItemProps[] = [{
     itemType: 'group',
     caption: 'Project Information',
+    colCountByScreen: {
+      xs: 1,    // Mobile phones
+      sm: 1,    // Tablets (portrait)
+      md: 2,    // Tablets (landscape) / small laptops
+      lg: 2     // Large screens
+    },
     items: [
       { 
         itemType: 'simple',
@@ -81,6 +89,12 @@ export default function ProjectProfile() {
   {
     itemType: 'group',
     caption: 'Client Information',
+    colCountByScreen: {
+      xs: 1,    // Mobile phones
+      sm: 1,    // Tablets (portrait)
+      md: 2,    // Tablets (landscape) / small laptops
+      lg: 2     // Large screens
+    },
     items: [
       {
         itemType: 'simple',
@@ -104,21 +118,23 @@ export default function ProjectProfile() {
     <React.Fragment>
       <h2 className={'content-block'}>{projectData.projectNumber} - {projectData.name}</h2>
 
-      <div className={'content-block dx-card responsive-paddings'}>
-        <div className={'project-summary'}>
-          <div className={'project-header'}>
-            <div className={'project-status'}>
-              <h3>Status</h3>
-              <div className={'status-value'}>
-                {getStatusDisplayName(projectData.projectStatus)}
-              </div>
-            </div>
-            <div className={'project-dates'}>
-              <p><strong>Created:</strong> {new Date(projectData.created).toLocaleDateString()}</p>
-              {projectData.updated && (
-                <p><strong>Last Updated:</strong> {new Date(projectData.updated).toLocaleDateString()}</p>
-              )}
-            </div>
+      <div className={'content-block dx-card responsive-paddings project-summary-card'}>
+        <div className={'project-summary-compact'}>
+          <div className={'status-section'}>
+            <span className={'label'}>Status:</span>
+            <span className={'value'}>{getStatusDisplayName(projectData.projectStatus)}</span>
+          </div>
+          <div className={'dates-section'}>
+            <span className={'date-item'}>
+              <span className={'label'}>Created:</span>
+              <span className={'value'}>{new Date(projectData.created).toLocaleDateString()}</span>
+            </span>
+            {projectData.updated && (
+              <span className={'date-item'}>
+                <span className={'label'}>Updated:</span>
+                <span className={'value'}>{new Date(projectData.updated).toLocaleDateString()}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -130,7 +146,7 @@ export default function ProjectProfile() {
           labelLocation={'top'}
           items={formItems}
         />
-        <div className="form-actions">
+        <div className={`form-actions${isXSmall ? ' form-actions-small' : ''}`}>
           <Button
             text={isEditing ? "Cancel" : "Edit"}
             type={isEditing ? "normal" : "default"}
