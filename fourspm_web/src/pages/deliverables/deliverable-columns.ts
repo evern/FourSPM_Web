@@ -39,19 +39,23 @@ const deliverableTypeStore = new ODataStore({
 export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'areaNumber',
-    caption: 'Area No.'
+    caption: 'Area No.',
+    hidingPriority: 0
   },
   {
     dataField: 'discipline',
-    caption: 'Discipline'
+    caption: 'Discipline',
+    hidingPriority: 1
   },
   {
     dataField: 'documentType',
-    caption: 'Document Type'
+    caption: 'Document Type',
+    hidingPriority: 2
   },
   {
     dataField: 'departmentId',
     caption: 'Department',
+    hidingPriority: 3,
     lookup: {
       dataSource: departmentStore,
       valueExpr: 'guid',
@@ -61,6 +65,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'deliverableTypeId',
     caption: 'Deliverable Type',
+    hidingPriority: 4,
     lookup: {
       dataSource: deliverableTypeStore,
       valueExpr: 'guid',
@@ -69,30 +74,37 @@ export const deliverableColumns: ODataGridColumn[] = [
   },
   {
     dataField: 'internalDocumentNumber',
-    caption: 'Internal Doc. No.'
+    caption: 'Internal Doc. No.',
+    hidingPriority: 11  // Will be hidden last
   },
   {
     dataField: 'clientDocumentNumber',
-    caption: 'Client Doc. No.'
+    caption: 'Client Doc. No.',
+    hidingPriority: 5
   },
   {
     dataField: 'documentTitle',
-    caption: 'Document Title'
+    caption: 'Document Title',
+    hidingPriority: 10  // Will be hidden second to last
   },
   {
     dataField: 'budgetHours',
-    caption: 'Budget Hours'
+    caption: 'Budget Hours',
+    hidingPriority: 6
   },
   {
     dataField: 'variationHours',
-    caption: 'Variation Hours'
+    caption: 'Variation Hours',
+    hidingPriority: 7
   },
   {
     dataField: 'totalCost',
-    caption: 'Total Cost'
+    caption: 'Total Cost',
+    hidingPriority: 8
   },
   {
     dataField: 'bookingCode',
-    caption: 'Booking Code'
+    caption: 'Booking Code',
+    hidingPriority: 9
   }
 ];
