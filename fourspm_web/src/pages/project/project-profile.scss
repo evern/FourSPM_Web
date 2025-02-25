@@ -12,6 +12,7 @@
       
       h3 {
         margin-bottom: 15px;
+        color: var(--base-text-color);
       }
 
       .status-value {
@@ -31,10 +32,11 @@
 
       p {
         margin: 5px 0;
-        color: #666;
+        color: var(--base-text-color);
         
         strong {
-          color: #333;
+          color: var(--base-text-color);
+          font-weight: 600;
         }
       }
     }
@@ -46,7 +48,7 @@
 
   .dx-form-group-caption {
     font-size: 1.2em;
-    color: #333;
+    color: var(--base-text-color);
     margin-bottom: 15px;
     font-weight: 500;
   }
