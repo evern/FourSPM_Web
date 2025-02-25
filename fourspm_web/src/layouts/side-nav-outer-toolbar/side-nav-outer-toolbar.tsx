@@ -46,6 +46,8 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   useEffect(() => {
     if (!isLarge) {
       setMenuStatus(MenuStatus.Closed);
+    } else {
+      setMenuStatus(MenuStatus.Opened);
     }
   }, [isLarge]);
 
@@ -55,6 +57,8 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
       const width = window.innerWidth;
       if (width < 960) { // Same breakpoint as isLarge in media-query.ts
         setMenuStatus(MenuStatus.Closed);
+      } else {
+        setMenuStatus(MenuStatus.Opened);
       }
     };
 
