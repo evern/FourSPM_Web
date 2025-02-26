@@ -167,6 +167,7 @@ export default function ProjectProfile() {
             )}
           </div>
         </div>
+        <div className="bottom-spacer"></div>
       </div>
     </React.Fragment>
   );
