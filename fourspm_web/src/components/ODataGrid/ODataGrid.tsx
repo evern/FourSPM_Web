@@ -110,7 +110,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
-      <div style={{ width: '100%', overflowX: 'auto' }}>
+      <div style={{ width: '100%', overflowX: 'auto', height: '600px' }}>
         <DataGrid
           className={'dx-card wide-card'}
           dataSource={dataSource}
@@ -120,7 +120,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           columnAutoWidth={true}
           columnHidingEnabled={true}
           remoteOperations={true}
-          height="auto"
+          height={550}
           scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
