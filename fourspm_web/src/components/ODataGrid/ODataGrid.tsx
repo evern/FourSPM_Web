@@ -110,57 +110,62 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
-      <DataGrid
-        className={'dx-card wide-card'}
-        dataSource={dataSource}
-        showBorders={false}
-        focusedRowEnabled={true}
-        defaultFocusedRowIndex={0}
-        columnAutoWidth={true}
-        columnHidingEnabled={true}
-        remoteOperations={true}
-        height={1000}
-        noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
-        editing={{
-          mode: 'row',
-          allowAdding,
-          allowUpdating,
-          allowDeleting,
-          useIcons: true,
-          texts: {
-            saveRowChanges: 'Save',
-            cancelRowChanges: 'Cancel',
-            editRow: 'Edit',
-            deleteRow: 'Delete'
-          }
-        }}
-        onRowUpdating={onRowUpdating}
-        onRowInserting={onRowInserting}
-        onRowRemoving={onRowRemoving}
-        onInitNewRow={onInitNewRow}
-        onRowValidating={onRowValidating}
-      >
-        <Paging defaultPageSize={defaultPageSize} />
-        <Pager showPageSizeSelector={true} showInfo={true} />
-        <FilterRow visible={true} />
+      <div style={{ width: '100%', overflowX: 'auto' }}>
+        <DataGrid
+          className={'dx-card wide-card'}
+          dataSource={dataSource}
+          showBorders={false}
+          focusedRowEnabled={true}
+          defaultFocusedRowIndex={0}
+          columnAutoWidth={true}
+          columnHidingEnabled={true}
+          remoteOperations={true}
+          height="auto"
+          scrolling={{ mode: 'standard', showScrollbar: 'always' }}
+          noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
+          editing={{
+            mode: 'row',
+            allowAdding,
+            allowUpdating,
+            allowDeleting,
+            useIcons: true,
+            texts: {
+              saveRowChanges: 'Save',
+              cancelRowChanges: 'Cancel',
+              editRow: 'Edit',
+              deleteRow: 'Delete'
+            }
+          }}
+          onRowUpdating={onRowUpdating}
+          onRowInserting={onRowInserting}
+          onRowRemoving={onRowRemoving}
+          onInitNewRow={onInitNewRow}
+          onRowValidating={onRowValidating}
+        >
+          <Paging defaultPageSize={defaultPageSize} />
+          <Pager showPageSizeSelector={true} showInfo={true} />
+          <FilterRow visible={true} />
 
-        {columns.map((column) => (
-          <Column 
-            key={column.dataField}
-            dataField={column.dataField}
-            caption={column.caption}
-            hidingPriority={column.hidingPriority}
-          >
-            {column.lookup && (
-              <Lookup
-                dataSource={column.lookup.dataSource}
-                valueExpr={column.lookup.valueExpr}
-                displayExpr={column.lookup.displayExpr}
-              />
-            )}
-          </Column>
-        ))}
-      </DataGrid>
+          {columns.map((column) => (
+            <Column 
+              key={column.dataField}
+              dataField={column.dataField}
+              caption={column.caption}
+              hidingPriority={column.hidingPriority}
+              minWidth={'150'}
+              allowResizing={true}
+            >
+              {column.lookup && (
+                <Lookup
+                  dataSource={column.lookup.dataSource}
+                  valueExpr={column.lookup.valueExpr}
+                  displayExpr={column.lookup.displayExpr}
+                />
+              )}
+            </Column>
+          ))}
+        </DataGrid>
+      </div>
     </React.Fragment>
   );
 };
