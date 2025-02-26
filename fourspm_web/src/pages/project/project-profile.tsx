@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './project-profile.scss';
 import Form from 'devextreme-react/form';
 import type { IGroupItemProps } from 'devextreme-react/form';
@@ -9,6 +9,7 @@ import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { projectStatuses } from '../projects/project-statuses';
 import { useScreenSize } from '../../utils/media-query';
+import { ScrollView } from 'devextreme-react/scroll-view';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
@@ -22,6 +23,7 @@ export default function ProjectProfile() {
   const [formRef, setFormRef] = useState<Form | null>(null);
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -113,55 +115,57 @@ export default function ProjectProfile() {
       }
     ]
   }];
-
+  
   return (
     <React.Fragment>
-      <h2 className={'content-block'}>{projectData.projectNumber} - {projectData.name}</h2>
+      <div className="project-profile-scroll">
+        <h2 className={'content-block'}>{projectData.projectNumber} - {projectData.name}</h2>
 
-      <div className={'content-block dx-card responsive-paddings project-summary-card'}>
-        <div className={'project-summary-compact'}>
-          <div className={'status-section'}>
-            <span className={'label'}>Status:</span>
-            <span className={'value'}>{getStatusDisplayName(projectData.projectStatus)}</span>
-          </div>
-          <div className={'dates-section'}>
-            <span className={'date-item'}>
-              <span className={'label'}>Created:</span>
-              <span className={'value'}>{new Date(projectData.created).toLocaleDateString()}</span>
-            </span>
-            {projectData.updated && (
+        <div className={'content-block dx-card responsive-paddings project-summary-card'}>
+          <div className={'project-summary-compact'}>
+            <div className={'status-section'}>
+              <span className={'label'}>Status:</span>
+              <span className={'value'}>{getStatusDisplayName(projectData.projectStatus)}</span>
+            </div>
+            <div className={'dates-section'}>
               <span className={'date-item'}>
-                <span className={'label'}>Updated:</span>
-                <span className={'value'}>{new Date(projectData.updated).toLocaleDateString()}</span>
+                <span className={'label'}>Created:</span>
+                <span className={'value'}>{new Date(projectData.created).toLocaleDateString()}</span>
               </span>
-            )}
+              {projectData.updated && (
+                <span className={'date-item'}>
+                  <span className={'label'}>Updated:</span>
+                  <span className={'value'}>{new Date(projectData.updated).toLocaleDateString()}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className={'content-block dx-card responsive-paddings'}>
-        <Form
-          ref={(ref) => setFormRef(ref)}
-          formData={projectData}
-          labelLocation={'top'}
-          items={formItems}
-        />
-        <div className={`form-actions${isXSmall ? ' form-actions-small' : ''}`}>
-          <Button
-            text={isEditing ? "Cancel" : "Edit"}
-            type={isEditing ? "normal" : "default"}
-            stylingMode="contained"
-            onClick={() => setIsEditing(!isEditing)}
+        <div className={'content-block scrollable-card responsive-paddings'}>
+          <Form
+            ref={(ref) => setFormRef(ref)}
+            formData={projectData}
+            labelLocation={'top'}
+            items={formItems}
           />
-          {isEditing && (
+          <div className={`form-actions${isXSmall ? ' form-actions-small' : ''}`}>
             <Button
-              text="Save"
-              type="success"
+              text={isEditing ? "Cancel" : "Edit"}
+              type={isEditing ? "normal" : "default"}
               stylingMode="contained"
-              onClick={handleSave}
-              className="save-button"
+              onClick={() => setIsEditing(!isEditing)}
             />
-          )}
+            {isEditing && (
+              <Button
+                text="Save"
+                type="success"
+                stylingMode="contained"
+                onClick={handleSave}
+                className="save-button"
+              />
+            )}
+          </div>
         </div>
       </div>
     </React.Fragment>
