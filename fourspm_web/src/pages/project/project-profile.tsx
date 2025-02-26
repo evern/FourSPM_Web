@@ -121,7 +121,7 @@ export default function ProjectProfile() {
       <div className="project-profile-scroll">
         <h2 className={'content-block'}>{projectData.projectNumber} - {projectData.name}</h2>
 
-        <div className={'content-block dx-card responsive-paddings project-summary-card'}>
+        <div className={'dx-card project-summary-card'}>
           <div className={'project-summary-compact'}>
             <div className={'status-section'}>
               <span className={'label'}>Status:</span>
@@ -142,7 +142,7 @@ export default function ProjectProfile() {
           </div>
         </div>
 
-        <div className={'content-block scrollable-card responsive-paddings'}>
+        <div className={'content-block scrollable-card'}>
           <Form
             ref={(ref) => setFormRef(ref)}
             formData={projectData}
