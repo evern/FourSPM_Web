@@ -7,6 +7,7 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { projectColumns } from './project-columns';
 import { useNavigation } from '../../contexts/navigation';
+import './projects.scss';
 
 const Projects: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Projects`;
@@ -39,16 +40,19 @@ const Projects: React.FC = () => {
   };
 
   return (
-    <ODataGrid
-      title="Projects"
-      endpoint={endpoint}
-      columns={projectColumns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-    />
+    <React.Fragment>
+        <ODataGrid
+          title="Projects"
+          endpoint={endpoint}
+          columns={projectColumns}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onInitNewRow={handleInitNewRow}
+          onRowValidating={handleRowValidating}
+          onRowRemoving={handleRowRemoving}
+        />
+        <div className="bottom-spacer"></div>
+    </React.Fragment>
   );
 };
 

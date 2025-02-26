@@ -69,6 +69,7 @@ export default function Profile() {
         <h3>Change Password</h3>
         <ChangePasswordForm inProfilePage={true} />
       </div>
+      <div className="bottom-spacer"></div>
     </React.Fragment>
   );
 }

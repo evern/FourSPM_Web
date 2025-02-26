@@ -210,10 +210,23 @@
 }
 
 .bottom-spacer {
-  height: 100px;  // Adjust this value to control the amount of space
+  height: 100px;
+  min-height: 100px;  // Add min-height to ensure it doesn't collapse
+  width: 100%;  // Ensure it takes full width
+  display: block;  // Ensure it's a block element
   
-  @media screen and (max-width: 576px) {
-    height: 160px;  // More space on mobile
+  @media (max-width: 576px) {  // Simplified media query syntax
+    height: 260px;
+    min-height: 260px;
   }
 }
-// Removed override to allow responsive-paddings to work properly
+
+.project-profile-scroll {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: 0;  // Remove bottom padding since we're using spacer
+  // ... rest of the styles
+}
