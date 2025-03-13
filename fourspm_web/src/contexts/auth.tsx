@@ -21,15 +21,28 @@ function AuthProvider({ children }: PropsWithChildren<{}>) {
   const [user, setUser] = useState<User | undefined>();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async function () {
-      const result = await getUser();
-      if (result.isOk && result.data) {
-        setUser(result.data);
-      }
-      setLoading(false);
-    })();
+  const validateUser = useCallback(async () => {
+    const result = await getUser();
+    if (result.isOk && result.data) {
+      setUser(result.data);
+    } else {
+      // If token validation fails, clear user
+      setUser(undefined);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    validateUser();
+  }, [validateUser]);
+
+  // Revalidate token periodically
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(validateUser, 5 * 60 * 1000); // Check every 5 minutes
+    return () => clearInterval(interval);
+  }, [user, validateUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const result = await sendSignInRequest(email, password);
@@ -40,6 +53,7 @@ function AuthProvider({ children }: PropsWithChildren<{}>) {
   }, []);
 
   const signOut = useCallback(() => {
+    localStorage.removeItem('user');
     setUser(undefined);
   }, []);
 

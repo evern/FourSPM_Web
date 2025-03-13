@@ -1,0 +1,15 @@
+{
+    "debug.javascript.usePreview": true,
+    "debug.javascript.autoAttachFilter": "smart",
+    "debug.javascript.terminalOptions": {
+        "skipFiles": [
+            "<node_internals>/**",
+            "**/node_modules/**"
+        ]
+    },
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": true
+    },
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "typescript.updateImportsOnFileMove.enabled": "always"
+}

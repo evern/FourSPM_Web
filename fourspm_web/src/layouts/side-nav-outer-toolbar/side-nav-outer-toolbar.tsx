@@ -46,10 +46,10 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   useEffect(() => {
     if (!isLarge) {
       setMenuStatus(MenuStatus.Closed);
-    } else if (menuStatus === MenuStatus.Closed) {
+    } else {
       setMenuStatus(MenuStatus.Opened);
     }
-  }, [isLarge, menuStatus]);
+  }, [isLarge]);
 
   // Handle window resize
   useEffect(() => {
@@ -57,6 +57,8 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
       const width = window.innerWidth;
       if (width < 960) { // Same breakpoint as isLarge in media-query.ts
         setMenuStatus(MenuStatus.Closed);
+      } else {
+        setMenuStatus(MenuStatus.Opened);
       }
     };
 
@@ -65,13 +67,18 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   }, []);
 
   const toggleMenu = useCallback(({ event }: ToggleMenuEvent) => {
-    setMenuStatus(
-      prevMenuStatus => prevMenuStatus === MenuStatus.Closed
-        ? MenuStatus.Opened
-        : MenuStatus.Closed
-    );
+    console.log('Toggle menu called', { currentMenuStatus: menuStatus, isLarge });
+    
+    setMenuStatus(prevStatus => {
+      console.log('Toggling menu:', {
+        prevStatus,
+        willBe: prevStatus === MenuStatus.Closed ? 'Opened' : 'Closed'
+      });
+      return prevStatus === MenuStatus.Closed ? MenuStatus.Opened : MenuStatus.Closed;
+    });
+    
     event.stopPropagation();
-  }, []);
+  }, [menuStatus]);
 
   const temporaryOpenMenu = useCallback(() => {
     setMenuStatus(
@@ -91,7 +98,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   }, [isLarge]);
 
   const onNavigationChanged = useCallback(({ itemData: { path }, event, node }: NavigationChangedEvent) => {
-    if (menuStatus === MenuStatus.Closed || !path || node.selected) {
+    if (!path || node.selected) {
       event.preventDefault();
       return;
     }
@@ -120,7 +127,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
         openedStateMode={isLarge ? 'shrink' : 'overlap'}
         revealMode={isXSmall ? 'slide' : 'expand'}
         minSize={isXSmall ? 0 : 60}
-        maxSize={250}
+        maxSize={400}
         shading={!isLarge}
         opened={menuStatus !== MenuStatus.Closed}
         template={'menu'}

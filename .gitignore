@@ -1,3 +1,6 @@
+# VSCode debugging
+.vscode/chrome-debug/
+
 # Dependencies
 /node_modules
 /.pnp
@@ -8,6 +11,7 @@
 
 # Production
 /build
+/dist
 
 # IDE
 /.vscode

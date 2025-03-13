@@ -1,7 +1,9 @@
 import { ComponentType } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { withNavigationWatcher } from './contexts/navigation';
-import { HomePage, TasksPage, ProfilePage } from './pages';
+import { HomePage, TasksPage, ProfilePage, ProjectsPage } from './pages';
+import Deliverables from './pages/deliverables/deliverables';
+import ProjectProfile from './pages/project/project-profile';
 
 interface RouteConfig {
   path: string;
@@ -10,8 +12,16 @@ interface RouteConfig {
 
 const routes: RouteConfig[] = [
   {
-    path: '/tasks',
-    component: TasksPage
+    path: '/projects/:projectId/profile',
+    component: ProjectProfile
+  },
+  {
+    path: '/projects/:projectId/deliverables',
+    component: Deliverables
+  },
+  {
+    path: '/projects',
+    component: ProjectsPage
   },
   {
     path: '/profile',

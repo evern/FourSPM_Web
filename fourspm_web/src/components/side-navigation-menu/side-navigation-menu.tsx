@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useCallback, useMemo, ReactElement } from 'react';
 import TreeView from 'devextreme-react/tree-view';
-import { navigation } from '../../app-navigation';
 import { useNavigation } from '../../contexts/navigation';
 import { useScreenSize } from '../../utils/media-query';
 import './side-navigation-menu.scss';
@@ -24,6 +23,8 @@ export default function SideNavigationMenu(props: Props): ReactElement {
   } = props;
 
   const { isLarge } = useScreenSize();
+  const { navigation, navigationData: { currentPath } } = useNavigation();
+
   function normalizePath() {
     return navigation.map((item) => {
       if (item.path && !(/^\//.test(item.path))) {
@@ -36,10 +37,8 @@ export default function SideNavigationMenu(props: Props): ReactElement {
   const items = useMemo(
     normalizePath,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [navigation, isLarge]
   );
-
-  const { navigationData: { currentPath } } = useNavigation();
 
   const treeViewRef = useRef<any>();
   const wrapperRef = useRef<HTMLDivElement>();
@@ -50,9 +49,11 @@ export default function SideNavigationMenu(props: Props): ReactElement {
     }
 
     wrapperRef.current = element;
-    events.on(element, 'dxclick', e => {
-      openMenu(e);
-    });
+    if (element) {
+      events.on(element, 'dxclick', (e: Event) => {
+        openMenu(e);
+      });
+    }
   }, [openMenu]);
 
   useEffect(() => {
@@ -73,8 +74,8 @@ export default function SideNavigationMenu(props: Props): ReactElement {
 
   return (
     <div
-      className={'side-navigation-menu'}
       ref={getWrapperRef}
+      className={'side-navigation-menu'}
     >
       {children}
       <div className={'menu-container'}>

@@ -50,7 +50,7 @@ const RootApp = () => {
 
 const Root: React.FC = () => {
   const themeContext = useThemeContext();
-  return themeContext.isLoaded ? <RootApp /> : '';
+  return themeContext.isLoaded ? <RootApp /> : null;
 }
 
 export default Root;
