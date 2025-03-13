@@ -3,7 +3,7 @@ interface AppInfo {
 }
 
 const appInfo: AppInfo = {
-  title: 'Scopium 4SPM'
+  title: 'Scopium SPM'
 };
 
 export default appInfo;

@@ -35,7 +35,7 @@ export default function Header({
           location={'before'}
           cssClass={'header-logo'}
         >
-          <img src={logo} alt="4SPM Logo" className="header-logo-image" />
+          <img src={logo} alt="SPM Logo" className="header-logo-image" />
         </Item>
         <Item
           location={'before'}

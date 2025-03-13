@@ -11,7 +11,7 @@ export default function Home(): ReactElement {
           <div className={'logos-container'}>
             <img 
               src={logo} 
-              alt="4SPM Logo" 
+              alt="SPM Logo" 
               className={'devextreme-logo'} 
             />
           </div>
