@@ -66,7 +66,7 @@ const Deliverables: React.FC = () => {
       discipline: '',
       documentType: '',
       departmentId: null,
-      deliverableTypeId: 0, 
+      deliverableTypeId: 'Task', 
       internalDocumentNumber: '',
       clientDocumentNumber: '',
       documentTitle: '',

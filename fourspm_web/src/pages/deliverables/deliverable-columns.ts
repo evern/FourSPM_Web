@@ -21,10 +21,10 @@ const departmentStore = new ODataStore({
 
 // DeliverableType is now an enum, so we define the lookup values here
 const deliverableTypeEnum = [
-  { id: 0, name: 'Task' },
-  { id: 1, name: 'NonDeliverable' },
-  { id: 2, name: 'DeliverableICR' },
-  { id: 3, name: 'Deliverable' }
+  { id: 'Task', name: 'Task' },
+  { id: 'NonDeliverable', name: 'NonDeliverable' },
+  { id: 'DeliverableICR', name: 'DeliverableICR' },
+  { id: 'Deliverable', name: 'Deliverable' }
 ];
 
 export const deliverableColumns: ODataGridColumn[] = [
@@ -68,7 +68,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'deliverableTypeId',
     caption: 'Deliverable Type',
-    hidingPriority: 5,
+    hidingPriority: 11,
     lookup: {
       dataSource: deliverableTypeEnum,
       valueExpr: 'id',
@@ -89,7 +89,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'documentTitle',
     caption: 'Document Title',
-    hidingPriority: 11  // Will be hidden second to last
+    hidingPriority: 10  // Will be hidden second to last
   },
   {
     dataField: 'budgetHours',
