@@ -60,18 +60,21 @@ const Deliverables: React.FC = () => {
     e.data = {
       guid: uuidv4(),
       projectGuid: projectId,
+      clientNumber: '',  
+      projectNumber: '', 
       areaNumber: '',
       discipline: '',
       documentType: '',
       departmentId: null,
-      deliverableTypeId: null,
+      deliverableTypeId: 0, 
       internalDocumentNumber: '',
       clientDocumentNumber: '',
       documentTitle: '',
       budgetHours: 0,
       variationHours: 0,
-      totalHours: 0,
-      totalCost: 0
+      totalHours: 0,    
+      totalCost: 0,
+      bookingCode: ''    
     };
   };
 

@@ -19,43 +19,48 @@ const departmentStore = new ODataStore({
   }
 });
 
-const deliverableTypeStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/DeliverableTypes`,
-  version: 4,
-  key: 'guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).token : null;
-    if (!token) return false;
-    
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-    return true;
-  }
-});
+// DeliverableType is now an enum, so we define the lookup values here
+const deliverableTypeEnum = [
+  { id: 0, name: 'Type 0' },
+  { id: 1, name: 'Type 1' },
+  { id: 2, name: 'Type 2' },
+  { id: 3, name: 'Type 3' },
+  { id: 4, name: 'Type 4' }
+  // Add more enum values as needed based on your backend enum
+];
 
 export const deliverableColumns: ODataGridColumn[] = [
   {
+    dataField: 'clientNumber',
+    caption: 'Client No.',
+    hidingPriority: 0,
+    allowEditing: false // Read-only field
+  },
+  {
+    dataField: 'projectNumber',
+    caption: 'Project No.',
+    hidingPriority: 0,
+    allowEditing: false // Read-only field
+  },
+  {
     dataField: 'areaNumber',
     caption: 'Area No.',
-    hidingPriority: 0
+    hidingPriority: 1
   },
   {
     dataField: 'discipline',
     caption: 'Discipline',
-    hidingPriority: 1
+    hidingPriority: 2
   },
   {
     dataField: 'documentType',
     caption: 'Document Type',
-    hidingPriority: 2
+    hidingPriority: 3
   },
   {
     dataField: 'departmentId',
     caption: 'Department',
-    hidingPriority: 3,
+    hidingPriority: 4,
     lookup: {
       dataSource: departmentStore,
       valueExpr: 'guid',
@@ -65,46 +70,54 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'deliverableTypeId',
     caption: 'Deliverable Type',
-    hidingPriority: 4,
+    hidingPriority: 5,
     lookup: {
-      dataSource: deliverableTypeStore,
-      valueExpr: 'guid',
+      dataSource: deliverableTypeEnum,
+      valueExpr: 'id',
       displayExpr: 'name'
     }
   },
   {
     dataField: 'internalDocumentNumber',
     caption: 'Internal Doc. No.',
-    hidingPriority: 11  // Will be hidden last
+    hidingPriority: 12,  // Will be hidden last
+    allowEditing: false  // Read-only field as it's now server-calculated
   },
   {
     dataField: 'clientDocumentNumber',
     caption: 'Client Doc. No.',
-    hidingPriority: 5
+    hidingPriority: 6
   },
   {
     dataField: 'documentTitle',
     caption: 'Document Title',
-    hidingPriority: 10  // Will be hidden second to last
+    hidingPriority: 11  // Will be hidden second to last
   },
   {
     dataField: 'budgetHours',
     caption: 'Budget Hours',
-    hidingPriority: 6
+    hidingPriority: 7
   },
   {
     dataField: 'variationHours',
     caption: 'Variation Hours',
-    hidingPriority: 7
+    hidingPriority: 8
+  },
+  {
+    dataField: 'totalHours',
+    caption: 'Total Hours',
+    hidingPriority: 8,
+    allowEditing: false // Read-only field
   },
   {
     dataField: 'totalCost',
     caption: 'Total Cost',
-    hidingPriority: 8
+    hidingPriority: 9
   },
   {
     dataField: 'bookingCode',
     caption: 'Booking Code',
-    hidingPriority: 9
+    hidingPriority: 10,
+    allowEditing: false // Read-only field
   }
 ];

@@ -17,6 +17,7 @@ export interface ODataGridColumn {
   dataField: string;
   caption: string;
   hidingPriority?: number;
+  allowEditing?: boolean;
   lookup?: {
     dataSource: any | { store: ODataStore };
     valueExpr: string;
@@ -154,6 +155,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               hidingPriority={column.hidingPriority}
               minWidth={'150'}
               allowResizing={true}
+              allowEditing={column.allowEditing}
             >
               {column.lookup && (
                 <Lookup
