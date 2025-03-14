@@ -21,12 +21,10 @@ const departmentStore = new ODataStore({
 
 // DeliverableType is now an enum, so we define the lookup values here
 const deliverableTypeEnum = [
-  { id: 0, name: 'Type 0' },
-  { id: 1, name: 'Type 1' },
-  { id: 2, name: 'Type 2' },
-  { id: 3, name: 'Type 3' },
-  { id: 4, name: 'Type 4' }
-  // Add more enum values as needed based on your backend enum
+  { id: 0, name: 'Task' },
+  { id: 1, name: 'NonDeliverable' },
+  { id: 2, name: 'DeliverableICR' },
+  { id: 3, name: 'Deliverable' }
 ];
 
 export const deliverableColumns: ODataGridColumn[] = [
