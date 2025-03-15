@@ -24,6 +24,9 @@ export interface ODataGridColumn {
     useMaskedValue?: boolean;
     [key: string]: any;
   };
+  customizeText?: (cellInfo: any) => string;
+  cellRender?: (cellData: any) => React.ReactNode;
+  calculateDisplayValue?: string;
   lookup?: {
     dataSource: any | { store: ODataStore };
     valueExpr: string;
@@ -154,7 +157,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           <FilterRow visible={true} />
 
           {columns.map((column) => (
-            <Column 
+            <Column
               key={column.dataField}
               dataField={column.dataField}
               caption={column.caption}
@@ -163,6 +166,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               allowResizing={true}
               allowEditing={column.allowEditing}
               editorOptions={column.editorOptions}
+              customizeText={column.customizeText}
+              cellRender={column.cellRender}
+              calculateDisplayValue={column.calculateDisplayValue}
             >
               {column.lookup && (
                 <Lookup

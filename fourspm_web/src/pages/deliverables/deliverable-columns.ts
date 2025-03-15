@@ -2,19 +2,27 @@ import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { API_CONFIG } from '../../config/api';
 import ODataStore from 'devextreme/data/odata/store';
 
+// Create a standard ODataStore for departments
+// We use the C# entity property names: 'Guid' and 'Name' (PascalCase)
 const departmentStore = new ODataStore({
   url: `${API_CONFIG.baseUrl}/odata/v1/Departments`,
   version: 4,
-  key: 'guid',
+  key: 'Guid',
   keyType: 'Guid',
   beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).token : null;
-    if (!token) return false;
+    const token = localStorage.getItem('user') ? 
+      JSON.parse(localStorage.getItem('user') || '{}').token : null;
     
+    if (!token) {
+      console.error('No token available');
+      return false;
+    }
+
     options.headers = {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json'
     };
+
     return true;
   }
 });
@@ -78,7 +86,8 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'internalDocumentNumber',
     caption: 'Internal Doc. No.',
-    hidingPriority: 12  // Will be hidden last
+    hidingPriority: 12, // Will be hidden last
+    allowEditing: false // Read-only calculated field
   },
   {
     dataField: 'clientDocumentNumber',
@@ -103,18 +112,13 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'totalHours',
     caption: 'Total Hours',
-    hidingPriority: 8,
-    allowEditing: false // Read-only field
-  },
-  {
-    dataField: 'totalCost',
-    caption: 'Total Cost',
-    hidingPriority: 9
+    hidingPriority: 9,
+    allowEditing: false // Read-only calculated field
   },
   {
     dataField: 'bookingCode',
     caption: 'Booking Code',
-    hidingPriority: 10,
-    allowEditing: false // Read-only field
+    hidingPriority: 5,
+    allowEditing: false // Read-only calculated field
   }
 ];
