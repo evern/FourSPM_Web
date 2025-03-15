@@ -65,7 +65,7 @@ const Deliverables: React.FC = () => {
       areaNumber: '',
       discipline: '',
       documentType: '',
-      departmentId: 0, // Default to 'Administration', which is enum value 0
+      departmentId: 'Administration', // Default to 'Administration' enum value as string
       deliverableTypeId: 'Task', 
       internalDocumentNumber: '',
       clientDocumentNumber: '',

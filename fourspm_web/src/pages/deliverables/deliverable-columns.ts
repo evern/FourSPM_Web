@@ -3,10 +3,10 @@ import { API_CONFIG } from '../../config/api';
 
 // Department is now an enum, so we define the lookup values here
 const departmentEnum = [
-  { id: 0, name: 'Administration' },
-  { id: 1, name: 'Design' },
-  { id: 2, name: 'Engineering' },
-  { id: 3, name: 'Management' }
+  { id: 'Administration', name: 'Administration' },
+  { id: 'Design', name: 'Design' },
+  { id: 'Engineering', name: 'Engineering' },
+  { id: 'Management', name: 'Management' }
 ];
 
 // DeliverableType is now an enum, so we define the lookup values here

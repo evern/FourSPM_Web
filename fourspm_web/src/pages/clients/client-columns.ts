@@ -37,6 +37,7 @@ export const clientColumns: ODataGridColumn[] = [
     dataField: 'created',
     caption: 'Created',
     hidingPriority: 9,
+    cellClass: 'faded-placeholder',
     allowEditing: false // Read-only field
   }
 ];
