@@ -86,8 +86,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'internalDocumentNumber',
     caption: 'Internal Doc. No.',
-    hidingPriority: 12, // Will be hidden last
-    allowEditing: false // Read-only calculated field
+    hidingPriority: 12 // Will be hidden last
   },
   {
     dataField: 'clientDocumentNumber',

@@ -53,19 +53,19 @@ export const projectColumns: ODataGridColumn[] = [
     dataField: 'clientContactName',
     caption: 'Client Contact',
     hidingPriority: 5,
-    allowEditing: false,
-    cellRender: (cellData: any) => {
-      const value = cellData.value;
-      if (value) {
-        return value;
-      } else {
-        // We'll add the transparency with CSS through the class name
-        return React.createElement('div', { 
-          className: 'placeholder-text',
-          style: { opacity: 0.5 }
-        }, 'Will display contact information after saving with selected client');
-      }
-    }
+    allowEditing: false // Read-only calculated field
+  },
+  {
+    dataField: 'clientContactNumber',
+    caption: 'Contact Number',
+    hidingPriority: 7,
+    allowEditing: false, // Read-only calculated field
+  },
+  {
+    dataField: 'clientContactEmail',
+    caption: 'Contact Email',
+    hidingPriority: 7,
+    allowEditing: false, // Read-only calculated field
   },
   { 
     dataField: 'purchaseOrderNumber', 

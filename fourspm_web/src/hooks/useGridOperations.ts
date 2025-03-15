@@ -11,6 +11,24 @@ interface GridOperationsConfig {
   onInsertError?: (error: Error) => void;
 }
 
+// Helper function to properly format error responses
+const formatErrorResponse = async (response: Response) => {
+  try {
+    // Try to parse as JSON first
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    } else {
+      // If not JSON, get text and create an object with it
+      const text = await response.text();
+      return { error: response.statusText, message: text };
+    }
+  } catch (e) {
+    // If all else fails, return a generic error object
+    return { error: response.statusText, message: 'An unknown error occurred' };
+  }
+};
+
 export const useGridOperations = ({ 
   endpoint, 
   onDeleteSuccess, 
@@ -42,7 +60,8 @@ export const useGridOperations = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update item');
+        const errorData = await formatErrorResponse(response);
+        throw new Error(errorData.message || 'Failed to update item');
       }
 
       onUpdateSuccess?.();
@@ -50,7 +69,7 @@ export const useGridOperations = ({
       console.error('Error updating item:', error);
       e.cancel = true;
       onUpdateError?.(error as Error);
-      window.alert('Error updating item');
+      window.alert(`Error updating item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -66,7 +85,8 @@ export const useGridOperations = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create item');
+        const errorData = await formatErrorResponse(response);
+        throw new Error(errorData.message || 'Failed to create item');
       }
 
       onInsertSuccess?.();
@@ -74,7 +94,7 @@ export const useGridOperations = ({
       console.error('Error creating item:', error);
       e.cancel = true;
       onInsertError?.(error as Error);
-      window.alert('Error creating item');
+      window.alert(`Error creating item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -94,7 +114,8 @@ export const useGridOperations = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete item');
+        const errorData = await formatErrorResponse(response);
+        throw new Error(errorData.message || 'Failed to delete item');
       }
 
       onDeleteSuccess?.();
@@ -102,7 +123,7 @@ export const useGridOperations = ({
       console.error('Error deleting item:', error);
       e.cancel = true;
       onDeleteError?.(error as Error);
-      window.alert('Error deleting item');
+      window.alert(`Error deleting item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
