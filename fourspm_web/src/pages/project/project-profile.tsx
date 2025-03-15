@@ -45,11 +45,31 @@ export default function ProjectProfile() {
 
     try {
       const formData = formRef.instance.option('formData');
-      const result = await updateProject(projectId!, formData, user.token);
-      if (result) {
-        setProjectData(result);
-        setIsEditing(false);
-        notify('Project updated successfully', 'success', 3000);
+      
+      // If client data was modified, update the client relationship
+      if (formData.client) {
+        // Keep the same clientGuid, only update client data
+        formData.clientGuid = projectData.clientGuid;
+        
+        // Remove client object when sending update to backend 
+        // since the backend expects clientGuid only
+        const { client, ...dataToSend } = formData;
+        const result = await updateProject(projectId!, dataToSend, user.token);
+        
+        if (result) {
+          // Need to manually reattach client info since it's not returned from PATCH
+          result.client = formData.client;
+          setProjectData(result);
+          setIsEditing(false);
+          notify('Project updated successfully', 'success', 3000);
+        }
+      } else {
+        const result = await updateProject(projectId!, formData, user.token);
+        if (result) {
+          setProjectData(result);
+          setIsEditing(false);
+          notify('Project updated successfully', 'success', 3000);
+        }
       }
     } catch (error) {
       console.error('Error updating project:', error);
@@ -100,12 +120,32 @@ export default function ProjectProfile() {
     items: [
       {
         itemType: 'simple',
-        dataField: 'clientNumber',
+        dataField: 'client.number',
+        label: { text: 'Client Number' },
         editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
-        dataField: 'clientContact',
+        dataField: 'client.description',
+        label: { text: 'Client Description' },
+        editorOptions: { readOnly: !isEditing }
+      },
+      {
+        itemType: 'simple',
+        dataField: 'client.clientContactName',
+        label: { text: 'Contact Name' },
+        editorOptions: { readOnly: !isEditing }
+      },
+      {
+        itemType: 'simple',
+        dataField: 'client.clientContactNumber',
+        label: { text: 'Contact Phone' },
+        editorOptions: { readOnly: !isEditing }
+      },
+      {
+        itemType: 'simple',
+        dataField: 'client.clientContactEmail',
+        label: { text: 'Contact Email' },
         editorOptions: { readOnly: !isEditing }
       },
       {
@@ -116,6 +156,20 @@ export default function ProjectProfile() {
     ]
   }];
   
+  // Create a form data object that includes client information
+  const formData = {
+    ...projectData,
+    // If client is null, initialize with empty values
+    client: projectData.client || {
+      guid: '',
+      number: '',
+      description: '',
+      clientContactName: '',
+      clientContactNumber: '',
+      clientContactEmail: ''
+    }
+  };
+
   return (
     <React.Fragment>
       <div className="project-profile-scroll">
@@ -145,7 +199,7 @@ export default function ProjectProfile() {
         <div className={'content-block scrollable-card'}>
           <Form
             ref={(ref) => setFormRef(ref)}
-            formData={projectData}
+            formData={formData}
             labelLocation={'top'}
             items={formItems}
           />

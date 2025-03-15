@@ -9,20 +9,28 @@ interface Project {
   projectStatus: string;
 }
 
+export interface ClientDetails {
+  guid: string;
+  number: string;
+  description: string;
+  clientContact: string | null;
+}
+
 export interface ProjectDetails {
   guid: string;
-  clientNumber: string;
+  clientGuid: string | null;
   projectNumber: string;
   name: string | null;
-  clientContact: string | null;
   purchaseOrderNumber: string | null;
   projectStatus: string;
+  progressStart: string | null;
   created: string;
   createdBy: string;
   updated: string | null;
   updatedBy: string | null;
   deleted: string | null;
   deletedBy: string | null;
+  client?: ClientDetails | null;
 }
 
 export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
@@ -78,7 +86,7 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
 export const getProjectDetails = async (projectId: string, token: string): Promise<ProjectDetails> => {
   console.log('Bearer Token:', token); 
   try {
-    const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
+    const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})?$expand=Client`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -90,18 +98,24 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
     const data = await response.json();
     return {
       guid: data.guid,
-      clientNumber: data.clientNumber,
+      clientGuid: data.clientGuid,
       projectNumber: data.projectNumber,
       name: data.name,
-      clientContact: data.clientContact,
       purchaseOrderNumber: data.purchaseOrderNumber,
       projectStatus: data.projectStatus,
+      progressStart: data.progressStart,
       created: data.created,
       createdBy: data.createdBy,
       updated: data.updated,
       updatedBy: data.updatedBy,
       deleted: data.deleted,
-      deletedBy: data.deletedBy
+      deletedBy: data.deletedBy,
+      client: data.client ? {
+        guid: data.client.guid,
+        number: data.client.number,
+        description: data.client.description,
+        clientContact: data.client.clientContact
+      } : null
     };
   } catch (error) {
     console.error('Error fetching project details:', error);

@@ -19,6 +19,12 @@ export const getStaticNavigation = (): NavigationItem[] => [
     path: '/projects',
     icon: 'activefolder',
     id: 'project_list'
+  },
+  {
+    text: 'Client List',
+    path: '/clients',
+    icon: 'user',
+    id: 'client_maintenance'
   }
 ];
 

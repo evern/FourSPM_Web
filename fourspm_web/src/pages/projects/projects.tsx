@@ -18,23 +18,27 @@ const Projects: React.FC = () => {
     field: 'projectNumber'
   });
 
-  const { handleRowUpdating, handleRowRemoving } = useGridOperations({
+  const { handleRowUpdating, handleRowRemoving, handleRowInserting } = useGridOperations({
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete project:', error),
     onDeleteSuccess: refreshNavigation,
     onUpdateSuccess: refreshNavigation,
-    onUpdateError: (error) => console.error('Failed to update project:', error)
+    onUpdateError: (error) => console.error('Failed to update project:', error),
+    onInsertSuccess: refreshNavigation,
+    onInsertError: (error) => console.error('Failed to insert project:', error)
   });
 
   const handleRowValidating = useGridValidation([
-    { field: 'clientNumber', required: true, maxLength: 3, errorText: 'Client Number must be at most 3 characters' },
-    { field: 'projectNumber', required: true, maxLength: 2, errorText: 'Project Number must be at most 2 characters' }
+    { field: 'projectNumber', required: true, maxLength: 2, errorText: 'Project Number must be at most 2 characters' },
+    { field: 'name', required: true, maxLength: 200, errorText: 'Project Name is required and must be at most 200 characters' },
+    { field: 'clientGuid', required: true, errorText: 'Client is required' }
   ]);
 
   const handleInitNewRow = (e: any) => {
     e.data = {
       guid: uuidv4(),
-      projectNumber: nextProjectNumber
+      projectNumber: nextProjectNumber,
+      projectStatus: 'TenderInProgress' // Default status
     };
     refreshNextNumber();
   };
@@ -47,6 +51,7 @@ const Projects: React.FC = () => {
           columns={projectColumns}
           keyField="guid"
           onRowUpdating={handleRowUpdating}
+          onRowInserting={handleRowInserting}
           onInitNewRow={handleInitNewRow}
           onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}

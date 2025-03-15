@@ -18,10 +18,16 @@ export interface ODataGridColumn {
   caption: string;
   hidingPriority?: number;
   allowEditing?: boolean;
+  editorOptions?: {
+    mask?: string;
+    maskRules?: Record<string, RegExp>;
+    useMaskedValue?: boolean;
+    [key: string]: any;
+  };
   lookup?: {
     dataSource: any | { store: ODataStore };
     valueExpr: string;
-    displayExpr: string;
+    displayExpr: string | ((item: any) => string);
   };
 }
 
@@ -156,6 +162,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               minWidth={'150'}
               allowResizing={true}
               allowEditing={column.allowEditing}
+              editorOptions={column.editorOptions}
             >
               {column.lookup && (
                 <Lookup

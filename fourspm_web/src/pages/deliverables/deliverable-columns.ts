@@ -29,7 +29,7 @@ const deliverableTypeEnum = [
 
 export const deliverableColumns: ODataGridColumn[] = [
   {
-    dataField: 'clientNumber',
+    dataField: 'project.client.number',
     caption: 'Client No.',
     hidingPriority: 0,
     allowEditing: false // Read-only field

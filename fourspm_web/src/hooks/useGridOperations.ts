@@ -7,6 +7,8 @@ interface GridOperationsConfig {
   onDeleteError?: (error: Error) => void;
   onUpdateSuccess?: () => void;
   onUpdateError?: (error: Error) => void;
+  onInsertSuccess?: () => void;
+  onInsertError?: (error: Error) => void;
 }
 
 export const useGridOperations = ({ 
@@ -14,7 +16,9 @@ export const useGridOperations = ({
   onDeleteSuccess, 
   onDeleteError,
   onUpdateSuccess,
-  onUpdateError 
+  onUpdateError,
+  onInsertSuccess,
+  onInsertError
 }: GridOperationsConfig) => {
   const { user } = useAuth();
 
@@ -50,6 +54,30 @@ export const useGridOperations = ({
     }
   };
 
+  const handleRowInserting: Properties['onRowInserting'] = async (e) => {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(e.data)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create item');
+      }
+
+      onInsertSuccess?.();
+    } catch (error) {
+      console.error('Error creating item:', error);
+      e.cancel = true;
+      onInsertError?.(error as Error);
+      window.alert('Error creating item');
+    }
+  };
+
   const handleRowRemoving: Properties['onRowRemoving'] = async (e) => {
     if (!window.confirm('Are you sure you want to delete this item?')) {
       e.cancel = true;
@@ -80,6 +108,7 @@ export const useGridOperations = ({
 
   return {
     handleRowUpdating,
-    handleRowRemoving
+    handleRowRemoving,
+    handleRowInserting
   };
 };
