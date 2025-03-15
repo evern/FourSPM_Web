@@ -1,31 +1,13 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { API_CONFIG } from '../../config/api';
-import ODataStore from 'devextreme/data/odata/store';
 
-// Create a standard ODataStore for departments
-// We use the C# entity property names: 'Guid' and 'Name' (PascalCase)
-const departmentStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/Departments`,
-  version: 4,
-  key: 'Guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    
-    if (!token) {
-      console.error('No token available');
-      return false;
-    }
-
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-
-    return true;
-  }
-});
+// Department is now an enum, so we define the lookup values here
+const departmentEnum = [
+  { id: 0, name: 'Administration' },
+  { id: 1, name: 'Design' },
+  { id: 2, name: 'Engineering' },
+  { id: 3, name: 'Management' }
+];
 
 // DeliverableType is now an enum, so we define the lookup values here
 const deliverableTypeEnum = [
@@ -68,8 +50,8 @@ export const deliverableColumns: ODataGridColumn[] = [
     caption: 'Department',
     hidingPriority: 4,
     lookup: {
-      dataSource: departmentStore,
-      valueExpr: 'guid',
+      dataSource: departmentEnum,
+      valueExpr: 'id',
       displayExpr: 'name'
     }
   },
