@@ -4,6 +4,9 @@ import ODataStore from 'devextreme/data/odata/store';
 import { API_CONFIG } from '../../config/api';
 import React from 'react';
 
+// Constants for reusable text
+const CLIENT_CONTACT_PLACEHOLDER = 'Auto-filled on client selection';
+
 // Create a singleton ODataStore for Client lookup
 const clientStore = new ODataStore({
   url: `${API_CONFIG.baseUrl}/odata/v1/Clients`,
@@ -53,19 +56,31 @@ export const projectColumns: ODataGridColumn[] = [
     dataField: 'clientContactName',
     caption: 'Client Contact',
     hidingPriority: 5,
-    allowEditing: false // Read-only calculated field
+    allowEditing: false, // Read-only calculated field
+    customizeText: (cellInfo: { value: string | null }) => {
+      return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
+    },
+    cellClass: 'faded-placeholder'
   },
   {
     dataField: 'clientContactNumber',
     caption: 'Contact Number',
     hidingPriority: 7,
     allowEditing: false, // Read-only calculated field
+    customizeText: (cellInfo: { value: string | null }) => {
+      return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
+    },
+    cellClass: 'faded-placeholder'
   },
   {
     dataField: 'clientContactEmail',
     caption: 'Contact Email',
     hidingPriority: 7,
     allowEditing: false, // Read-only calculated field
+    customizeText: (cellInfo: { value: string | null }) => {
+      return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
+    },
+    cellClass: 'faded-placeholder'
   },
   { 
     dataField: 'purchaseOrderNumber', 
@@ -86,6 +101,7 @@ export const projectColumns: ODataGridColumn[] = [
     dataField: 'created',
     caption: 'Created',
     hidingPriority: 9,
+    cellClass: 'faded-placeholder',
     allowEditing: false // Read-only field
   }
 ];

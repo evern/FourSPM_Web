@@ -27,6 +27,7 @@ export interface ODataGridColumn {
   customizeText?: (cellInfo: any) => string;
   cellRender?: (cellData: any) => React.ReactNode;
   calculateDisplayValue?: string;
+  cellClass?: string;
   lookup?: {
     dataSource: any | { store: ODataStore };
     valueExpr: string;
@@ -169,6 +170,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               customizeText={column.customizeText}
               cellRender={column.cellRender}
               calculateDisplayValue={column.calculateDisplayValue}
+              cssClass={column.cellClass}
             >
               {column.lookup && (
                 <Lookup
