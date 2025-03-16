@@ -41,6 +41,10 @@ export const navigation: NavigationItem[] = [
         text: 'Disciplines',
         path: '/disciplines',
       },
+      {
+        text: 'Document Types',
+        path: '/document-types',
+      },
     ],
   },
 ];

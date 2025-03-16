@@ -6,6 +6,7 @@ import Deliverables from './pages/deliverables/deliverables';
 import ProjectProfile from './pages/project/project-profile';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
+import DocumentTypes from './pages/document-types/document-types';
 
 interface RouteConfig {
   path: string;
@@ -32,6 +33,10 @@ const routes: RouteConfig[] = [
   {
     path: '/disciplines',
     component: Disciplines
+  },
+  {
+    path: '/document-types',
+    component: DocumentTypes
   },
   {
     path: '/profile',
