@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
-import { deliverableColumns } from './deliverable-columns';
+import { createDeliverableColumns } from './deliverable-columns';
 import { useAuth } from '../../contexts/auth';
 
 interface DeliverableParams {
@@ -74,11 +74,14 @@ const Deliverables: React.FC = () => {
     };
   };
 
+  // Create columns with the current projectId to filter areas
+  const columns = createDeliverableColumns(projectId);
+
   return (
     <ODataGrid
       title="Deliverables"
       endpoint={endpoint}
-      columns={deliverableColumns}
+      columns={columns}
       keyField="guid"
       onRowUpdating={handleRowUpdating}
       onInitNewRow={handleInitNewRow}
