@@ -35,12 +35,12 @@ export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'projectNumber', 
     caption: 'Project #', 
-    hidingPriority: 2 
+    hidingPriority: 8 
   },
   { 
     dataField: 'clientGuid', 
     caption: 'Client', 
-    hidingPriority: 3,
+    hidingPriority: 5,
     lookup: {
       dataSource: clientStore,
       valueExpr: 'guid',
@@ -50,13 +50,13 @@ export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'name', 
     caption: 'Name', 
-    hidingPriority: 8 
+    hidingPriority: 9 
   },
   {
     dataField: 'clientContactName',
     caption: 'Client Contact',
-    hidingPriority: 5,
-    allowEditing: false, // Read-only calculated field
+    hidingPriority: 4,
+    allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
     },
@@ -65,8 +65,8 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'clientContactNumber',
     caption: 'Contact Number',
-    hidingPriority: 7,
-    allowEditing: false, // Read-only calculated field
+    hidingPriority: 2,
+    allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
     },
@@ -75,8 +75,8 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'clientContactEmail',
     caption: 'Contact Email',
-    hidingPriority: 7,
-    allowEditing: false, // Read-only calculated field
+    hidingPriority: 3,
+    allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
     },
@@ -85,12 +85,12 @@ export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'purchaseOrderNumber', 
     caption: 'PO #', 
-    hidingPriority: 6 
+    hidingPriority: 7 
   },
   {
     dataField: 'projectStatus',
     caption: 'Status',
-    hidingPriority: 4,
+    hidingPriority: 6,
     lookup: {
       dataSource: projectStatuses,
       valueExpr: 'id',
@@ -100,8 +100,8 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'created',
     caption: 'Created',
-    hidingPriority: 9,
+    hidingPriority: 0, 
     cellClass: 'faded-placeholder',
-    allowEditing: false // Read-only field
+    allowEditing: false 
   }
 ];

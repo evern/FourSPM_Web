@@ -4,7 +4,7 @@ export const disciplineColumns: ODataGridColumn[] = [
   {
     dataField: 'code',
     caption: 'Code',
-    hidingPriority: 2,
+    hidingPriority: 2, // Identifier - hide last
     editorOptions: {
       maxLength: 2
     }
@@ -12,7 +12,7 @@ export const disciplineColumns: ODataGridColumn[] = [
   {
     dataField: 'name',
     caption: 'Name',
-    hidingPriority: 1,
+    hidingPriority: 1, // Name - hide second to last
     editorOptions: {
       maxLength: 500
     }
@@ -20,7 +20,7 @@ export const disciplineColumns: ODataGridColumn[] = [
   {
     dataField: 'created',
     caption: 'Created Date',
-    hidingPriority: 0,
+    hidingPriority: 0, // Metadata - hide first
     allowEditing: false, // Read-only field
     cellClass: 'faded-placeholder'
   }

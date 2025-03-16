@@ -116,21 +116,21 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'clientNumber',
       caption: 'Client No.',
-      hidingPriority: 0,
+      hidingPriority: 3,
       allowEditing: false, // Read-only field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'projectNumber',
       caption: 'Project No.',
-      hidingPriority: 1,
+      hidingPriority: 4,
       allowEditing: false, // Read-only field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'areaNumber',
       caption: 'Area No.',
-      hidingPriority: 2,
+      hidingPriority: 5,
       lookup: areaStore ? {
         dataSource: areaStore,
         valueExpr: 'number',
@@ -140,7 +140,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'discipline',
       caption: 'Discipline',
-      hidingPriority: 3,
+      hidingPriority: 6,
       lookup: {
         dataSource: disciplineStore,
         valueExpr: 'code',
@@ -150,7 +150,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'documentType',
       caption: 'Document Type',
-      hidingPriority: 4,
+      hidingPriority: 0,
       lookup: {
         dataSource: documentTypeStore,
         valueExpr: 'code',
@@ -160,7 +160,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'departmentId',
       caption: 'Department',
-      hidingPriority: 5,
+      hidingPriority: 1,
       lookup: {
         dataSource: departmentEnum,
         valueExpr: 'id',
@@ -170,7 +170,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'deliverableTypeId',
       caption: 'Deliverable Type',
-      hidingPriority: 12,
+      hidingPriority: 2,
       lookup: {
         dataSource: deliverableTypeEnum,
         valueExpr: 'id',
@@ -180,39 +180,39 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'internalDocumentNumber',
       caption: 'Internal Doc. No.',
-      hidingPriority: 14 // Will be hidden last
+      hidingPriority: 14 // Will be hidden last (identifier)
     },
     {
       dataField: 'clientDocumentNumber',
       caption: 'Client Doc. No.',
-      hidingPriority: 7
+      hidingPriority: 13 // Near last (identifier)
     },
     {
       dataField: 'documentTitle',
       caption: 'Document Title',
-      hidingPriority: 11  // Moved higher priority
+      hidingPriority: 12  // Will be hidden after metadata but before identifiers (name)
     },
     {
       dataField: 'budgetHours',
       caption: 'Budget Hours',
-      hidingPriority: 8
+      hidingPriority: 7
     },
     {
       dataField: 'variationHours',
       caption: 'Variation Hours',
-      hidingPriority: 9
+      hidingPriority: 8
     },
     {
       dataField: 'totalHours',
       caption: 'Total Hours',
-      hidingPriority: 13, // Will be hidden almost last
+      hidingPriority: 9,
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'bookingCode',
       caption: 'Booking Code',
-      hidingPriority: 6,
+      hidingPriority: 11, // Higher hiding priority (identifier, but not the main one)
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
     }

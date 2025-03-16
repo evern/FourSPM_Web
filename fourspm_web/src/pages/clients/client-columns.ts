@@ -4,12 +4,12 @@ export const clientColumns: ODataGridColumn[] = [
   { 
     dataField: 'number', 
     caption: 'Client #', 
-    hidingPriority: 2 
+    hidingPriority: 8 
   },
   { 
     dataField: 'description', 
     caption: 'Description', 
-    hidingPriority: 8 
+    hidingPriority: 9 
   },
   { 
     dataField: 'clientContactName', 
@@ -19,7 +19,7 @@ export const clientColumns: ODataGridColumn[] = [
   { 
     dataField: 'clientContactNumber', 
     caption: 'Contact Phone', 
-    hidingPriority: 6,
+    hidingPriority: 3,
     editorOptions: {
       mask: '(+00)-000000000',
       maskRules: {
@@ -31,13 +31,13 @@ export const clientColumns: ODataGridColumn[] = [
   { 
     dataField: 'clientContactEmail', 
     caption: 'Contact Email', 
-    hidingPriority: 7 
+    hidingPriority: 4 
   },
   {
     dataField: 'created',
     caption: 'Created',
-    hidingPriority: 9,
+    hidingPriority: 0,
     cellClass: 'faded-placeholder',
-    allowEditing: false // Read-only field
+    allowEditing: false 
   }
 ];
