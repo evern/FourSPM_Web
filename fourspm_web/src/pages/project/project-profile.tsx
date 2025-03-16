@@ -185,11 +185,16 @@ export default function ProjectProfile() {
       {
         itemType: 'simple',
         dataField: 'projectStatus',
-        editorOptions: { 
-          readOnly: !isEditing,
+        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
+        editorOptions: isEditing ? { 
           items: projectStatuses,
           valueExpr: 'id',
           displayExpr: 'name'
+        } : {
+          readOnly: true,
+          value: projectData.projectStatus ? 
+                 projectStatuses.find(s => s.id === projectData.projectStatus)?.name || projectData.projectStatus : 
+                 ''
         }
       },
       {
