@@ -131,9 +131,17 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
         shading={!isLarge}
         opened={menuStatus !== MenuStatus.Closed}
         template={'menu'}
+        height="calc(100% - 56px)" // Adjust height to account for header
       >
         <div className={'container'}>
-          <ScrollView ref={scrollViewRef} className={'layout-body with-footer'}>
+          <ScrollView 
+            ref={scrollViewRef} 
+            className={'layout-body with-footer'}
+            direction="vertical"
+            scrollByContent={true}
+            scrollByThumb={true}
+            showScrollbar="always"
+          >
             <div className={'content'}>
               {React.Children.map(children, (item) => {
                 return item && React.isValidElement(item) && item.type !== Footer && item;

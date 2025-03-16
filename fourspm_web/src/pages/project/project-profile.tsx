@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import './project-profile.scss';
 import Form from 'devextreme-react/form';
 import type { IGroupItemProps } from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
 import { getProjectDetails, ProjectDetails, updateProject } from '../../services/project-service';
 import { useAuth } from '../../contexts/auth';
-import Button from 'devextreme-react/button';
+import { Button } from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { projectStatuses } from '../projects/project-statuses';
 import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import ODataStore from 'devextreme/data/odata/store';
 import { API_CONFIG } from '../../config/api';
+import { ThemeContext } from '../../theme/theme';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
@@ -56,6 +57,7 @@ export default function ProjectProfile() {
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
+  const themeContext = useContext(ThemeContext);
 
   // Fetch client details function to reuse for initial load and selection change
   const fetchClientDetails = async (clientGuid: string, token: string) => {
@@ -278,70 +280,60 @@ export default function ProjectProfile() {
     setFormRef(ref);
   };
 
-  const buttons = (
-    <div className="form-buttons">
-      {!isEditing ? (
-        <Button
-          text="Edit"
-          type="default"
-          stylingMode="contained"
-          onClick={handleEditClick}
-        />
-      ) : (
-        <div className="button-group">
-          <Button
-            text="Save"
-            type="default"
-            stylingMode="contained"
-            onClick={handleSave}
-          />
-          <Button
-            text="Cancel"
-            stylingMode="outlined"
-            onClick={handleCancelClick}
-          />
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="profile-container">
-      <h2 className="profile-title">
-        Project Details: {projectData.projectNumber} - {projectData.name}
-      </h2>
-      <div className="profile-status">
-        Status: <span className="status-value">{getStatusDisplayName(projectData.projectStatus)}</span>
+      <div className="profile-header">
+        <div className="title-section">
+          <h2 className="profile-title">
+            Project Details: {projectData.projectNumber} - {projectData.name}
+          </h2>
+          <div className="profile-status">
+            Status: <span className="status-value">{getStatusDisplayName(projectData.projectStatus)}</span>
+          </div>
+        </div>
+        <div className="action-buttons">
+          {!isEditing ? (
+            <Button
+              text="Edit"
+              type="default"
+              stylingMode="contained"
+              onClick={handleEditClick}
+            />
+          ) : (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                text="Save"
+                type="default"
+                stylingMode="contained"
+                onClick={handleSave}
+              />
+              <Button
+                text="Cancel"
+                stylingMode="outlined"
+                onClick={handleCancelClick}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {isXSmall ? (
-        <ScrollView ref={scrollViewRef}>
-          <div className="profile-content">
-            <Form
-              ref={onFormRef}
-              formData={projectData}
-              items={formItems}
-              labelLocation="top"
-              minColWidth={233}
-              colCount="auto"
-              scrollingEnabled={false}
-            />
-            {buttons}
-          </div>
-        </ScrollView>
-      ) : (
-        <div className="profile-content">
-          <Form
-            ref={onFormRef}
-            formData={projectData}
-            items={formItems}
-            labelLocation="top"
-            minColWidth={233}
-            colCount="auto"
-          />
-          {buttons}
-        </div>
-      )}
+      <ScrollView 
+        height="calc(100vh - 180px)" // Adjusted height since buttons are now at the top
+        width="100%"
+        direction="vertical"
+        showScrollbar="always"
+        scrollByContent={true}
+        scrollByThumb={true}
+      >
+        <Form
+          ref={onFormRef}
+          formData={projectData}
+          items={formItems}
+          labelLocation="top"
+          minColWidth={233}
+          colCount="auto"
+        />
+      </ScrollView>
     </div>
   );
 }
