@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
+import { useAutoIncrement } from '../../hooks/useAutoIncrement';
 import { areaColumns } from './area-columns';
 import { useAuth } from '../../contexts/auth';
 
@@ -23,10 +24,21 @@ const Areas: React.FC = () => {
     hasToken: !!user?.token
   });
 
+  // Add auto-increment hook to get the next area number
+  const { nextNumber: nextAreaNumber, refreshNextNumber } = useAutoIncrement({
+    endpoint,
+    field: 'number',
+    padLength: 2,
+    startFrom: '01'
+  });
+
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete area:', error),
-    onUpdateError: (error) => console.error('Failed to update area:', error)
+    onUpdateError: (error) => console.error('Failed to update area:', error),
+    onDeleteSuccess: refreshNextNumber,
+    onUpdateSuccess: refreshNextNumber,
+    onInsertSuccess: refreshNextNumber
   });
 
   const handleRowValidating = useGridValidation([
@@ -49,7 +61,7 @@ const Areas: React.FC = () => {
     e.data = {
       guid: uuidv4(),
       projectGuid: projectId,
-      number: '',
+      number: nextAreaNumber, // Use the auto-incremented number
       description: ''
     };
   };

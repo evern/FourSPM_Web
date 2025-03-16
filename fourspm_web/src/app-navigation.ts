@@ -34,16 +34,18 @@ export const navigation: NavigationItem[] = [
   // Add Configurations as the last item
   {
     text: 'Configurations',
-    icon: 'fields',
+    icon: 'preferences',
     path: '',
     items: [
       {
         text: 'Disciplines',
         path: '/disciplines',
+        icon: 'tags'
       },
       {
         text: 'Document Types',
         path: '/document-types',
+        icon: 'docxfile'
       },
     ],
   },

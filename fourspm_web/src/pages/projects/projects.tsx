@@ -14,20 +14,27 @@ const Projects: React.FC = () => {
   
   const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
     endpoint,
-    field: 'projectNumber'
+    field: 'projectNumber',
+    padLength: 2,
+    startFrom: '01'
   });
 
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete project:', error),
-    onDeleteSuccess: refreshNavigation,
+    onDeleteSuccess: () => {
+      refreshNextNumber();
+      refreshNavigation();
+    },
     onUpdateSuccess: () => {
       console.log('Project updated successfully');
+      refreshNextNumber();
       refreshNavigation();
     },
     onUpdateError: (error) => console.error('Failed to update project:', error),
     onInsertSuccess: () => {
       console.log('Project inserted successfully');
+      refreshNextNumber();
       refreshNavigation();
     },
     onInsertError: (error) => console.error('Failed to insert project:', error)
@@ -45,22 +52,21 @@ const Projects: React.FC = () => {
       projectNumber: nextProjectNumber,
       projectStatus: 'TenderInProgress' // Default status
     };
-    refreshNextNumber();
   };
 
   return (
     <React.Fragment>
-        <ODataGrid
-          title="Projects"
-          endpoint={endpoint}
-          columns={projectColumns}
-          keyField="guid"
-          onRowUpdating={handleRowUpdating}
-          onInitNewRow={handleInitNewRow}
-          onRowValidating={handleRowValidating}
-          onRowRemoving={handleRowRemoving}
-        />
-        <div className="bottom-spacer"></div>
+      <ODataGrid
+        title="Projects"
+        endpoint={endpoint}
+        columns={projectColumns}
+        keyField="guid"
+        onRowUpdating={handleRowUpdating}
+        onInitNewRow={handleInitNewRow}
+        onRowValidating={handleRowValidating}
+        onRowRemoving={handleRowRemoving}
+      />
+      <div className="bottom-spacer"></div>
     </React.Fragment>
   );
 };
