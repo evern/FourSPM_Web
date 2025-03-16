@@ -7,7 +7,6 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { projectColumns } from './project-columns';
 import { useNavigation } from '../../contexts/navigation';
-import './projects.scss';
 
 const Projects: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Projects`;

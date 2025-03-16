@@ -39,17 +39,13 @@ const Deliverables: React.FC = () => {
     },
     { 
       field: 'discipline', 
-      required: true, 
-      maxLength: 2,
-      pattern: /^[A-Z][A-Z]$/,
-      errorText: 'Discipline must be exactly 2 uppercase letters' 
+      required: true,
+      errorText: 'Discipline is required' 
     },
     { 
       field: 'documentType', 
-      required: true, 
-      maxLength: 3,
-      pattern: /^[A-Z][A-Z][A-Z]$/,
-      errorText: 'Document Type must be exactly 3 uppercase letters' 
+      required: true,
+      errorText: 'Document Type is required' 
     },
     { field: 'departmentId', required: true, errorText: 'Department is required' },
     { field: 'deliverableTypeId', required: true, errorText: 'Deliverable Type is required' },

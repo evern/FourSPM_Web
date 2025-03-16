@@ -1,5 +1,6 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { API_CONFIG } from '../../config/api';
+import ODataStore from 'devextreme/data/odata/store';
 
 // Department is now an enum, so we define the lookup values here
 const departmentEnum = [
@@ -16,6 +17,54 @@ const deliverableTypeEnum = [
   { id: 'DeliverableICR', name: 'Deliverable ICR' },
   { id: 'Deliverable', name: 'Deliverable' }
 ];
+
+// Create ODataStore for DocumentType lookup
+const documentTypeStore = new ODataStore({
+  url: `${API_CONFIG.baseUrl}/odata/v1/DocumentTypes`,
+  version: 4,
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? 
+      JSON.parse(localStorage.getItem('user') || '{}').token : null;
+    
+    if (!token) {
+      console.error('No token available');
+      return false;
+    }
+
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+
+    return true;
+  }
+});
+
+// Create ODataStore for Discipline lookup
+const disciplineStore = new ODataStore({
+  url: `${API_CONFIG.baseUrl}/odata/v1/Disciplines`,
+  version: 4,
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? 
+      JSON.parse(localStorage.getItem('user') || '{}').token : null;
+    
+    if (!token) {
+      console.error('No token available');
+      return false;
+    }
+
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+
+    return true;
+  }
+});
 
 export const deliverableColumns: ODataGridColumn[] = [
   {
@@ -40,12 +89,22 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'discipline',
     caption: 'Discipline',
-    hidingPriority: 10
+    hidingPriority: 10,
+    lookup: {
+      dataSource: disciplineStore,
+      valueExpr: 'code',
+      displayExpr: 'code'
+    }
   },
   {
     dataField: 'documentType',
     caption: 'Document Type',
-    hidingPriority: 9
+    hidingPriority: 9,
+    lookup: {
+      dataSource: documentTypeStore,
+      valueExpr: 'code',
+      displayExpr: 'code'
+    }
   },
   {
     dataField: 'departmentId',

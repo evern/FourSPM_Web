@@ -7,7 +7,6 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { clientColumns } from './client-columns';
 import { useNavigation } from '../../contexts/navigation';
-import './clients.scss';
 
 const Clients: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Clients`;
