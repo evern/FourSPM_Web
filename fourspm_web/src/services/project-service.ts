@@ -31,6 +31,10 @@ export interface ProjectDetails {
   deleted: string | null;
   deletedBy: string | null;
   client?: ClientDetails | null;
+  // Additional client contact fields that may exist directly on project object
+  clientContactName?: string | null;
+  clientContactNumber?: string | null;
+  clientContactEmail?: string | null;
 }
 
 export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
@@ -121,7 +125,10 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
         number: data.client.number,
         description: data.client.description,
         clientContact: data.client.clientContact
-      } : null
+      } : null,
+      clientContactName: data.clientContactName,
+      clientContactNumber: data.clientContactNumber,
+      clientContactEmail: data.clientContactEmail
     };
   } catch (error) {
     console.error('Error fetching project details:', error);

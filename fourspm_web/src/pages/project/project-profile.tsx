@@ -10,20 +10,108 @@ import notify from 'devextreme/ui/notify';
 import { projectStatuses } from '../projects/project-statuses';
 import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
+import ODataStore from 'devextreme/data/odata/store';
+import { API_CONFIG } from '../../config/api';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
   return status ? status.name : statusId;
 };
 
+// Create Client lookup ODataStore
+const clientStore = new ODataStore({
+  url: `${API_CONFIG.baseUrl}/odata/v1/Clients`,
+  version: 4,
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? 
+      JSON.parse(localStorage.getItem('user') || '{}').token : null;
+    
+    if (!token) {
+      console.error('No token available');
+      return false;
+    }
+
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+
+    return true;
+  }
+});
+
 export default function ProjectProfile() {
   const { projectId } = useParams<{ projectId: string }>();
   const [projectData, setProjectData] = useState<ProjectDetails | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formRef, setFormRef] = useState<Form | null>(null);
+  const [clientDetails, setClientDetails] = useState<any>(null);
+  const [selectedClientContact, setSelectedClientContact] = useState<{
+    name: string | null;
+    number: string | null;
+    email: string | null;
+  }>({ name: null, number: null, email: null });
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Fetch client details function to reuse for initial load and selection change
+  const fetchClientDetails = async (clientGuid: string, token: string) => {
+    try {
+      const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Clients(${clientGuid})`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const clientData = await response.json();
+        console.log('Retrieved client data:', clientData); // See what fields are actually available
+        setClientDetails(clientData);
+        
+        // Use the exact field names from ClientsController.cs MapToEntity method
+        const contact = {
+          name: clientData.clientContactName || null,
+          number: clientData.clientContactNumber || null,
+          email: clientData.clientContactEmail || null
+        };
+        
+        console.log('Extracted contact info:', contact);
+        setSelectedClientContact(contact);
+        return { ...clientData, contact };
+      }
+    } catch (error) {
+      console.error('Error fetching client details:', error);
+    }
+    return null;
+  };
+
+  // Handle client selection change
+  const handleClientChange = async (e: any) => {
+    if (user?.token && e.value) {
+      const clientDataResult = await fetchClientDetails(e.value, user.token);
+      if (clientDataResult && formRef) {
+        const clientData = clientDataResult;
+        // Update form data with new client contact information
+        setProjectData(prevData => {
+          if (!prevData) return null;
+          
+          console.log('Updating project data with client contact:', clientData.contact);
+          
+          return {
+            ...prevData,
+            clientGuid: e.value,
+            clientContactName: clientData.contact.name || '',
+            clientContactNumber: clientData.contact.number || '',
+            clientContactEmail: clientData.contact.email || ''
+          };
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -31,6 +119,18 @@ export default function ProjectProfile() {
         try {
           const data = await getProjectDetails(projectId, user.token);
           setProjectData(data);
+
+          // If clientGuid exists, fetch client details
+          if (data.clientGuid) {
+            await fetchClientDetails(data.clientGuid, user.token);
+          }
+
+          // Set initial contact values
+          setSelectedClientContact({
+            name: data.clientContactName || null,
+            number: data.clientContactNumber || null,
+            email: data.clientContactEmail || null
+          });
         } catch (error) {
           console.error('Error fetching project data:', error);
           notify('Error loading project data', 'error', 3000);
@@ -45,31 +145,12 @@ export default function ProjectProfile() {
 
     try {
       const formData = formRef.instance.option('formData');
+      const result = await updateProject(projectId!, formData, user.token);
       
-      // If client data was modified, update the client relationship
-      if (formData.client) {
-        // Keep the same clientGuid, only update client data
-        formData.clientGuid = projectData.clientGuid;
-        
-        // Remove client object when sending update to backend 
-        // since the backend expects clientGuid only
-        const { client, ...dataToSend } = formData;
-        const result = await updateProject(projectId!, dataToSend, user.token);
-        
-        if (result) {
-          // Need to manually reattach client info since it's not returned from PATCH
-          result.client = formData.client;
-          setProjectData(result);
-          setIsEditing(false);
-          notify('Project updated successfully', 'success', 3000);
-        }
-      } else {
-        const result = await updateProject(projectId!, formData, user.token);
-        if (result) {
-          setProjectData(result);
-          setIsEditing(false);
-          notify('Project updated successfully', 'success', 3000);
-        }
+      if (result) {
+        setProjectData(result);
+        setIsEditing(false);
+        notify('Project updated successfully', 'success', 3000);
       }
     } catch (error) {
       console.error('Error updating project:', error);
@@ -104,6 +185,17 @@ export default function ProjectProfile() {
       {
         itemType: 'simple',
         dataField: 'projectStatus',
+        editorOptions: { 
+          readOnly: !isEditing,
+          items: projectStatuses,
+          valueExpr: 'id',
+          displayExpr: 'name'
+        }
+      },
+      {
+        itemType: 'simple',
+        dataField: 'purchaseOrderNumber',
+        label: { text: 'Purchase Order #' },
         editorOptions: { readOnly: !isEditing }
       }
     ]
@@ -120,109 +212,131 @@ export default function ProjectProfile() {
     items: [
       {
         itemType: 'simple',
-        dataField: 'client.number',
-        label: { text: 'Client Number' },
-        editorOptions: { readOnly: !isEditing }
+        dataField: 'clientGuid',
+        label: { text: 'Client' },
+        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
+        editorOptions: isEditing ? { 
+          dataSource: clientStore,
+          valueExpr: 'guid',
+          displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : '',
+          onValueChanged: handleClientChange
+        } : {
+          readOnly: true,
+          value: clientDetails ? 
+                 `${clientDetails.number} - ${clientDetails.description}` : 
+                 (projectData.clientGuid || 'No client selected')
+        }
       },
       {
         itemType: 'simple',
-        dataField: 'client.description',
-        label: { text: 'Client Description' },
-        editorOptions: { readOnly: !isEditing }
+        label: { text: 'Client Contact' },
+        editorOptions: { 
+          readOnly: true,
+          value: isEditing ? selectedClientContact.name || 'No contact information' : projectData.clientContactName || 'No contact information'
+        },
+        editorType: 'dxTextBox'
       },
       {
         itemType: 'simple',
-        dataField: 'client.clientContactName',
-        label: { text: 'Contact Name' },
-        editorOptions: { readOnly: !isEditing }
+        label: { text: 'Contact Number' },
+        editorOptions: { 
+          readOnly: true,
+          value: isEditing ? selectedClientContact.number || 'No contact information' : projectData.clientContactNumber || 'No contact information'
+        },
+        editorType: 'dxTextBox'
       },
       {
         itemType: 'simple',
-        dataField: 'client.clientContactNumber',
-        label: { text: 'Contact Phone' },
-        editorOptions: { readOnly: !isEditing }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'client.clientContactEmail',
         label: { text: 'Contact Email' },
-        editorOptions: { readOnly: !isEditing }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'purchaseOrderNumber',
-        editorOptions: { readOnly: !isEditing }
+        editorOptions: { 
+          readOnly: true,
+          value: isEditing ? selectedClientContact.email || 'No contact information' : projectData.clientContactEmail || 'No contact information'
+        },
+        editorType: 'dxTextBox'
       }
     ]
   }];
-  
-  // Create a form data object that includes client information
-  const formData = {
-    ...projectData,
-    // If client is null, initialize with empty values
-    client: projectData.client || {
-      guid: '',
-      number: '',
-      description: '',
-      clientContactName: '',
-      clientContactNumber: '',
-      clientContactEmail: ''
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelClick = () => {
+    setIsEditing(false);
+    // Reset the form data to the original project data
+    if (formRef) {
+      formRef.instance.option('formData', projectData);
     }
   };
 
-  return (
-    <React.Fragment>
-      <div className="project-profile-scroll">
-        <h2 className={'content-block'}>{projectData.projectNumber} - {projectData.name}</h2>
+  const onFormRef = (ref: Form) => {
+    setFormRef(ref);
+  };
 
-        <div className={'dx-card project-summary-card'}>
-          <div className={'project-summary-compact'}>
-            <div className={'status-section'}>
-              <span className={'label'}>Status:</span>
-              <span className={'value'}>{getStatusDisplayName(projectData.projectStatus)}</span>
-            </div>
-            <div className={'dates-section'}>
-              <span className={'date-item'}>
-                <span className={'label'}>Created:</span>
-                <span className={'value'}>{new Date(projectData.created).toLocaleDateString()}</span>
-              </span>
-              {projectData.updated && (
-                <span className={'date-item'}>
-                  <span className={'label'}>Updated:</span>
-                  <span className={'value'}>{new Date(projectData.updated).toLocaleDateString()}</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className={'content-block scrollable-card'}>
-          <Form
-            ref={(ref) => setFormRef(ref)}
-            formData={formData}
-            labelLocation={'top'}
-            items={formItems}
+  const buttons = (
+    <div className="form-buttons">
+      {!isEditing ? (
+        <Button
+          text="Edit"
+          type="default"
+          stylingMode="contained"
+          onClick={handleEditClick}
+        />
+      ) : (
+        <div className="button-group">
+          <Button
+            text="Save"
+            type="default"
+            stylingMode="contained"
+            onClick={handleSave}
           />
-          <div className={`form-actions${isXSmall ? ' form-actions-small' : ''}`}>
-            <Button
-              text={isEditing ? "Cancel" : "Edit"}
-              type={isEditing ? "normal" : "default"}
-              stylingMode="contained"
-              onClick={() => setIsEditing(!isEditing)}
-            />
-            {isEditing && (
-              <Button
-                text="Save"
-                type="success"
-                stylingMode="contained"
-                onClick={handleSave}
-                className="save-button"
-              />
-            )}
-          </div>
+          <Button
+            text="Cancel"
+            stylingMode="outlined"
+            onClick={handleCancelClick}
+          />
         </div>
-        <div className="bottom-spacer"></div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="profile-container">
+      <h2 className="profile-title">
+        Project Details: {projectData.projectNumber} - {projectData.name}
+      </h2>
+      <div className="profile-status">
+        Status: <span className="status-value">{getStatusDisplayName(projectData.projectStatus)}</span>
       </div>
-    </React.Fragment>
+
+      {isXSmall ? (
+        <ScrollView ref={scrollViewRef}>
+          <div className="profile-content">
+            <Form
+              ref={onFormRef}
+              formData={projectData}
+              items={formItems}
+              labelLocation="top"
+              minColWidth={233}
+              colCount="auto"
+              scrollingEnabled={false}
+            />
+            {buttons}
+          </div>
+        </ScrollView>
+      ) : (
+        <div className="profile-content">
+          <Form
+            ref={onFormRef}
+            formData={projectData}
+            items={formItems}
+            labelLocation="top"
+            minColWidth={233}
+            colCount="auto"
+          />
+          {buttons}
+        </div>
+      )}
+    </div>
   );
 }
