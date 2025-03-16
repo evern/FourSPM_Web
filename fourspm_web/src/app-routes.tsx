@@ -3,6 +3,7 @@ import { RouteComponentProps } from 'react-router-dom';
 import { withNavigationWatcher } from './contexts/navigation';
 import { HomePage, TasksPage, ProfilePage, ProjectsPage } from './pages';
 import Deliverables from './pages/deliverables/deliverables';
+import Areas from './pages/areas/areas';
 import ProjectProfile from './pages/project/project-profile';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
@@ -21,6 +22,10 @@ const routes: RouteConfig[] = [
   {
     path: '/projects/:projectId/deliverables',
     component: Deliverables
+  },
+  {
+    path: '/projects/:projectId/areas',
+    component: Areas
   },
   {
     path: '/projects',
