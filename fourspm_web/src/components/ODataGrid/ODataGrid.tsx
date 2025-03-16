@@ -44,12 +44,14 @@ interface ODataGridProps {
   allowAdding?: boolean;
   allowUpdating?: boolean;
   allowDeleting?: boolean;
-  onRowUpdating?: Properties['onRowUpdating'];
+  onRowUpdating?: (e: any) => void;
   onRowInserting?: Properties['onRowInserting'];
   onRowRemoving?: Properties['onRowRemoving'];
   onInitNewRow?: Properties['onInitNewRow'];
   onRowValidating?: Properties['onRowValidating'];
-  defaultFilter?: Array<[string, string, any]>;
+  onEditorPreparing?: (e: any) => void;
+  onInitialized?: (e: any) => void;
+  defaultFilter?: [string, string, any][];
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -66,6 +68,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onRowRemoving,
   onInitNewRow,
   onRowValidating,
+  onEditorPreparing,
+  onInitialized,
   defaultFilter = []
 }) => {
   const { user } = useAuth();
@@ -152,6 +156,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onRowRemoving={onRowRemoving}
           onInitNewRow={onInitNewRow}
           onRowValidating={onRowValidating}
+          onEditorPreparing={onEditorPreparing}
+          onInitialized={onInitialized}
         >
           <Paging defaultPageSize={defaultPageSize} />
           <Pager showPageSizeSelector={true} showInfo={true} />

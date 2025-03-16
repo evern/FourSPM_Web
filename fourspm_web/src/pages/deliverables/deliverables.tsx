@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +16,7 @@ const Deliverables: React.FC = () => {
   const { projectId } = useParams<DeliverableParams>();
   const { user } = useAuth();
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Deliverables`;
+  const [gridInstance, setGridInstance] = useState<any>(null);
   
   console.log('Deliverables Component - Initial Render:', {
     projectId,
@@ -52,6 +53,40 @@ const Deliverables: React.FC = () => {
     { field: 'documentTitle', required: true, maxLength: 200, errorText: 'Document Title is required' }
   ]);
 
+  // Function to fetch a suggested internal document number from the server
+  const fetchSuggestedDocumentNumber = async (deliverableTypeId: string, areaNumber: string, discipline: string, documentType: string) => {
+    if (!user?.token || !projectId || !gridInstance) return;
+    
+    try {
+      // Only proceed if we have the minimum required fields
+      // For "Deliverable" type, we need the area number
+      if (deliverableTypeId === 'Deliverable' && !areaNumber) {
+        return;
+      }
+      
+      // Build the URL with query parameters
+      const url = `${API_CONFIG.baseUrl}/odata/v1/Deliverables/SuggestInternalDocumentNumber?projectGuid=${projectId}&deliverableTypeId=${deliverableTypeId}&areaNumber=${areaNumber}&discipline=${discipline}&documentType=${documentType}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.suggestedNumber;
+      } else {
+        console.error('Failed to fetch suggested document number:', await response.text());
+        return '';
+      }
+    } catch (error) {
+      console.error('Error suggesting document number:', error);
+      return '';
+    }
+  };
+
   const handleInitNewRow = (e: any) => {
     e.data = {
       guid: uuidv4(),
@@ -61,8 +96,8 @@ const Deliverables: React.FC = () => {
       areaNumber: '',
       discipline: '',
       documentType: '',
-      departmentId: 'Administration', // Default to 'Administration' enum value as string
-      deliverableTypeId: 'Task', 
+      departmentId: 'Administration',
+      deliverableTypeId: 'Task',
       internalDocumentNumber: '',
       clientDocumentNumber: '',
       documentTitle: '',
@@ -70,8 +105,55 @@ const Deliverables: React.FC = () => {
       variationHours: 0,
       totalHours: 0,    
       totalCost: 0,
-      bookingCode: ''    
+      bookingCode: ''
     };
+  };
+  
+  // Handle the edit event to inject the field watchers
+  const handleEditorPreparing = (e: any) => {
+    const { dataField, row, editorOptions } = e;
+    
+    if (!row) return;
+    
+    // Setup field change watchers for fields that affect document numbering
+    if (['areaNumber', 'discipline', 'documentType', 'deliverableTypeId'].includes(dataField)) {
+      const originalValueChanged = editorOptions.onValueChanged;
+      
+      editorOptions.onValueChanged = async (args: any) => {
+        // Call the original handler first
+        if (originalValueChanged) {
+          originalValueChanged(args);
+        }
+        
+        // Get current values from the row data
+        const rowData = row.data;
+        const deliverableTypeId = dataField === 'deliverableTypeId' ? args.value : rowData.deliverableTypeId;
+        const areaNumber = dataField === 'areaNumber' ? args.value : rowData.areaNumber;
+        const discipline = dataField === 'discipline' ? args.value : rowData.discipline;
+        const documentType = dataField === 'documentType' ? args.value : rowData.documentType;
+        
+        // Only attempt to generate a document number if we have enough required fields
+        const shouldGenerateNumber = 
+          deliverableTypeId && 
+          ((deliverableTypeId === 'Deliverable' && areaNumber) || deliverableTypeId !== 'Deliverable') &&
+          (discipline || documentType)
+        ;
+        
+        if (shouldGenerateNumber) {
+          const suggestedNumber = await fetchSuggestedDocumentNumber(deliverableTypeId, areaNumber, discipline, documentType);
+          
+          if (suggestedNumber && gridInstance) {
+            // Find the cell for internal document number and update it
+            gridInstance.cellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
+          }
+        }
+      };
+    }
+  };
+  
+  // Save grid instance for later use
+  const handleGridInitialized = (e: any) => {
+    setGridInstance(e.component);
   };
 
   // Create columns with the current projectId to filter areas
@@ -87,7 +169,9 @@ const Deliverables: React.FC = () => {
       onInitNewRow={handleInitNewRow}
       onRowValidating={handleRowValidating}
       onRowRemoving={handleRowRemoving}
-      defaultFilter={[['projectGuid', '=', projectId]]}
+      onEditorPreparing={handleEditorPreparing}
+      onInitialized={handleGridInitialized}
+      defaultFilter={[["projectGuid", "=", projectId]]}
     />
   );
 };
