@@ -12,7 +12,6 @@ import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import ODataStore from 'devextreme/data/odata/store';
 import { API_CONFIG } from '../../config/api';
-import { ThemeContext } from '../../theme/theme';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
@@ -57,7 +56,6 @@ export default function ProjectProfile() {
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
-  const themeContext = useContext(ThemeContext);
 
   // Fetch client details function to reuse for initial load and selection change
   const fetchClientDetails = async (clientGuid: string, token: string) => {
@@ -282,38 +280,36 @@ export default function ProjectProfile() {
 
   return (
     <div className="profile-container">
-      <div className="profile-header">
-        <div className="title-section">
-          <h2 className="profile-title">
-            Project Details: {projectData.projectNumber} - {projectData.name}
-          </h2>
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">Project Details: {projectData.projectNumber} - {projectData.name}</div>
+        <div className="grid-header-container">
           <div className="profile-status">
             Status: <span className="status-value">{getStatusDisplayName(projectData.projectStatus)}</span>
           </div>
-        </div>
-        <div className="action-buttons">
-          {!isEditing ? (
-            <Button
-              text="Edit"
-              type="default"
-              stylingMode="contained"
-              onClick={handleEditClick}
-            />
-          ) : (
-            <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="action-buttons">
+            {!isEditing ? (
               <Button
-                text="Save"
+                text="Edit"
                 type="default"
                 stylingMode="contained"
-                onClick={handleSave}
+                onClick={handleEditClick}
               />
-              <Button
-                text="Cancel"
-                stylingMode="outlined"
-                onClick={handleCancelClick}
-              />
-            </div>
-          )}
+            ) : (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  text="Save"
+                  type="default"
+                  stylingMode="contained"
+                  onClick={handleSave}
+                />
+                <Button
+                  text="Cancel"
+                  stylingMode="outlined"
+                  onClick={handleCancelClick}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -325,14 +321,16 @@ export default function ProjectProfile() {
         scrollByContent={true}
         scrollByThumb={true}
       >
-        <Form
-          ref={onFormRef}
-          formData={projectData}
-          items={formItems}
-          labelLocation="top"
-          minColWidth={233}
-          colCount="auto"
-        />
+        <div className="form-container">
+          <Form
+            ref={onFormRef}
+            formData={projectData}
+            items={formItems}
+            labelLocation="top"
+            minColWidth={233}
+            colCount="auto"
+          />
+        </div>
       </ScrollView>
     </div>
   );

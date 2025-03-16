@@ -6,6 +6,7 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { disciplineColumns } from './discipline-columns';
 import { useAuth } from '../../contexts/auth';
+import './disciplines.scss';
 
 const Disciplines: React.FC = () => {
   const { user } = useAuth();
@@ -47,16 +48,21 @@ const Disciplines: React.FC = () => {
   };
 
   return (
-    <ODataGrid
-      title="Disciplines"
-      endpoint={endpoint}
-      columns={disciplineColumns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-    />
+    <div className="disciplines-container">
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">Disciplines</div>
+        <ODataGrid
+          title=" "
+          endpoint={endpoint}
+          columns={disciplineColumns}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onInitNewRow={handleInitNewRow}
+          onRowValidating={handleRowValidating}
+          onRowRemoving={handleRowRemoving}
+        />
+      </div>
+    </div>
   );
 };
 

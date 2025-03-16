@@ -7,9 +7,15 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { createDeliverableColumns } from './deliverable-columns';
 import { useAuth } from '../../contexts/auth';
+import './deliverables.scss';
 
 interface DeliverableParams {
   projectId: string;
+}
+
+interface ProjectInfo {
+  projectNumber: string;
+  name: string;
 }
 
 const Deliverables: React.FC = () => {
@@ -17,12 +23,43 @@ const Deliverables: React.FC = () => {
   const { user } = useAuth();
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Deliverables`;
   const [gridInstance, setGridInstance] = useState<any>(null);
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
   
   console.log('Deliverables Component - Initial Render:', {
     projectId,
     endpoint,
     hasToken: !!user?.token
   });
+
+  // Fetch project info when component mounts
+  useEffect(() => {
+    const fetchProjectInfo = async () => {
+      if (!user?.token || !projectId) return;
+      
+      try {
+        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setProjectInfo({
+            projectNumber: data.projectNumber || '',
+            name: data.name || ''
+          });
+        } else {
+          console.error('Failed to fetch project info:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error fetching project info:', error);
+      }
+    };
+    
+    fetchProjectInfo();
+  }, [projectId, user?.token]);
 
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
     endpoint,
@@ -160,19 +197,24 @@ const Deliverables: React.FC = () => {
   const columns = createDeliverableColumns(projectId);
 
   return (
-    <ODataGrid
-      title="Deliverables"
-      endpoint={endpoint}
-      columns={columns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-      onEditorPreparing={handleEditorPreparing}
-      onInitialized={handleGridInitialized}
-      defaultFilter={[["projectGuid", "=", projectId]]}
-    />
+    <div className="deliverables-container">
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">{projectInfo ? `${projectInfo.projectNumber} - ${projectInfo.name} Deliverables` : 'Deliverables'}</div>
+        <ODataGrid
+          title=" "
+          endpoint={endpoint}
+          columns={columns}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onInitNewRow={handleInitNewRow}
+          onRowValidating={handleRowValidating}
+          onRowRemoving={handleRowRemoving}
+          onEditorPreparing={handleEditorPreparing}
+          onInitialized={handleGridInitialized}
+          defaultFilter={[["projectGuid", "=", projectId]]}
+        />
+      </div>
+    </div>
   );
 };
 

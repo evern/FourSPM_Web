@@ -7,6 +7,7 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { clientColumns } from './client-columns';
 import { useNavigation } from '../../contexts/navigation';
+import './clients.scss';
 
 const Clients: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Clients`;
@@ -49,9 +50,11 @@ const Clients: React.FC = () => {
   };
 
   return (
-    <React.Fragment>
+    <div className="clients-container">
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">Clients</div>
         <ODataGrid
-          title="Clients"
+          title=" "
           endpoint={endpoint}
           columns={clientColumns}
           keyField="guid"
@@ -60,8 +63,8 @@ const Clients: React.FC = () => {
           onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
         />
-        <div className="bottom-spacer"></div>
-    </React.Fragment>
+      </div>
+    </div>
   );
 };
 

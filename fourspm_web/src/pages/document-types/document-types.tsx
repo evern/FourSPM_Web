@@ -6,6 +6,7 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { documentTypeColumns } from './document-type-columns';
 import { useAuth } from '../../contexts/auth';
+import './document-types.scss';
 
 const DocumentTypes: React.FC = () => {
   const { user } = useAuth();
@@ -47,16 +48,21 @@ const DocumentTypes: React.FC = () => {
   };
 
   return (
-    <ODataGrid
-      title="Document Types"
-      endpoint={endpoint}
-      columns={documentTypeColumns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-    />
+    <div className="document-types-container">
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">Document Types</div>
+        <ODataGrid
+          title=" "
+          endpoint={endpoint}
+          columns={documentTypeColumns}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onInitNewRow={handleInitNewRow}
+          onRowValidating={handleRowValidating}
+          onRowRemoving={handleRowRemoving}
+        />
+      </div>
+    </div>
   );
 };
 

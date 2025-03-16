@@ -1,0 +1,8 @@
+@use "../themes/generated/variables.base.scss" as vars;
+
+// Shared title styles for consistent headers across all pages
+.grid-custom-title {
+  margin: 10px 0 10px 20px;
+  font-weight: 500;
+  font-size: 24px;
+}

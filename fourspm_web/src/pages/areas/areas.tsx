@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,21 +8,58 @@ import { useGridOperations } from '../../hooks/useGridOperations';
 import { useAutoIncrement } from '../../hooks/useAutoIncrement';
 import { areaColumns } from './area-columns';
 import { useAuth } from '../../contexts/auth';
+import './areas.scss';
 
 interface AreaParams {
   projectId: string;
+}
+
+interface ProjectInfo {
+  projectNumber: string;
+  name: string;
 }
 
 const Areas: React.FC = () => {
   const { projectId } = useParams<AreaParams>();
   const { user } = useAuth();
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Areas`;
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
   
   console.log('Areas Component - Initial Render:', {
     projectId,
     endpoint,
     hasToken: !!user?.token
   });
+
+  // Fetch project info when component mounts
+  useEffect(() => {
+    const fetchProjectInfo = async () => {
+      if (!user?.token || !projectId) return;
+      
+      try {
+        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setProjectInfo({
+            projectNumber: data.projectNumber || '',
+            name: data.name || ''
+          });
+        } else {
+          console.error('Failed to fetch project info:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error fetching project info:', error);
+      }
+    };
+    
+    fetchProjectInfo();
+  }, [projectId, user?.token]);
 
   // Add auto-increment hook to get the next area number
   const { nextNumber: nextAreaNumber, refreshNextNumber } = useAutoIncrement({
@@ -67,17 +104,22 @@ const Areas: React.FC = () => {
   };
 
   return (
-    <ODataGrid
-      title="Areas"
-      endpoint={endpoint}
-      columns={areaColumns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-      defaultFilter={[["projectGuid", "=", projectId]]}
-    />
+    <div className="areas-container">
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">{projectInfo ? `${projectInfo.projectNumber} - ${projectInfo.name} Areas` : 'Areas'}</div>
+        <ODataGrid
+          title=" "
+          endpoint={endpoint}
+          columns={areaColumns}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onInitNewRow={handleInitNewRow}
+          onRowValidating={handleRowValidating}
+          onRowRemoving={handleRowRemoving}
+          defaultFilter={[["projectGuid", "=", projectId]]}
+        />
+      </div>
+    </div>
   );
 };
 

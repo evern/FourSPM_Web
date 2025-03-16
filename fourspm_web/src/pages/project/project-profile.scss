@@ -1,3 +1,6 @@
+@use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/shared-styles.scss";
+
 .project-summary {
   padding: 20px;
 
@@ -133,6 +136,36 @@
 .dx-scrollview {
   .dx-scrollview-content {
     padding-bottom: 80px;  
+  }
+}
+
+.form-container {
+  padding: 0 20px;
+  max-width: 1400px;
+  margin: 0;
+  
+  .dx-field-item-label {
+    padding-left: 0;
+  }
+  
+  .dx-field-item-content {
+    border-radius: 4px;
+    
+    .dx-texteditor-input {
+      padding: 8px 12px;
+    }
+  }
+  
+  .dx-fieldset {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 4px;
+    background-color: rgba(vars.$base-accent, 0.03);
+    border: 1px solid rgba(vars.$base-border-color, 0.2);
+  }
+  
+  .dx-field-item {
+    margin-bottom: 10px;
   }
 }
 
@@ -297,7 +330,11 @@
   }
 
   .profile-status {
-    margin-bottom: 5px;
+    margin: 0 0 10px 20px;
+  
+    .status-value {
+      font-weight: 500;
+    }
   }
 
   .action-buttons {
@@ -320,4 +357,16 @@
       width: 100%;
     }
   }
+}
+
+.grid-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 20px 10px 20px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
 }
