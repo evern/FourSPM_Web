@@ -22,13 +22,15 @@ export const deliverableColumns: ODataGridColumn[] = [
     dataField: 'project.client.number',
     caption: 'Client No.',
     hidingPriority: 13,
-    allowEditing: false // Read-only field
+    allowEditing: false, // Read-only field
+    cellClass: 'faded-placeholder'
   },
   {
     dataField: 'projectNumber',
     caption: 'Project No.',
     hidingPriority: 12,
-    allowEditing: false // Read-only field
+    allowEditing: false, // Read-only field
+    cellClass: 'faded-placeholder'
   },
   {
     dataField: 'areaNumber',
@@ -94,12 +96,14 @@ export const deliverableColumns: ODataGridColumn[] = [
     dataField: 'totalHours',
     caption: 'Total Hours',
     hidingPriority: 3,
-    allowEditing: false // Read-only calculated field
+    allowEditing: false, // Read-only calculated field
+    cellClass: 'faded-placeholder'
   },
   {
     dataField: 'bookingCode',
     caption: 'Booking Code',
     hidingPriority: 7,
-    allowEditing: false // Read-only calculated field
+    allowEditing: false, // Read-only calculated field
+    cellClass: 'faded-placeholder'
   }
 ];

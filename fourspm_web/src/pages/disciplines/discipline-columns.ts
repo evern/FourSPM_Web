@@ -22,6 +22,7 @@ export const disciplineColumns: ODataGridColumn[] = [
     caption: 'Created Date',
     hidingPriority: 0,
     allowEditing: false, // Read-only field
+    cellClass: 'faded-placeholder',
     customizeText: (cellInfo: any) => {
       if (!cellInfo.value) return '';
       return new Date(cellInfo.value).toLocaleString();
