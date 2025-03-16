@@ -5,6 +5,7 @@ import { HomePage, TasksPage, ProfilePage, ProjectsPage } from './pages';
 import Deliverables from './pages/deliverables/deliverables';
 import ProjectProfile from './pages/project/project-profile';
 import Clients from './pages/clients/clients';
+import Disciplines from './pages/disciplines/disciplines';
 
 interface RouteConfig {
   path: string;
@@ -27,6 +28,10 @@ const routes: RouteConfig[] = [
   {
     path: '/clients',
     component: Clients
+  },
+  {
+    path: '/disciplines',
+    component: Disciplines
   },
   {
     path: '/profile',

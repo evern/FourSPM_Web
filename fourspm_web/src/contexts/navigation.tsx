@@ -1,6 +1,6 @@
 import React, { useState, createContext, useContext, useEffect, ReactElement, PropsWithChildren } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
-import { NavigationItem, getStaticNavigation } from '../app-navigation';
+import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../services/project-service';
 import { useAuth } from './auth';
 
@@ -18,7 +18,7 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType>({
   navigationData: {},
   setNavigationData: () => {},
-  navigation: getStaticNavigation(),
+  navigation: appNavigation,
   refreshNavigation: async () => {}
 });
 
@@ -26,7 +26,7 @@ const useNavigation = (): NavigationContextType => useContext(NavigationContext)
 
 function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [navigationData, setNavigationData] = useState<NavigationData>({});
-  const [navigation, setNavigation] = useState<NavigationItem[]>(getStaticNavigation());
+  const [navigation, setNavigation] = useState<NavigationItem[]>(appNavigation);
   const { user } = useAuth();
 
   const refreshNavigation = async () => {
@@ -58,8 +58,11 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
         })
       };
 
-      // Update navigation with project status
-      setNavigation([...staticNav, projectStatusNav]);
+      // Get the configurations item from appNavigation
+      const configurationsItem = appNavigation.find(item => item.text === 'Configurations');
+
+      // Update navigation with project status and configurations at the end
+      setNavigation([...staticNav, projectStatusNav, configurationsItem].filter(Boolean) as NavigationItem[]);
     } catch (error) {
       console.error('Error refreshing navigation:', error);
     }

@@ -21,34 +21,34 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'project.client.number',
     caption: 'Client No.',
-    hidingPriority: 0,
+    hidingPriority: 13,
     allowEditing: false // Read-only field
   },
   {
     dataField: 'projectNumber',
     caption: 'Project No.',
-    hidingPriority: 0,
+    hidingPriority: 12,
     allowEditing: false // Read-only field
   },
   {
     dataField: 'areaNumber',
     caption: 'Area No.',
-    hidingPriority: 1
+    hidingPriority: 11
   },
   {
     dataField: 'discipline',
     caption: 'Discipline',
-    hidingPriority: 2
+    hidingPriority: 10
   },
   {
     dataField: 'documentType',
     caption: 'Document Type',
-    hidingPriority: 3
+    hidingPriority: 9
   },
   {
     dataField: 'departmentId',
     caption: 'Department',
-    hidingPriority: 4,
+    hidingPriority: 8,
     lookup: {
       dataSource: departmentEnum,
       valueExpr: 'id',
@@ -58,7 +58,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'deliverableTypeId',
     caption: 'Deliverable Type',
-    hidingPriority: 11,
+    hidingPriority: 1,
     lookup: {
       dataSource: deliverableTypeEnum,
       valueExpr: 'id',
@@ -68,7 +68,7 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'internalDocumentNumber',
     caption: 'Internal Doc. No.',
-    hidingPriority: 12 // Will be hidden last
+    hidingPriority: 0 // Will be hidden first
   },
   {
     dataField: 'clientDocumentNumber',
@@ -78,28 +78,28 @@ export const deliverableColumns: ODataGridColumn[] = [
   {
     dataField: 'documentTitle',
     caption: 'Document Title',
-    hidingPriority: 10  // Will be hidden second to last
+    hidingPriority: 2  // Will be hidden early
   },
   {
     dataField: 'budgetHours',
     caption: 'Budget Hours',
-    hidingPriority: 7
+    hidingPriority: 5
   },
   {
     dataField: 'variationHours',
     caption: 'Variation Hours',
-    hidingPriority: 8
+    hidingPriority: 4
   },
   {
     dataField: 'totalHours',
     caption: 'Total Hours',
-    hidingPriority: 9,
+    hidingPriority: 3,
     allowEditing: false // Read-only calculated field
   },
   {
     dataField: 'bookingCode',
     caption: 'Booking Code',
-    hidingPriority: 5,
+    hidingPriority: 7,
     allowEditing: false // Read-only calculated field
   }
 ];

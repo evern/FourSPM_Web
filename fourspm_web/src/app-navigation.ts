@@ -15,17 +15,32 @@ export const getStaticNavigation = (): NavigationItem[] => [
     id: 'home'
   },
   {
+    text: 'Client List',
+    path: '/clients',
+    icon: 'user',
+    id: 'client_maintenance'
+  },
+  {
     text: 'Project List',
     path: '/projects',
     icon: 'activefolder',
     id: 'project_list'
   },
-  {
-    text: 'Client List',
-    path: '/clients',
-    icon: 'user',
-    id: 'client_maintenance'
-  }
 ];
 
-export const navigation: NavigationItem[] = getStaticNavigation();
+// Initialize the navigation with static items first
+export const navigation: NavigationItem[] = [
+  ...getStaticNavigation(),
+  // Add Configurations as the last item
+  {
+    text: 'Configurations',
+    icon: 'fields',
+    path: '',
+    items: [
+      {
+        text: 'Disciplines',
+        path: '/disciplines',
+      },
+    ],
+  },
+];
