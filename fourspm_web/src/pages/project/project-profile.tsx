@@ -15,6 +15,9 @@ import { API_CONFIG } from '../../config/api';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { LoadIndicator } from 'devextreme-react/load-indicator';
 
+// Constants
+const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
+
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
   return status ? status.name : statusId;
@@ -222,7 +225,10 @@ export default function ProjectProfile() {
       {
         itemType: 'simple',
         dataField: 'progressStart',
-        label: { text: 'Progress Start' },
+        label: { 
+          text: 'Progress Start',
+          hint: PROGRESS_START_TOOLTIP
+        },
         editorType: isEditing ? 'dxDateBox' : 'dxTextBox',
         editorOptions: isEditing ? {
           type: 'date',

@@ -33,6 +33,8 @@ export interface ODataGridColumn {
     valueExpr: string;
     displayExpr: string | ((item: any) => string);
   };
+  tooltip?: string;
+  hint?: string;
 }
 
 interface ODataGridProps {
@@ -122,6 +124,28 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
 
   const dataSource = new DataSource(dataSourceOptions);
 
+  const onCellPrepared = (e: any) => {
+    // Apply tooltips to data cells
+    if (e.rowType === 'data') {
+      const column = columns.find(col => col.dataField === e.column.dataField);
+      if (column && (column.tooltip || column.hint)) {
+        e.cellElement.title = column.tooltip || column.hint;
+      }
+    }
+    
+    // Apply tooltips to column headers
+    if (e.rowType === 'header') {
+      const column = columns.find(col => col.dataField === e.column.dataField);
+      if (column && (column.tooltip || column.hint)) {
+        if (e.cellElement.querySelector('.dx-datagrid-text-content')) {
+          e.cellElement.querySelector('.dx-datagrid-text-content').title = column.tooltip || column.hint;
+        } else {
+          e.cellElement.title = column.tooltip || column.hint;
+        }
+      }
+    }
+  };
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
@@ -151,6 +175,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               deleteRow: 'Delete'
             }
           }}
+          onCellPrepared={onCellPrepared}
           onRowUpdating={onRowUpdating}
           onRowInserting={onRowInserting}
           onRowRemoving={onRowRemoving}

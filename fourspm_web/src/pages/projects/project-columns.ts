@@ -6,6 +6,7 @@ import React from 'react';
 
 // Constants for reusable text
 const CLIENT_CONTACT_PLACEHOLDER = 'Auto-filled on client selection';
+const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
 
 // Create a singleton ODataStore for Client lookup
 const clientStore = new ODataStore({
@@ -105,7 +106,8 @@ export const projectColumns: ODataGridColumn[] = [
       if (!cellInfo.value) return '';
       const date = new Date(cellInfo.value);
       return date.toLocaleDateString();
-    }
+    },
+    tooltip: PROGRESS_START_TOOLTIP
   },
   {
     dataField: 'created',
