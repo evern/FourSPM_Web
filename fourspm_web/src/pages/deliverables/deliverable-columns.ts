@@ -58,13 +58,28 @@ const createAreaStore = (projectId: string) => {
       projectGuid: 'Guid'
     },
     beforeSend: (options: any) => {
-      // Add filter for projectGuid using the standard approach
-      if (options.url.indexOf('$filter') === -1) {
-        options.url += options.url.indexOf('?') > -1 ? '&' : '?';
-        options.url += `$filter=projectGuid eq ${projectId}`;
+      // Add filter for projectGuid using proper OData syntax
+      const baseUrl = options.url.split('?')[0];
+      const params = new URLSearchParams(options.url.split('?')[1] || '');
+      
+      // Get existing filter if any
+      let filter = params.get('$filter') || '';
+      
+      // Add project filter
+      const projectFilter = `projectGuid eq ${projectId}`;
+      
+      // Combine filters
+      if (filter) {
+        filter = `${filter} and ${projectFilter}`;
       } else {
-        options.url += ` and projectGuid eq ${projectId}`;
+        filter = projectFilter;
       }
+      
+      // Set the filter
+      params.set('$filter', filter);
+      
+      // Reconstruct the URL
+      options.url = `${baseUrl}?${params.toString()}`;
 
       const token = localStorage.getItem('user') ? 
         JSON.parse(localStorage.getItem('user') || '{}').token : null;
