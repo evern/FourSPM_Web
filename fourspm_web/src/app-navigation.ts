@@ -47,6 +47,11 @@ export const navigation: NavigationItem[] = [
         path: '/document-types',
         icon: 'docxfile'
       },
+      {
+        text: 'Deliverable Gate',
+        path: '/deliverable-gates',
+        icon: 'check'
+      },
     ],
   },
 ];

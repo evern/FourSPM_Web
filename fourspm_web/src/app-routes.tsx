@@ -8,6 +8,7 @@ import ProjectProfile from './pages/project/project-profile';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
+import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
 
 interface RouteConfig {
   path: string;
@@ -42,6 +43,10 @@ const routes: RouteConfig[] = [
   {
     path: '/document-types',
     component: DocumentTypes
+  },
+  {
+    path: '/deliverable-gates',
+    component: DeliverableGates
   },
   {
     path: '/profile',
