@@ -17,3 +17,17 @@
 .content {
   flex-grow: 1;
 }
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.footer-container {
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+  padding: 0 20px;
+}

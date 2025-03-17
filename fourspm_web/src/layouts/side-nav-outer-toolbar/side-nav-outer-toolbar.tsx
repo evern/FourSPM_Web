@@ -136,7 +136,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
         <div className={'container'}>
           <ScrollView 
             ref={scrollViewRef} 
-            className={'layout-body with-footer'}
+            className={'layout-body'}
             direction="vertical"
             scrollByContent={true}
             scrollByThumb={true}
@@ -147,12 +147,12 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
                 return item && React.isValidElement(item) && item.type !== Footer && item;
               })}
             </div>
-            <div className={'content-block'}>
-              {React.Children.map(children, (item) => {
-                return item && React.isValidElement(item) && item.type === Footer && item;
-              })}
-            </div>
           </ScrollView>
+          <div className={'footer-container'}>
+            {React.Children.map(children, (item) => {
+              return item && React.isValidElement(item) && item.type === Footer && item;
+            })}
+          </div>
         </div>
         <Template name={'menu'}>
           <SideNavigationMenu
