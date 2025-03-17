@@ -18,6 +18,7 @@ export interface ODataGridColumn {
   caption: string;
   hidingPriority?: number;
   allowEditing?: boolean;
+  dataType?: string;
   editorOptions?: {
     mask?: string;
     maskRules?: Record<string, RegExp>;
@@ -193,6 +194,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               key={column.dataField}
               dataField={column.dataField}
               caption={column.caption}
+              dataType={column.dataType}
               hidingPriority={column.hidingPriority}
               minWidth={'150'}
               allowResizing={true}
