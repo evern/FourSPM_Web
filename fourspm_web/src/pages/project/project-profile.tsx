@@ -221,6 +221,19 @@ export default function ProjectProfile() {
       },
       {
         itemType: 'simple',
+        dataField: 'progressStart',
+        label: { text: 'Progress Start' },
+        editorType: isEditing ? 'dxDateBox' : 'dxTextBox',
+        editorOptions: isEditing ? {
+          type: 'date',
+          displayFormat: 'MM/dd/yyyy'
+        } : {
+          readOnly: true,
+          value: projectData.progressStart ? new Date(projectData.progressStart).toLocaleDateString() : ''
+        }
+      },
+      {
+        itemType: 'simple',
         dataField: 'purchaseOrderNumber',
         label: { text: 'Purchase Order #' },
         editorOptions: { readOnly: !isEditing }

@@ -98,6 +98,16 @@ export const projectColumns: ODataGridColumn[] = [
     }
   },
   {
+    dataField: 'progressStart',
+    caption: 'Progress Start',
+    hidingPriority: 5,
+    customizeText: (cellInfo: { value: string | null }) => {
+      if (!cellInfo.value) return '';
+      const date = new Date(cellInfo.value);
+      return date.toLocaleDateString();
+    }
+  },
+  {
     dataField: 'created',
     caption: 'Created',
     hidingPriority: 0, 
