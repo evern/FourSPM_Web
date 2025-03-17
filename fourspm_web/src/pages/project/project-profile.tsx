@@ -12,6 +12,8 @@ import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import ODataStore from 'devextreme/data/odata/store';
 import { API_CONFIG } from '../../config/api';
+import { LoadPanel } from 'devextreme-react/load-panel';
+import { LoadIndicator } from 'devextreme-react/load-indicator';
 
 const getStatusDisplayName = (statusId: string) => {
   const status = projectStatuses.find(s => s.id === statusId);
@@ -53,12 +55,15 @@ export default function ProjectProfile() {
     number: string | null;
     email: string | null;
   }>({ name: null, number: null, email: null });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingClient, setIsLoadingClient] = useState(false);
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Fetch client details function to reuse for initial load and selection change
   const fetchClientDetails = async (clientGuid: string, token: string) => {
+    setIsLoadingClient(true);
     try {
       const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Clients(${clientGuid})`, {
         headers: {
@@ -85,6 +90,9 @@ export default function ProjectProfile() {
       }
     } catch (error) {
       console.error('Error fetching client details:', error);
+      notify('Error loading client data', 'error', 3000);
+    } finally {
+      setIsLoadingClient(false);
     }
     return null;
   };
@@ -143,6 +151,7 @@ export default function ProjectProfile() {
   const handleSave = async () => {
     if (!formRef || !projectData || !user?.token) return;
 
+    setIsSaving(true);
     try {
       const formData = formRef.instance.option('formData');
       const result = await updateProject(projectId!, formData, user.token);
@@ -155,11 +164,24 @@ export default function ProjectProfile() {
     } catch (error) {
       console.error('Error updating project:', error);
       notify('Error updating project', 'error', 3000);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (!projectData) {
-    return <div>Loading...</div>;
+    return (
+      <div className="profile-loading-container">
+        <LoadPanel
+          visible={true}
+          showIndicator={true}
+          shading={true}
+          showPane={true}
+          shadingColor="rgba(0, 0, 0, 0.1)"
+          message="Loading Project Data..."
+        />
+      </div>
+    );
   }
 
   const formItems: IGroupItemProps[] = [{
@@ -227,17 +249,28 @@ export default function ProjectProfile() {
           onValueChanged: handleClientChange
         } : {
           readOnly: true,
-          value: clientDetails ? 
+          value: isLoadingClient ? 'Loading client details...' :
+                 (clientDetails ? 
                  `${clientDetails.number} - ${clientDetails.description}` : 
-                 (projectData.clientGuid || 'No client selected')
+                 (projectData.clientGuid || 'No client selected'))
         }
+      },
+      isLoadingClient && {
+        itemType: 'simple',
+        template: () => (
+          <div className="loading-indicator-container">
+            <LoadIndicator width="24" height="24" visible={true} />
+          </div>
+        )
       },
       {
         itemType: 'simple',
         label: { text: 'Client Contact' },
         editorOptions: { 
           readOnly: true,
-          value: isEditing ? selectedClientContact.name || 'No contact information' : projectData.clientContactName || 'No contact information'
+          value: isLoadingClient ? 'Loading...' :
+                 (isEditing ? selectedClientContact.name || 'No contact information' : 
+                           projectData.clientContactName || 'No contact information')
         },
         editorType: 'dxTextBox'
       },
@@ -246,7 +279,9 @@ export default function ProjectProfile() {
         label: { text: 'Contact Number' },
         editorOptions: { 
           readOnly: true,
-          value: isEditing ? selectedClientContact.number || 'No contact information' : projectData.clientContactNumber || 'No contact information'
+          value: isLoadingClient ? 'Loading...' :
+                 (isEditing ? selectedClientContact.number || 'No contact information' : 
+                           projectData.clientContactNumber || 'No contact information')
         },
         editorType: 'dxTextBox'
       },
@@ -255,7 +290,9 @@ export default function ProjectProfile() {
         label: { text: 'Contact Email' },
         editorOptions: { 
           readOnly: true,
-          value: isEditing ? selectedClientContact.email || 'No contact information' : projectData.clientContactEmail || 'No contact information'
+          value: isLoadingClient ? 'Loading...' :
+                 (isEditing ? selectedClientContact.email || 'No contact information' : 
+                           projectData.clientContactEmail || 'No contact information')
         },
         editorType: 'dxTextBox'
       }
@@ -296,16 +333,22 @@ export default function ProjectProfile() {
               />
             ) : (
               <div style={{ display: 'flex', gap: '8px' }}>
-                <Button
-                  text="Save"
-                  type="default"
-                  stylingMode="contained"
-                  onClick={handleSave}
-                />
+                <div className="save-button-container">
+                  {isSaving && <div className="save-loading-indicator"><LoadIndicator width={24} height={24} visible={true} /></div>}
+                  <Button
+                    text="Save"
+                    type="default"
+                    stylingMode="contained"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className={isSaving ? 'saving-button' : ''}
+                  />
+                </div>
                 <Button
                   text="Cancel"
                   stylingMode="outlined"
                   onClick={handleCancelClick}
+                  disabled={isSaving}
                 />
               </div>
             )}
