@@ -49,7 +49,7 @@ const createAreaStore = (projectId: string) => {
     return null;
   }
   
-  return new ODataStore({
+  const store = new ODataStore({
     url: `${API_CONFIG.baseUrl}/odata/v1/Areas`,
     version: 4,
     key: 'guid',
@@ -58,29 +58,6 @@ const createAreaStore = (projectId: string) => {
       projectGuid: 'Guid'
     },
     beforeSend: (options: any) => {
-      // Add filter for projectGuid using proper OData syntax
-      const baseUrl = options.url.split('?')[0];
-      const params = new URLSearchParams(options.url.split('?')[1] || '');
-      
-      // Get existing filter if any
-      let filter = params.get('$filter') || '';
-      
-      // Add project filter
-      const projectFilter = `projectGuid eq ${projectId}`;
-      
-      // Combine filters
-      if (filter) {
-        filter = `${filter} and ${projectFilter}`;
-      } else {
-        filter = projectFilter;
-      }
-      
-      // Set the filter
-      params.set('$filter', filter);
-      
-      // Reconstruct the URL
-      options.url = `${baseUrl}?${params.toString()}`;
-
       const token = localStorage.getItem('user') ? 
         JSON.parse(localStorage.getItem('user') || '{}').token : null;
       
@@ -97,6 +74,12 @@ const createAreaStore = (projectId: string) => {
       return true;
     }
   });
+
+  // Return a DataSource with filtering instead of just the store
+  return {
+    store: store,
+    filter: ['projectGuid', '=', projectId]
+  };
 };
 
 // Create ODataStore for Discipline lookup
