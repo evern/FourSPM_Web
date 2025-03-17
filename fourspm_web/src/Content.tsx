@@ -20,10 +20,7 @@ const Content: React.FC = () => {
         <Redirect to={'/home'} />
       </Switch>
       <Footer>
-        Copyright © 2011-{new Date().getFullYear()} {appInfo.title} Inc.
-        <br />
-        All trademarks or registered trademarks are property of their
-        respective owners.
+        Copyright 2011-{new Date().getFullYear()} {appInfo.title} Inc.
       </Footer>
     </SideNavBarLayout>
   );

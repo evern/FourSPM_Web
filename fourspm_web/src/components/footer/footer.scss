@@ -4,6 +4,13 @@
   display: block;
   color: var(--dx-color-text);
   border-top: 1px solid var(--dx-color-border);
-  padding-top: 20px;
-  padding-bottom: 24px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  font-size: 14px;
+  
+  @media (max-width: 768px) {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 12px;
+  }
 }

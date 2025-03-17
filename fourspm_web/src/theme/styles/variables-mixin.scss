@@ -21,7 +21,7 @@ $theme-mode: null !default;
   --content-padding: 24px;
   --page-padding: 32px;
   --toolbar-margin-bottom: var(--content-padding);
-  --footer-height: 70px;
+  --footer-height: 50px;
   --base-bg-darken-5: #{darken($base-bg, 5)};
   --base-bg-darken-4: #{darken($base-bg, 4)};
   --background-gray-color: #{color.change($base-text-color, $alpha: 0.04)};
