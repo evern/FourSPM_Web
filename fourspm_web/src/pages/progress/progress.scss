@@ -1,0 +1,124 @@
+.period-info {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: var(--base-bg);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--base-border-color);
+
+  .period-number,
+  .reporting-date {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .label {
+      font-weight: 500;
+      color: var(--base-text-color);
+      opacity: 0.7;
+    }
+
+    .value {
+      font-weight: 600;
+      color: var(--base-text-color);
+    }
+
+    .dx-datebox {
+      width: 150px;
+      .dx-texteditor-input {
+        font-weight: 600;
+        text-align: left;
+      }
+    }
+  }
+}
+
+.progress-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  
+  .period-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: var(--base-bg);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--base-border-color);
+    
+    .period-info, .period-date {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      span {
+        font-weight: 500;
+        color: var(--base-text-color);
+      }
+      
+      strong {
+        font-weight: 600;
+        color: var(--primary);
+        font-size: 1.2rem;
+      }
+    }
+  }
+  
+  .grid-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 80px);
+    
+    .grid-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--base-text-color);
+    }
+    
+    .custom-grid-wrapper {
+      height: 100%;
+    }
+  }
+  
+  .loading-message,
+  .no-data-message,
+  .placeholder-message {
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    
+    h3 {
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    
+    p {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .loading-message {
+    color: #0d6efd;
+  }
+
+  .no-data-message {
+    color: #6c757d;
+    
+    p {
+      margin-bottom: 10px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

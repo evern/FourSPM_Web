@@ -55,6 +55,7 @@ interface ODataGridProps {
   onEditorPreparing?: (e: any) => void;
   onInitialized?: (e: any) => void;
   defaultFilter?: [string, string, any][];
+  dataSource?: any;
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -73,57 +74,68 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onRowValidating,
   onEditorPreparing,
   onInitialized,
-  defaultFilter = []
+  defaultFilter = [],
+  dataSource
 }) => {
   const { user } = useAuth();
   const token = user?.token;
 
-  const store = new ODataStore({
-    url: endpoint,
-    version: 4,
-    key: keyField,
-    keyType: 'Guid',
-    fieldTypes: {
-      projectGuid: 'Guid'
-    },
-    beforeSend: (options: any) => {
-      if (!token) {
-        console.error('No token available');
+  let store;
+  let dataSourceOptions: Options;
+
+  if (dataSource) {
+    // If a custom dataSource is provided, use it directly
+    dataSourceOptions = { 
+      store: dataSource.store ? dataSource.store : dataSource 
+    };
+  } else {
+    store = new ODataStore({
+      url: endpoint,
+      version: 4,
+      key: keyField,
+      keyType: 'Guid',
+      fieldTypes: {
+        projectGuid: 'Guid'
+      },
+      beforeSend: (options: any) => {
+        if (!token) {
+          console.error('No token available');
+          return false;
+        }
+
+        options.headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        };
+
+        if (options.method === 'PATCH') {
+          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
+          options.headers['Prefer'] = 'return=minimal';
+        }
+
+        return true;
+      },
+      errorHandler: (error) => {
+        if (error.httpStatus === 401) {
+          console.log('Token expired, redirecting to login...');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return true;
+        }
         return false;
       }
+    });
 
-      options.headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
-      if (options.method === 'PATCH') {
-        options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-        options.headers['Prefer'] = 'return=minimal';
-      }
-
-      return true;
-    },
-    errorHandler: (error) => {
-      if (error.httpStatus === 401) {
-        console.log('Token expired, redirecting to login...');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return true;
-      }
-      return false;
-    }
-  });
-
-  const dataSourceOptions: Options = {
-    store
-  };
+    dataSourceOptions = {
+      store
+    };
+  }
 
   if (defaultFilter.length > 0) {
     dataSourceOptions.filter = defaultFilter;
   }
 
-  const dataSource = new DataSource(dataSourceOptions);
+  const dataSourceInstance = new DataSource(dataSourceOptions);
 
   const onCellPrepared = (e: any) => {
     // Apply tooltips to data cells
@@ -153,7 +165,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       <div style={{ width: '100%', overflowX: 'auto', height: '600px' }}>
         <DataGrid
           className={'dx-card wide-card'}
-          dataSource={dataSource}
+          dataSource={dataSourceInstance}
           showBorders={false}
           focusedRowEnabled={true}
           defaultFocusedRowIndex={0}

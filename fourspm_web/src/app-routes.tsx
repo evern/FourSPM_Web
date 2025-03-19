@@ -5,6 +5,7 @@ import { HomePage, TasksPage, ProfilePage, ProjectsPage } from './pages';
 import Deliverables from './pages/deliverables/deliverables';
 import Areas from './pages/areas/areas';
 import ProjectProfile from './pages/project/project-profile';
+import Progress from './pages/progress/progress';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
@@ -27,6 +28,10 @@ const routes: RouteConfig[] = [
   {
     path: '/projects/:projectId/areas',
     component: Areas
+  },
+  {
+    path: '/projects/:projectId/progress',
+    component: Progress
   },
   {
     path: '/projects',

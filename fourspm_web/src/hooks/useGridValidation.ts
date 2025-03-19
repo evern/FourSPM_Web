@@ -5,6 +5,8 @@ export interface ValidationRule {
   required?: boolean;
   maxLength?: number;
   pattern?: RegExp;
+  min?: number;
+  max?: number;
   errorText?: string;
 }
 
@@ -36,6 +38,24 @@ export const useGridValidation = (rules: ValidationRule[]) => {
           e.isValid = false;
           e.errorText = rule.errorText || `${rule.field} must be at most ${rule.maxLength} characters`;
           return;
+        }
+        
+        // Check min and max values for numeric fields
+        if (value !== undefined && value !== null) {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue)) {
+            if (rule.min !== undefined && numValue < rule.min) {
+              e.isValid = false;
+              e.errorText = rule.errorText || `${rule.field} must be at least ${rule.min}`;
+              return;
+            }
+            
+            if (rule.max !== undefined && numValue > rule.max) {
+              e.isValid = false;
+              e.errorText = rule.errorText || `${rule.field} must be at most ${rule.max}`;
+              return;
+            }
+          }
         }
       }
     }

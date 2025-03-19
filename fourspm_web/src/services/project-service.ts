@@ -70,6 +70,12 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
               id: `deliverables_${project.guid}`
             },
             {
+              text: 'Progress Tracking',
+              path: `/projects/${project.guid}/progress`,
+              icon: 'chart',
+              id: `progress_${project.guid}`
+            },
+            {
               text: 'Areas',
               path: `/projects/${project.guid}/areas`,
               icon: 'map',
