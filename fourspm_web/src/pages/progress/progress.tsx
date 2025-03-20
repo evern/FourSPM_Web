@@ -114,7 +114,11 @@ const Progress: React.FC = () => {
       return result.then(() => {
         // Manually reload the grid after update
         if (e.component) {
+          // Refresh the grid to update data
           e.component.refresh();
+          
+          // Exit edit mode explicitly
+          e.component.cancelEditData();
         }
       });
     }
