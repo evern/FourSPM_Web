@@ -1,12 +1,31 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { DepartmentEnum } from '../../types/enums';
+import { API_CONFIG } from '../../config/api';
+import ODataStore from 'devextreme/data/odata/store';
 
-export const PROGRESS_GATES = [
-  { id: 1, name: 'Started', autoPercent: 10, maxPercent: 49 },
-  { id: 2, name: 'Issued for Checking', autoPercent: 50, maxPercent: 69 },
-  { id: 3, name: 'Issued for Client Review', autoPercent: 70, maxPercent: 99 },
-  { id: 4, name: 'Issued for Construction/Use', autoPercent: 100, maxPercent: 100 }
-] as const;
+// Create a store for deliverable gates
+const deliverableGatesStore = new ODataStore({
+  url: `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`,
+  version: 4,
+  key: 'guid',
+  keyType: 'Guid',
+  beforeSend: (options: any) => {
+    const token = localStorage.getItem('user') ? 
+      JSON.parse(localStorage.getItem('user') || '{}').token : null;
+    
+    if (!token) {
+      console.error('No token available for DeliverableGates API');
+      return false;
+    }
+
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    };
+
+    return true;
+  }
+});
 
 export const progressColumns: ODataGridColumn[] = [
   {
@@ -57,12 +76,13 @@ export const progressColumns: ODataGridColumn[] = [
     allowEditing: false,
   },
   {
-    dataField: 'gateId',
+    dataField: 'deliverableGateGuid',
     caption: 'Gate',
+    hidingPriority: 5,  // Add this if you want similar hiding behavior
     lookup: {
-      dataSource: PROGRESS_GATES,
-      valueExpr: 'id',
-      displayExpr: 'name'
+      dataSource: deliverableGatesStore,
+      valueExpr: 'guid',
+      displayExpr: (item: any) => item ? `${item.name}` : ''
     },
   },
   {
@@ -115,7 +135,7 @@ export const progressColumns: ODataGridColumn[] = [
     }
   },
   {
-    dataField: 'totalHours', 
+    dataField: 'totalHours',
     caption: 'Total Hours',
     dataType: 'number',
     allowEditing: false,
@@ -123,5 +143,5 @@ export const progressColumns: ODataGridColumn[] = [
       if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
       return cellInfo.value.toFixed(2);
     }
-  },
+  }
 ];

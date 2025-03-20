@@ -19,11 +19,20 @@ interface ProjectInfo {
   progressStart: Date;
 }
 
+interface DeliverableGate {
+  guid: string;
+  name: string;
+  maxPercentage: number;
+  autoPercentage: number | null;
+}
+
 const Progress: React.FC = () => {
   const { projectId } = useParams<ProgressParams>();
   const { user } = useAuth();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [currentPeriod, setCurrentPeriod] = useState<number>(1);
+  const [deliverableGates, setDeliverableGates] = useState<DeliverableGate[]>([]);
+  const [isLoadingGates, setIsLoadingGates] = useState<boolean>(true);
 
   // Debug logs to help troubleshoot API issues
   console.log('Progress Component - Initial Render:', {
@@ -73,6 +82,39 @@ const Progress: React.FC = () => {
     fetchProjectInfo();
   }, [projectId, user?.token]);
 
+  // Fetch deliverable gates when component mounts
+  useEffect(() => {
+    const fetchDeliverableGates = async () => {
+      if (!user?.token) return;
+      
+      setIsLoadingGates(true);
+      try {
+        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Handle both array response format and OData format with 'value' property
+          const gates = Array.isArray(data) ? data : (data.value || []);
+          setDeliverableGates(gates);
+          console.log('Fetched deliverable gates:', gates);
+        } else {
+          console.error('Failed to fetch deliverable gates:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error fetching deliverable gates:', error);
+      } finally {
+        setIsLoadingGates(false);
+      }
+    };
+    
+    fetchDeliverableGates();
+  }, [user?.token]);
+
   const calculateCurrentPeriod = (projectStartDate: Date): number => {
     const start = new Date(projectStartDate);
     const today = new Date();
@@ -121,10 +163,15 @@ const Progress: React.FC = () => {
           e.component.cancelEditData();
         }
       });
+    } else if (e.newData.deliverableGateGuid !== undefined) {
+      // For deliverableGateGuid updates, let the default handler work (will use ODataStore's update method)
+      console.log('Using default update handler for deliverableGateGuid');
+      return true;
+    } else {
+      // For other fields, let default handler work
+      console.log('Using default update handler for', Object.keys(e.newData));
+      return true;
     }
-    
-    // For other fields, let default handler work
-    return true;
   };
 
   return (
@@ -140,21 +187,29 @@ const Progress: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid-container">
-        <h2 className="grid-title">{project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}</h2>
-        
+      {project && (
+        <div className="project-info">
+          <h2>
+            {project.projectNumber} - {project.name}
+          </h2>
+        </div>
+      )}
+      
+      {isLoadingGates ? (
+        <div>Loading deliverable gates...</div>
+      ) : (
         <ODataGrid
-          title=""
+          title="Progress Tracking"
           endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables`}
           columns={progressColumns}
           keyField="guid"
-          defaultFilter={[["projectGuid", "=", projectId]]}
+          onRowUpdating={handleRowUpdating}
+          defaultFilter={[['projectGuid', '=', projectId]]}
+          allowUpdating={true}
           allowAdding={false}
           allowDeleting={false}
-          allowUpdating={true}
-          onRowUpdating={handleRowUpdating}
         />
-      </div>
+      )}
     </div>
   );
 };
