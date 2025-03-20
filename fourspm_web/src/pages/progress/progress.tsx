@@ -8,7 +8,9 @@ import './progress.scss';
 // Import progress columns
 import { progressColumns } from './progress-columns';
 import { handleProgressUpdate } from './progress-store';
+import { compareGuids } from '../../utils/guid-utils';
 
+// Import interfaces
 interface ProgressParams {
   projectId: string;
 }
@@ -164,9 +166,134 @@ const Progress: React.FC = () => {
         }
       });
     } else if (e.newData.deliverableGateGuid !== undefined) {
-      // For deliverableGateGuid updates, let the default handler work (will use ODataStore's update method)
-      console.log('Using default update handler for deliverableGateGuid');
-      return true;
+      // Handle deliverable gate change
+      e.cancel = true;
+      
+      // Find the selected deliverable gate using the utility function
+      const selectedGate = deliverableGates.find(gate => 
+        compareGuids(gate.guid, e.newData.deliverableGateGuid)
+      );
+      
+      if (!selectedGate) {
+        console.error('Selected deliverable gate not found, using default values');
+        // Instead of failing, use default values
+        const defaultGate = {
+          guid: e.newData.deliverableGateGuid,
+          name: 'Unknown Gate',
+          maxPercentage: 1.0, // Default to 100%
+          autoPercentage: null // Default to no auto percentage
+        };
+        
+        // Update the gate without percentage changes
+        return fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${e.key})`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deliverableGateGuid: e.newData.deliverableGateGuid
+          })
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to update deliverable gate');
+          }
+          return Promise.resolve();
+        }).then(() => {
+          // Refresh gates list to ensure we have the latest data
+          const fetchGates = async () => {
+            try {
+              const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`, {
+                headers: {
+                  'Authorization': `Bearer ${user?.token}`,
+                  'Content-Type': 'application/json',
+                }
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                const gates = Array.isArray(data) ? data : (data.value || []);
+                setDeliverableGates(gates);
+              }
+            } catch (error) {
+              console.error('Error refreshing gates:', error);
+            }
+          };
+          fetchGates();
+          
+          // Manually reload the grid after update
+          if (e.component) {
+            e.component.refresh();
+            e.component.cancelEditData();
+          }
+        }).catch(error => {
+          console.error('Error updating deliverable gate:', error);
+          e.errorText = error.message || 'Error updating deliverable gate';
+          return Promise.reject(e.errorText);
+        });
+      }
+      
+      // Get the current total percentage earned
+      const currentPercentage = e.oldData.totalPercentageEarnt || 0;
+      
+      // Initialize newPercentage with the current percentage
+      let newPercentage = currentPercentage;
+      
+      // Apply auto percentage if it's higher than the current percentage
+      if (selectedGate.autoPercentage !== null && selectedGate.autoPercentage > currentPercentage) {
+        newPercentage = selectedGate.autoPercentage;
+      }
+      
+      // Check if the percentage exceeds the maximum allowed
+      if (newPercentage > selectedGate.maxPercentage) {
+        // Show error message and reject the update
+        e.component.editingController.getEditRowKey();
+        e.errorText = `Total earned percentage (${(newPercentage * 100).toFixed(2)}%) exceeds the maximum allowed (${(selectedGate.maxPercentage * 100).toFixed(2)}%) for this gate.`;
+        return Promise.reject(e.errorText);
+      }
+      
+      // Proceed with updating both the gate and potentially the percentage
+      const updatedData = {
+        ...e.newData,
+        totalPercentageEarnt: newPercentage
+      };
+      
+      // First update the gate
+      return fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${e.key})`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          deliverableGateGuid: e.newData.deliverableGateGuid
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to update deliverable gate');
+        }
+        
+        // If percentage was changed (due to auto percentage), update it
+        if (newPercentage !== currentPercentage) {
+          // Use the custom handler for progress updates
+          return handleProgressUpdate(e.key, { totalPercentageEarnt: newPercentage }, currentPeriod, e.oldData);
+        }
+        
+        return Promise.resolve();
+      }).then(() => {
+        // Manually reload the grid after update
+        if (e.component) {
+          // Refresh the grid to update data
+          e.component.refresh();
+          
+          // Exit edit mode explicitly
+          e.component.cancelEditData();
+        }
+      }).catch(error => {
+        console.error('Error updating deliverable gate:', error);
+        e.errorText = error.message || 'Error updating deliverable gate';
+        return Promise.reject(e.errorText);
+      });
     } else {
       // For other fields, let default handler work
       console.log('Using default update handler for', Object.keys(e.newData));
