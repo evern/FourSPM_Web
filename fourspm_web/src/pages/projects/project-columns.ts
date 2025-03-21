@@ -1,49 +1,24 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { projectStatuses } from './project-statuses';
-import ODataStore from 'devextreme/data/odata/store';
-import { API_CONFIG } from '../../config/api';
+import { clientsStore } from '../../stores/odataStores';
 import React from 'react';
 
 // Constants for reusable text
 const CLIENT_CONTACT_PLACEHOLDER = 'Auto-filled on client selection';
 const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
 
-// Create a singleton ODataStore for Client lookup
-const clientStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/Clients`,
-  version: 4,
-  key: 'guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    
-    if (!token) {
-      console.error('No token available');
-      return false;
-    }
-
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-
-    return true;
-  }
-});
-
 export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'projectNumber', 
     caption: 'Project #', 
-    hidingPriority: 8 
+    hidingPriority: 10  
   },
   { 
     dataField: 'clientGuid', 
     caption: 'Client', 
-    hidingPriority: 5,
+    hidingPriority: 7,  
     lookup: {
-      dataSource: clientStore,
+      dataSource: clientsStore,
       valueExpr: 'guid',
       displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : ''
     }
@@ -51,12 +26,12 @@ export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'name', 
     caption: 'Name', 
-    hidingPriority: 9 
+    hidingPriority: 9  
   },
   {
     dataField: 'clientContactName',
     caption: 'Client Contact',
-    hidingPriority: 4,
+    hidingPriority: 5,  
     allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
@@ -66,7 +41,7 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'clientContactNumber',
     caption: 'Contact Number',
-    hidingPriority: 2,
+    hidingPriority: 3,  
     allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
@@ -76,7 +51,7 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'clientContactEmail',
     caption: 'Contact Email',
-    hidingPriority: 3,
+    hidingPriority: 4,  
     allowEditing: false, 
     customizeText: (cellInfo: { value: string | null }) => {
       return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
@@ -86,12 +61,12 @@ export const projectColumns: ODataGridColumn[] = [
   { 
     dataField: 'purchaseOrderNumber', 
     caption: 'PO #', 
-    hidingPriority: 7 
+    hidingPriority: 8  
   },
   {
     dataField: 'projectStatus',
     caption: 'Status',
-    hidingPriority: 6,
+    hidingPriority: 6,  
     lookup: {
       dataSource: projectStatuses,
       valueExpr: 'id',
@@ -101,7 +76,7 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'progressStart',
     caption: 'Progress Start',
-    hidingPriority: 5,
+    hidingPriority: 2,  
     customizeText: (cellInfo: { value: string | null }) => {
       if (!cellInfo.value) return '';
       const date = new Date(cellInfo.value);
@@ -112,7 +87,7 @@ export const projectColumns: ODataGridColumn[] = [
   {
     dataField: 'created',
     caption: 'Created',
-    hidingPriority: 0, 
+    hidingPriority: 1,  
     cellClass: 'faded-placeholder',
     allowEditing: false 
   }
