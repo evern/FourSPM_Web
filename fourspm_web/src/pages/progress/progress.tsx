@@ -6,7 +6,7 @@ import './progress.scss';
 // Import custom hooks from shared location
 import { useProjectInfo } from '../../hooks/useProjectInfo';
 import { useDeliverableGates } from '../../hooks/useDeliverableGates';
-import { useProgressHandlers } from './hooks/useProgressHandlers';
+import { useProgressHandlers } from '../../hooks/useProgressHandlers';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
