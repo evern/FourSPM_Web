@@ -10,14 +10,16 @@ import { useProgressHandlers } from './hooks/useProgressHandlers';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import LoadPanel from 'devextreme-react/load-panel';
 
 // Import types from shared location
-import { ProgressParams } from '../../types/progress';
 import { API_CONFIG } from '../../config/api';
 import { createProgressColumns } from './progress-columns';
 
-// Import loading component
-import LoadPanel from 'devextreme-react/load-panel';
+// URL params
+interface ProgressParams {
+  projectId: string;
+}
 
 const Progress: React.FC = () => {
   // Extract project ID from URL params

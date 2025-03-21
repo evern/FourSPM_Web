@@ -1,10 +1,4 @@
 // Shared progress tracking types
-
-// URL params
-export interface ProgressParams {
-  projectId: string;
-}
-
 // Deliverable gates
 export interface DeliverableGate {
   guid: string;

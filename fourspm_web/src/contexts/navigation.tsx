@@ -1,7 +1,7 @@
 import React, { useState, createContext, useContext, useEffect, ReactElement, PropsWithChildren } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
-import { getProjectNavigation } from '../services/project-navigation.service';
+import { getProjectNavigation } from '../services/project.service';
 import { useAuth } from './auth';
 
 interface NavigationData {
