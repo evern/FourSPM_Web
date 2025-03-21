@@ -8,11 +8,19 @@ This directory contains shared API services and documentation for the FourSPM We
 
 The API service architecture follows a 5-layer approach:
 
-1. **Base Layer**: `odata.service.ts` - Provides low-level HTTP operations for OData endpoints (GET, POST, PATCH, DELETE)
+1. **Base Layer**: `odata.service.ts` and `base-api.service.ts` - Provides low-level HTTP operations for OData endpoints and REST APIs (GET, POST, PATCH, DELETE)
 2. **Shared Service Layer**: `shared-api.service.ts` - Provides domain-specific operations using the base OData service
-3. **Domain Service Layer**: Individual service files (e.g., `progress.service.ts`) - Acts as a facade for business logic and backward compatibility
+3. **Domain Service Layer**: Individual service files (e.g., `progress.service.ts`, `auth.service.ts`) - Acts as a facade for business logic and backward compatibility
 4. **Hook Layer**: React hooks (e.g., `useProjectInfo.ts`, `useDeliverableGates.ts`) - Provides component state management and lifecycle integration
 5. **Component Layer**: Components like `ODataGrid` that provide UI integration with the API services
+
+### Base API Service
+
+The `base-api.service.ts` file implements a BaseApiService class that:
+- Provides a generic request method for RESTful API requests
+- Handles authentication token management
+- Provides consistent error handling and logging
+- Exports both a singleton instance and a backward-compatibility function
 
 ### Shared API Service
 
@@ -37,6 +45,7 @@ Domain service files implement business logic and act as facades for the SharedA
 - `progress.service.ts` - Handles updating progress percentage for deliverables
 - `project.service.ts` - Manages project data retrieval and formatting
 - `deliverable-gate.service.ts` - Handles deliverable gate operations
+- `auth.service.ts` - Manages user authentication, session handling, and account operations
 
 ### Hook Layer
 
@@ -70,6 +79,22 @@ function MyComponent() {
   
   // Component rendering using the fetched data...
 }
+```
+
+### Using the auth service
+
+```typescript
+import { signIn, signOut, getUser } from '../services/auth.service';
+
+// Sign in a user
+const result = await signIn('user@example.com', 'password');
+if (result.isOk && result.data) {
+  const user = result.data;
+  // User is now authenticated
+}
+
+// Get current user
+const { isOk, data: user } = await getUser();
 ```
 
 ### Using the progress service
@@ -107,6 +132,23 @@ const result = await sharedApiService.post(
   token,
   progressData
 );
+```
+
+### Using the base API service directly
+
+```typescript
+import { baseApiService } from './services/api/base-api.service';
+
+// Make a generic API request
+const response = await baseApiService.request(
+  'https://api.example.com/resource',
+  {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }
+);
+
+const result = await response.json();
 ```
 
 ### Using the ODataGrid component

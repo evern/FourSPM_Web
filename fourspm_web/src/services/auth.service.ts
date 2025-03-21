@@ -1,15 +1,21 @@
 import defaultUser from '../utils/default-user';
 import { API_CONFIG } from "../config/api";
-import { apiRequest, RequestOptions } from './apiClient';
+import { apiRequest, RequestOptions } from './api/base-api.service';
 import { User } from '../types';
 
 // Define interfaces for our types
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   isOk: boolean;
   data?: T;
   message?: string;
 }
 
+/**
+ * Signs in a user with their email and password
+ * @param email User's email address
+ * @param password User's password
+ * @returns ApiResponse containing User data or error message
+ */
 export async function signIn(email: string, password: string): Promise<ApiResponse<User>> {
   try {
     const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.login}`, {
@@ -38,7 +44,11 @@ export async function signIn(email: string, password: string): Promise<ApiRespon
   }
 }
 
-export async function signOut() {
+/**
+ * Signs out the current user
+ * @returns ApiResponse indicating success or failure
+ */
+export async function signOut(): Promise<ApiResponse<void>> {
   try {
     await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.logout}`, {
       method: 'POST'
@@ -56,6 +66,10 @@ export async function signOut() {
   }
 }
 
+/**
+ * Gets the currently logged-in user
+ * @returns ApiResponse containing User data or error message
+ */
 export async function getUser(): Promise<ApiResponse<User>> {
   try {
     // Get user from localStorage
@@ -99,15 +113,22 @@ export async function getUser(): Promise<ApiResponse<User>> {
         message: 'Failed to validate token'
       };
     }
-  }
-  catch (error) {
+  } catch {
     return {
       isOk: false,
-      message: 'Invalid user data'
+      message: 'Failed to get user'
     };
   }
 }
 
+/**
+ * Creates a new user account
+ * @param email User's email address
+ * @param password User's password
+ * @param firstName User's first name (optional)
+ * @param lastName User's last name (optional)
+ * @returns ApiResponse indicating success or failure
+ */
 export async function createAccount(
   email: string, 
   password: string,
@@ -115,97 +136,90 @@ export async function createAccount(
   lastName?: string
 ): Promise<ApiResponse> {
   try {
-    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.create}`, {
+    // Send the registration data to the server
+    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.register}`, {
       method: 'POST',
-      body: JSON.stringify({ 
-        email, 
+      body: JSON.stringify({
+        email,
         password,
-        firstName,
-        lastName
+        firstName: firstName || '',
+        lastName: lastName || ''
       })
     });
-
-    const data = await response.json();
-    const user = {
-      ...defaultUser,
-      token: data.token,
-      email,
-      firstName: data.user.firstName,
-      lastName: data.user.lastName
-    };
-    // Store user in localStorage after successful account creation
-    localStorage.setItem('user', JSON.stringify(user));
-
+    
+    // If successful, return an OK response
     return {
-      isOk: true,
-      data: user
+      isOk: true
     };
-  }
-  catch (error) {
+  } catch {
+    // If there was an error, return a failed response
     return {
       isOk: false,
-      message: error instanceof Error ? error.message : "Account creation failed"
+      message: 'Failed to create account'
     };
   }
 }
 
+/**
+ * Changes the user's password
+ * @param password New password
+ * @param recoveryCode Recovery code for forgotten password (optional)
+ * @param currentPassword Current password for authenticated password change (optional)
+ * @returns ApiResponse indicating success or failure
+ */
 export async function changePassword(
   password: string,
   recoveryCode: string = '',
   currentPassword?: string
 ): Promise<ApiResponse> {
   try {
-    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.changePassword}`, {
-      method: 'POST',
-      body: JSON.stringify({ password, recoveryCode, currentPassword })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        isOk: false,
-        message: data.message || 'Failed to change password'
-      };
+    const body: any = { password };
+    
+    // If a recovery code is provided, use it for password reset flow
+    if (recoveryCode) {
+      body.recoveryCode = recoveryCode;
+    } else {
+      // Otherwise, this is a standard password change flow
+      body.currentPassword = currentPassword;
     }
-
+    
+    // Send the password change request
+    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.changePassword}`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    
     return {
-      isOk: true,
-      message: data.message || 'Password changed successfully'
+      isOk: true
     };
-  }
-  catch (error) {
+  } catch {
     return {
       isOk: false,
-      message: error instanceof Error ? error.message : "Failed to change password"
+      message: 'Failed to change password'
     };
   }
 }
 
+/**
+ * Requests a password reset for the given email
+ * @param email User's email address
+ * @returns ApiResponse indicating success or failure
+ */
 export async function resetPassword(email: string): Promise<ApiResponse> {
   try {
-    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.resetPassword}`, {
+    // Send the reset password request
+    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.resetPassword}`, {
       method: 'POST',
       body: JSON.stringify({ email })
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        isOk: false,
-        message: data.message || 'Failed to send reset password email'
-      };
-    }
-
+    
     return {
-      isOk: true,
-      data,
-      message: data.message
+      isOk: true
     };
-  }
-  catch (error) {
+  } catch {
     return {
       isOk: false,
-      message: error instanceof Error ? error.message : "Failed to send reset password email"
+      message: 'Failed to reset password'
     };
   }
 }

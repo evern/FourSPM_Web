@@ -11,7 +11,7 @@ import Form, {
 } from 'devextreme-react/form';
 import notify from 'devextreme/ui/notify';
 import LoadIndicator from 'devextreme-react/load-indicator';
-import { createAccount } from '../../api/auth';
+import { createAccount } from '../../services/auth.service';
 import './create-account-form.scss';
 
 interface FormData {
