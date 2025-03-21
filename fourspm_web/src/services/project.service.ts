@@ -1,5 +1,5 @@
-import { API_CONFIG } from '../config/api';
 import { ProjectInfo } from '../types/project';
+import { sharedApiService } from './api/shared-api.service';
 
 /**
  * Fetch project information from the API
@@ -8,29 +8,24 @@ import { ProjectInfo } from '../types/project';
  * @returns A promise resolving to the project information
  */
 export const fetchProject = async (projectId: string, userToken: string): Promise<ProjectInfo> => {
-  if (!userToken || !projectId) {
-    throw new Error('Missing token or project ID');
+  console.log('fetchProject: Calling sharedApiService.getById', { projectId });
+  try {
+    const data = await sharedApiService.getById<any>('/odata/v1/Projects', projectId, userToken);
+    console.log('fetchProject: Raw API response', data);
+    
+    // Format project information
+    const projectInfo = {
+      guid: data.guid,
+      projectNumber: data.projectNumber || '',
+      name: data.name || '',
+      progressStart: data.progressStart ? new Date(data.progressStart) : new Date(),
+      projectStatus: data.projectStatus
+    };
+    
+    console.log('fetchProject: Formatted project info', projectInfo);
+    return projectInfo;
+  } catch (error) {
+    console.error('fetchProject: Error in getById call', error);
+    throw error;
   }
-  
-  const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
-    headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'Content-Type': 'application/json',
-    }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch project info: ${await response.text()}`);
-  }
-  
-  const data = await response.json();
-  
-  // Format project information
-  return {
-    guid: data.guid,
-    projectNumber: data.projectNumber || '',
-    name: data.name || '',
-    progressStart: data.progressStart ? new Date(data.progressStart) : new Date(),
-    projectStatus: data.projectStatus
-  };
 };

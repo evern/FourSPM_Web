@@ -1,4 +1,4 @@
-import { API_CONFIG } from '../config/api';
+import { API_CONFIG } from '../../config/api';
 
 export interface ODataResponse<T> {
   value: T[];

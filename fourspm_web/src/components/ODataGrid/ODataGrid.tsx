@@ -75,7 +75,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onEditorPreparing,
   onInitialized,
   defaultFilter = [],
-  dataSource
+  dataSource,
 }) => {
   const { user } = useAuth();
   const token = user?.token;
@@ -112,7 +112,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
           options.headers['Prefer'] = 'return=minimal';
         }
-
+        
         return true;
       },
       errorHandler: (error) => {

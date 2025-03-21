@@ -1,6 +1,6 @@
-import { API_CONFIG } from '../config/api';
 import { NavigationItem } from '../app-navigation';
 import { projectStatuses } from '../pages/projects/project-statuses';
+import { sharedApiService } from './api/shared-api.service';
 
 // Used for project navigation/menu items
 interface ProjectNavigationItem {
@@ -45,18 +45,11 @@ export interface ProjectDetails {
  */
 export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
   try {
-    const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
-    });
+    const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
+      '/odata/v1/Projects',
+      token
+    );
     
-    if (!response.ok) throw new Error('Failed to fetch projects');
-    
-    const data = await response.json();
-    const projects: ProjectNavigationItem[] = data.value;
-
     // Create status-based navigation structure
     const statusNavItems: NavigationItem[] = projectStatuses.map(status => ({
       text: status.name,
@@ -113,16 +106,14 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
  */
 export const getProjectDetails = async (projectId: string, token: string): Promise<ProjectDetails> => {
   try {
-    const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})?$expand=Client`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
-    });
+    // Use the expand query parameter to include client information
+    const data = await sharedApiService.getById<any>(
+      '/odata/v1/Projects',
+      projectId,
+      token,
+      '$expand=Client'
+    );
     
-    if (!response.ok) throw new Error('Failed to fetch project details');
-    
-    const data = await response.json();
     return {
       guid: data.guid,
       clientGuid: data.clientGuid,
@@ -161,31 +152,18 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
  * @returns Updated project details
  */
 export async function updateProject(projectId: string, data: Partial<ProjectDetails>, token: string): Promise<ProjectDetails> {
-  const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Failed to update project');
-  }
-
-  // If status is 204 No Content, return the data we sent as it was successfully updated
-  if (response.status === 204) {
-    return { ...data } as ProjectDetails;
-  }
-
-  // Otherwise try to parse the response as JSON
   try {
-    return await response.json();
-  } catch (error) {
-    console.error('Error parsing response:', error);
-    // If we can't parse the response but the status was OK, return the data we sent
+    await sharedApiService.update<ProjectDetails>(
+      '/odata/v1/Projects',
+      projectId,
+      data,
+      token
+    );
+    
+    // Return the data we sent as it was successfully updated
     return { ...data } as ProjectDetails;
+  } catch (error) {
+    console.error('Error updating project:', error);
+    throw error;
   }
 }

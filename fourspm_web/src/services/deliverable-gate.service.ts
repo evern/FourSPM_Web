@@ -1,5 +1,5 @@
-import { API_CONFIG } from '../config/api';
 import { DeliverableGate } from '../types/progress';
+import { sharedApiService } from './api/shared-api.service';
 
 /**
  * Fetch all deliverable gates from the API
@@ -7,23 +7,7 @@ import { DeliverableGate } from '../types/progress';
  * @returns A promise resolving to an array of deliverable gates
  */
 export const fetchDeliverableGates = async (userToken: string): Promise<DeliverableGate[]> => {
-  if (!userToken) {
-    throw new Error('No auth token available');
-  }
-  
-  const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`, {
-    headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'Content-Type': 'application/json',
-    }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch deliverable gates: ${await response.text()}`);
-  }
-  
-  const data = await response.json();
-  return data.value || [];
+  return sharedApiService.getAll<DeliverableGate>('/odata/v1/DeliverableGates', userToken);
 };
 
 /**
@@ -40,18 +24,10 @@ export const updateDeliverableGate = async (
 ): Promise<void> => {
   console.log(`Updating deliverable ${deliverableKey} to gate ${gateGuid}`);
   
-  const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${deliverableKey})`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      deliverableGateGuid: gateGuid
-    })
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to update deliverable gate');
-  }
+  return sharedApiService.update<any>(
+    '/odata/v1/Deliverables',
+    deliverableKey,
+    { deliverableGateGuid: gateGuid },
+    userToken
+  );
 };
