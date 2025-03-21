@@ -1,3 +1,6 @@
+@use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/shared-styles.scss";
+
 .period-info {
   display: flex;
   gap: 2rem;
@@ -34,54 +37,60 @@
   }
 }
 
+.grid-custom-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--base-text-color);
+}
+
+.error-message {
+  background-color: #ffdddd;
+  color: #990000;
+  padding: 15px 15px 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border-left: 5px solid #cc0000;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  
+  &::before {
+    content: '⚠️';
+    margin-right: 10px;
+    font-size: 1.2em;
+  }
+  
+  &::after {
+    content: '\00D7';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    font-weight: bold;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .progress-container {
-  padding: 20px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  
-  .error-message {
-    background-color: #ffdddd;
-    color: #990000;
-    padding: 15px 15px 15px 20px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    border-left: 5px solid #cc0000;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    position: relative;
-    animation: fadeIn 0.3s ease-in-out;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    
-    &::before {
-      content: '⚠️';
-      margin-right: 10px;
-      font-size: 1.2em;
-    }
-    
-    &::after {
-      content: '\00D7';
-      position: absolute;
-      right: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 20px;
-      font-weight: bold;
-      opacity: 0.7;
-      transition: opacity 0.2s;
-    }
-    
-    &:hover::after {
-      opacity: 1;
-    }
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  width: 100%;
   
   .period-selector {
     display: flex;
@@ -116,13 +125,6 @@
     display: flex;
     flex-direction: column;
     height: calc(100% - 80px);
-    
-    .grid-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: var(--base-text-color);
-    }
     
     .custom-grid-wrapper {
       height: 100%;
@@ -164,4 +166,8 @@
       }
     }
   }
+}
+
+.custom-grid-wrapper {
+  width: 100%;
 }

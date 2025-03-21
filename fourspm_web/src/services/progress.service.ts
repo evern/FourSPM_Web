@@ -1,8 +1,21 @@
-import { API_CONFIG } from '../../config/api';
+import { API_CONFIG } from '../config/api';
 import { v4 as uuidv4 } from 'uuid';
+import { DeliverableRowData } from '../types/progress';
 
-// Custom function to handle progress updates
-export const handleProgressUpdate = async (key: string, values: any, periodId: number, oldData?: any) => {
+/**
+ * Custom function to handle progress updates
+ * @param key The deliverable GUID
+ * @param values The updated values
+ * @param periodId The period to update
+ * @param oldData Previous data from the row
+ * @returns A promise that resolves when the update is complete
+ */
+export const handleProgressUpdate = async (
+  key: string, 
+  values: Partial<DeliverableRowData>, 
+  periodId: number, 
+  oldData?: Partial<DeliverableRowData>
+) => {
   try {
     // Make sure we have the required data
     if (!key) {
