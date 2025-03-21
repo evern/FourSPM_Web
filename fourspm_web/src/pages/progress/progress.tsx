@@ -36,6 +36,196 @@ const Progress: React.FC = () => {
   const [deliverableGates, setDeliverableGates] = useState<DeliverableGate[]>([]);
   const [isLoadingGates, setIsLoadingGates] = useState<boolean>(true);
 
+  // Helper function to validate progress percentage against period constraints
+  const validateProgressPercentage = (deliverable: any, newPercentage: number) => {
+    // Only validate if we have total hours
+    const totalHours = deliverable.totalHours || 0;
+    if (totalHours <= 0) return { valid: true };
+    
+    // Get the current gate
+    const currentGate = deliverableGates.find(gate => 
+      compareGuids(gate.guid, deliverable.deliverableGateGuid)
+    );
+    if (!currentGate) {
+      return { 
+        valid: false, 
+        errorText: 'Current gate not found' 
+      };
+    }
+    
+    // Use progress items from the deliverable entity (already available)
+    const progressItems = deliverable.progressItems || [];
+    
+    // Separate progress items into previous, current, and future periods
+    const previousItems = progressItems.filter(item => item.period < currentPeriod);
+    const futureItems = progressItems.filter(item => item.period > currentPeriod);
+    
+    // Calculate minimum percentage based on previous periods
+    const previousUnits = previousItems.reduce((sum, item) => sum + item.units, 0);
+    const minPercentage = previousUnits / totalHours;
+    
+    // Calculate maximum percentage (considering both gate max and future commitments)
+    let maxPercentage = currentGate.maxPercentage;
+    
+    // If there are future committed units, they constrain our maximum
+    const futureUnits = futureItems.reduce((sum, item) => sum + item.units, 0);
+    if (futureUnits > 0) {
+      const futureCommitted = futureUnits / totalHours;
+      const remainingPercentage = 1 - futureCommitted;
+      maxPercentage = Math.min(maxPercentage, remainingPercentage);
+    }
+    
+    // Validate against min percentage (can't go below what's already reported)
+    if (newPercentage < minPercentage) {
+      return {
+        valid: false,
+        errorText: `Total earned percentage (${(newPercentage * 100).toFixed(2)}%) cannot be less than what's already reported in previous periods (${(minPercentage * 100).toFixed(2)}%).`
+      };
+    }
+    
+    // Validate against max percentage
+    if (newPercentage > maxPercentage) {
+      return {
+        valid: false,
+        errorText: `Total earned percentage (${(newPercentage * 100).toFixed(2)}%) exceeds the maximum allowed (${(maxPercentage * 100).toFixed(2)}%) for this gate.`
+      };
+    }
+    
+    return { valid: true };
+  };
+
+  // Handle row validation (for all fields)
+  const handleRowValidating = (e: any) => {
+    // Only validate if new data exists
+    if (!e.newData) return;
+
+    // Create a merged row data for validation
+    const rowData = { ...e.oldData, ...e.newData };
+
+    // Validate totalPercentageEarnt if it was changed
+    if (e.newData.totalPercentageEarnt !== undefined) {
+      // Make sure the value is in the correct range (0-1)
+      let percentValue = e.newData.totalPercentageEarnt;
+      
+      // If value is greater than 1, assume it's been entered as a percentage (0-100) and convert
+      if (percentValue > 1) {
+        percentValue = percentValue / 100;
+      }
+      
+      // Clamp value between 0 and 1
+      percentValue = Math.max(0, Math.min(1, percentValue));
+      
+      // Update the newData with the corrected value
+      e.newData.totalPercentageEarnt = percentValue;
+      
+      // Validate the percentage against period constraints
+      const validationResult = validateProgressPercentage(rowData, percentValue);
+      if (!validationResult.valid) {
+        e.isValid = false;
+        e.errorText = validationResult.errorText || 'Validation error occurred';
+      }
+    }
+
+    // Check gate changes
+    if (e.newData.deliverableGateGuid !== undefined) {
+      // Find the selected deliverable gate using the utility function
+      const selectedGate = deliverableGates.find(gate => 
+        compareGuids(gate.guid, e.newData.deliverableGateGuid)
+      );
+
+      if (!selectedGate) {
+        // Instead of failing, just log a warning
+        console.warn('Selected gate not found, using default values');
+        return;
+      }
+
+      // If gate has an auto percentage, set it in the new data
+      if (selectedGate.autoPercentage !== null) {
+        const newPercentage = selectedGate.autoPercentage;
+        
+        // Validate the percentage against period constraints
+        const validationResult = validateProgressPercentage(rowData, newPercentage);
+        if (!validationResult.valid) {
+          e.isValid = false;
+          e.errorText = validationResult.errorText || 'Validation error occurred';
+        }
+      }
+    }
+  };
+
+  // Handle row updating event to manage progress updates
+  const handleRowUpdating = (e: any) => {
+    console.log('Row updating:', e);
+    
+    // Check if we're updating totalPercentageEarnt
+    if (e.newData.totalPercentageEarnt !== undefined) {
+      // Get the deliverable key
+      const deliverableKey = e.key;
+      
+      // Use custom handler for progress updates
+      const result = handleProgressUpdate(deliverableKey, e.newData, currentPeriod, e.oldData);
+      
+      // Returning a Promise will make DevExtreme wait for it to resolve
+      e.cancel = true;
+      return result.then(() => {
+        // Manually reload the grid after update
+        if (e.component) {
+          // Refresh the grid to update data
+          e.component.refresh();
+          
+          // Exit edit mode explicitly
+          e.component.cancelEditData();
+        }
+      }).catch(error => {
+        console.error('Error updating progress:', error);
+      });
+    } else if (e.newData.deliverableGateGuid !== undefined) {
+      // Handle deliverable gate change
+      e.cancel = true;
+      
+      // Find the selected deliverable gate
+      const selectedGate = deliverableGates.find(gate => 
+        compareGuids(gate.guid, e.newData.deliverableGateGuid)
+      );
+      
+      // Prepare the update data
+      const updateData: any = {
+        deliverableGateGuid: e.newData.deliverableGateGuid
+      };
+      
+      // If gate has an auto percentage, update it as well
+      if (selectedGate && selectedGate.autoPercentage !== null) {
+        updateData.totalPercentageEarnt = selectedGate.autoPercentage;
+      }
+      
+      // Update the entity
+      return fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${e.key})`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to update deliverable gate');
+        }
+        
+        // Refresh the grid
+        if (e.component) {
+          e.component.refresh();
+          e.component.cancelEditData();
+        }
+      }).catch(error => {
+        console.error('Error updating deliverable gate:', error);
+      });
+    } else {
+      // For other fields, let default handler work
+      console.log('Using default update handler for', Object.keys(e.newData));
+      return true;
+    }
+  };
+
   // Debug logs to help troubleshoot API issues
   console.log('Progress Component - Initial Render:', {
     projectId,
@@ -127,180 +317,6 @@ const Progress: React.FC = () => {
     return months + 1;
   };
 
-  // Handle row updating event to manage progress updates
-  const handleRowUpdating = (e: any) => {
-    console.log('Row updating:', e);
-    
-    // Check if we're updating totalPercentageEarnt
-    if (e.newData.totalPercentageEarnt !== undefined) {
-      // Make sure the value is in the correct range (0-1)
-      let percentValue = e.newData.totalPercentageEarnt;
-      
-      // If value is greater than 1, assume it's been entered as a percentage (0-100) and convert
-      if (percentValue > 1) {
-        percentValue = percentValue / 100;
-      }
-      
-      // Clamp value between 0 and 1
-      percentValue = Math.max(0, Math.min(1, percentValue));
-      
-      // Update the newData with the corrected value
-      e.newData.totalPercentageEarnt = percentValue;
-      
-      // Get the deliverable key
-      const deliverableKey = e.key;
-      
-      // Use custom handler for progress updates
-      const result = handleProgressUpdate(deliverableKey, e.newData, currentPeriod, e.oldData);
-      
-      // Returning a Promise will make DevExtreme wait for it to resolve
-      e.cancel = true;
-      return result.then(() => {
-        // Manually reload the grid after update
-        if (e.component) {
-          // Refresh the grid to update data
-          e.component.refresh();
-          
-          // Exit edit mode explicitly
-          e.component.cancelEditData();
-        }
-      });
-    } else if (e.newData.deliverableGateGuid !== undefined) {
-      // Handle deliverable gate change
-      e.cancel = true;
-      
-      // Find the selected deliverable gate using the utility function
-      const selectedGate = deliverableGates.find(gate => 
-        compareGuids(gate.guid, e.newData.deliverableGateGuid)
-      );
-      
-      if (!selectedGate) {
-        console.error('Selected deliverable gate not found, using default values');
-        // Instead of failing, use default values
-        const defaultGate = {
-          guid: e.newData.deliverableGateGuid,
-          name: 'Unknown Gate',
-          maxPercentage: 1.0, // Default to 100%
-          autoPercentage: null // Default to no auto percentage
-        };
-        
-        // Update the gate without percentage changes
-        return fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${e.key})`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            deliverableGateGuid: e.newData.deliverableGateGuid
-          })
-        }).then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to update deliverable gate');
-          }
-          return Promise.resolve();
-        }).then(() => {
-          // Refresh gates list to ensure we have the latest data
-          const fetchGates = async () => {
-            try {
-              const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`, {
-                headers: {
-                  'Authorization': `Bearer ${user?.token}`,
-                  'Content-Type': 'application/json',
-                }
-              });
-              
-              if (response.ok) {
-                const data = await response.json();
-                const gates = Array.isArray(data) ? data : (data.value || []);
-                setDeliverableGates(gates);
-              }
-            } catch (error) {
-              console.error('Error refreshing gates:', error);
-            }
-          };
-          fetchGates();
-          
-          // Manually reload the grid after update
-          if (e.component) {
-            e.component.refresh();
-            e.component.cancelEditData();
-          }
-        }).catch(error => {
-          console.error('Error updating deliverable gate:', error);
-          e.errorText = error.message || 'Error updating deliverable gate';
-          return Promise.reject(e.errorText);
-        });
-      }
-      
-      // Get the current total percentage earned
-      const currentPercentage = e.oldData.totalPercentageEarnt || 0;
-      
-      // Initialize newPercentage with the current percentage
-      let newPercentage = currentPercentage;
-      
-      // Apply auto percentage if it's higher than the current percentage
-      if (selectedGate.autoPercentage !== null && selectedGate.autoPercentage > currentPercentage) {
-        newPercentage = selectedGate.autoPercentage;
-      }
-      
-      // Check if the percentage exceeds the maximum allowed
-      if (newPercentage > selectedGate.maxPercentage) {
-        // Show error message and reject the update
-        e.component.editingController.getEditRowKey();
-        e.errorText = `Total earned percentage (${(newPercentage * 100).toFixed(2)}%) exceeds the maximum allowed (${(selectedGate.maxPercentage * 100).toFixed(2)}%) for this gate.`;
-        return Promise.reject(e.errorText);
-      }
-      
-      // Proceed with updating both the gate and potentially the percentage
-      const updatedData = {
-        ...e.newData,
-        totalPercentageEarnt: newPercentage
-      };
-      
-      // First update the gate
-      return fetch(`${API_CONFIG.baseUrl}/odata/v1/Deliverables(${e.key})`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${user?.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          deliverableGateGuid: e.newData.deliverableGateGuid
-        })
-      }).then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to update deliverable gate');
-        }
-        
-        // If percentage was changed (due to auto percentage), update it
-        if (newPercentage !== currentPercentage) {
-          // Use the custom handler for progress updates
-          return handleProgressUpdate(e.key, { totalPercentageEarnt: newPercentage }, currentPeriod, e.oldData);
-        }
-        
-        return Promise.resolve();
-      }).then(() => {
-        // Manually reload the grid after update
-        if (e.component) {
-          // Refresh the grid to update data
-          e.component.refresh();
-          
-          // Exit edit mode explicitly
-          e.component.cancelEditData();
-        }
-      }).catch(error => {
-        console.error('Error updating deliverable gate:', error);
-        e.errorText = error.message || 'Error updating deliverable gate';
-        return Promise.reject(e.errorText);
-      });
-    } else {
-      // For other fields, let default handler work
-      console.log('Using default update handler for', Object.keys(e.newData));
-      return true;
-    }
-  };
-
   return (
     <div className="progress-container">
       <div className="period-selector">
@@ -331,6 +347,7 @@ const Progress: React.FC = () => {
           columns={progressColumns}
           keyField="guid"
           onRowUpdating={handleRowUpdating}
+          onRowValidating={handleRowValidating}
           defaultFilter={[['projectGuid', '=', projectId]]}
           allowUpdating={true}
           allowAdding={false}
