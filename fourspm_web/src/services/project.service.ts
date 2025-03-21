@@ -27,8 +27,10 @@ export const fetchProject = async (projectId: string, userToken: string): Promis
   
   // Format project information
   return {
+    guid: data.guid,
     projectNumber: data.projectNumber || '',
     name: data.name || '',
-    progressStart: data.progressStart ? new Date(data.progressStart) : new Date()
+    progressStart: data.progressStart ? new Date(data.progressStart) : new Date(),
+    projectStatus: data.projectStatus
   };
 };

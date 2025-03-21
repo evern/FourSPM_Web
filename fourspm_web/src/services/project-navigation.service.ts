@@ -2,7 +2,8 @@ import { API_CONFIG } from '../config/api';
 import { NavigationItem } from '../app-navigation';
 import { projectStatuses } from '../pages/projects/project-statuses';
 
-interface Project {
+// Used for project navigation/menu items
+interface ProjectNavigationItem {
   guid: string;
   projectNumber: string;
   name: string;
@@ -37,6 +38,11 @@ export interface ProjectDetails {
   clientContactEmail?: string | null;
 }
 
+/**
+ * Gets project navigation items for the application menu
+ * @param token User authentication token
+ * @returns Array of navigation items for projects
+ */
 export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
   try {
     const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects`, {
@@ -49,7 +55,7 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
     if (!response.ok) throw new Error('Failed to fetch projects');
     
     const data = await response.json();
-    const projects: Project[] = data.value;
+    const projects: ProjectNavigationItem[] = data.value;
 
     // Create status-based navigation structure
     const statusNavItems: NavigationItem[] = projectStatuses.map(status => ({
@@ -99,8 +105,13 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
   }
 };
 
+/**
+ * Gets detailed project information
+ * @param projectId Project GUID
+ * @param token User authentication token
+ * @returns Project details including client information
+ */
 export const getProjectDetails = async (projectId: string, token: string): Promise<ProjectDetails> => {
-  console.log('Bearer Token:', token); 
   try {
     const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})?$expand=Client`, {
       headers: {
@@ -142,6 +153,13 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
   }
 };
 
+/**
+ * Updates project information
+ * @param projectId Project GUID
+ * @param data Partial project data to update
+ * @param token User authentication token
+ * @returns Updated project details
+ */
 export async function updateProject(projectId: string, data: Partial<ProjectDetails>, token: string): Promise<ProjectDetails> {
   const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
     method: 'PATCH',

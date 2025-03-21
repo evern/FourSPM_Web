@@ -3,7 +3,7 @@ import './project-profile.scss';
 import Form from 'devextreme-react/form';
 import type { IGroupItemProps } from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
-import { getProjectDetails, ProjectDetails, updateProject } from '../../services/project-service';
+import { getProjectDetails, ProjectDetails, updateProject } from '../../services/project-navigation.service';
 import { useAuth } from '../../contexts/auth';
 import { Button } from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';

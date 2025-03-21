@@ -37,6 +37,18 @@
   }
 }
 
+.period-selector {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.period-info, .period-date {
+  font-size: 14px;
+}
+
 .grid-custom-title {
   font-size: 1.5rem;
   font-weight: bold;
