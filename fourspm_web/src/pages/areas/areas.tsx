@@ -8,15 +8,12 @@ import { useGridOperations } from '../../hooks/useGridOperations';
 import { useAutoIncrement } from '../../hooks/useAutoIncrement';
 import { areaColumns } from './area-columns';
 import { useAuth } from '../../contexts/auth';
+import { fetchProject } from '../../services/project.service';
+import { ProjectInfo } from '../../types/project';
 import './areas.scss';
 
 interface AreaParams {
   projectId: string;
-}
-
-interface ProjectInfo {
-  projectNumber: string;
-  name: string;
 }
 
 const Areas: React.FC = () => {
@@ -33,32 +30,18 @@ const Areas: React.FC = () => {
 
   // Fetch project info when component mounts
   useEffect(() => {
-    const fetchProjectInfo = async () => {
+    const getProjectInfo = async () => {
       if (!user?.token || !projectId) return;
       
       try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setProjectInfo({
-            projectNumber: data.projectNumber || '',
-            name: data.name || ''
-          });
-        } else {
-          console.error('Failed to fetch project info:', await response.text());
-        }
+        const project = await fetchProject(projectId, user.token);
+        setProjectInfo(project);
       } catch (error) {
         console.error('Error fetching project info:', error);
       }
     };
     
-    fetchProjectInfo();
+    getProjectInfo();
   }, [projectId, user?.token]);
 
   // Add auto-increment hook to get the next area number

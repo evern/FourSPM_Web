@@ -7,15 +7,12 @@ import { useGridValidation } from '../../hooks/useGridValidation';
 import { useGridOperations } from '../../hooks/useGridOperations';
 import { createDeliverableColumns } from './deliverable-columns';
 import { useAuth } from '../../contexts/auth';
+import { fetchProject } from '../../services/project.service';
+import { ProjectInfo } from '../../types/project';
 import './deliverables.scss';
 
 interface DeliverableParams {
   projectId: string;
-}
-
-interface ProjectInfo {
-  projectNumber: string;
-  name: string;
 }
 
 const Deliverables: React.FC = () => {
@@ -33,32 +30,18 @@ const Deliverables: React.FC = () => {
 
   // Fetch project info when component mounts
   useEffect(() => {
-    const fetchProjectInfo = async () => {
+    const getProjectInfo = async () => {
       if (!user?.token || !projectId) return;
       
       try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Projects(${projectId})`, {
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setProjectInfo({
-            projectNumber: data.projectNumber || '',
-            name: data.name || ''
-          });
-        } else {
-          console.error('Failed to fetch project info:', await response.text());
-        }
+        const project = await fetchProject(projectId, user.token);
+        setProjectInfo(project);
       } catch (error) {
         console.error('Error fetching project info:', error);
       }
     };
     
-    fetchProjectInfo();
+    getProjectInfo();
   }, [projectId, user?.token]);
 
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
