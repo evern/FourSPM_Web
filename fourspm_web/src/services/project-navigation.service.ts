@@ -1,5 +1,5 @@
 import { NavigationItem } from '../app-navigation';
-import { projectStatuses } from '../pages/projects/project-statuses';
+import { projectStatuses } from '../types/project';
 import { sharedApiService } from './api/shared-api.service';
 
 // Used for project navigation/menu items

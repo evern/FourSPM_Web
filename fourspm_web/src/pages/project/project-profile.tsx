@@ -7,7 +7,7 @@ import { getProjectDetails, ProjectDetails, updateProject } from '../../services
 import { useAuth } from '../../contexts/auth';
 import { Button } from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
-import { projectStatuses } from '../projects/project-statuses';
+import { projectStatuses } from '../../types/project';
 import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import ODataStore from 'devextreme/data/odata/store';

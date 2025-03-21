@@ -1,5 +1,5 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
-import { projectStatuses } from './project-statuses';
+import { projectStatuses } from '../../types/project';
 import { clientsStore } from '../../stores/odataStores';
 import React from 'react';
 
