@@ -142,19 +142,44 @@
         @media (max-width: 992px) {
           width: 100%;
           margin-right: 0;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
         }
         
         @media (max-width: 768px) {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          
           span:first-child {
+            display: block;
             width: 100%;
             margin-bottom: 0.25rem;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .number-box-container {
+            margin-bottom: 0.25rem;
+          }
+        }
+        
+        .number-box-container {
+          display: flex;
+          align-items: center;
+          margin: 0;
+
+          @media (max-width: 768px) {
+            min-width: 60px;
+            display: inline-flex;
+            margin-right: 0.5rem;
           }
         }
         
         .period-number-box {
           margin: 0 0.5rem;
           width: 60px !important;
+          min-width: 60px !important;
+          display: inline-block !important;
           
           .dx-numberbox-spin-container {
             border: none;

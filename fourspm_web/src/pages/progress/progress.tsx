@@ -108,21 +108,23 @@ const Progress: React.FC = () => {
                 <div className="period-info">
                   <div className="info-item">
                     <span>Reporting Period:</span>
-                    <NumberBox
-                      value={selectedPeriod || 0}
-                      min={0}
-                      showSpinButtons={true}
-                      onValueChanged={(e) => {
-                        if (e.value !== null && e.value !== undefined) {
-                          const currentPeriod = selectedPeriod || 0;
-                          const isIncrement = e.value > currentPeriod;
-                          handlePeriodChange(isIncrement);
-                        }
-                      }}
-                      className="period-number-box"
-                      width="60px"
-                      stylingMode="outlined"
-                    />
+                    <div className="number-box-container">
+                      <NumberBox
+                        value={selectedPeriod || 0}
+                        min={0}
+                        showSpinButtons={true}
+                        onValueChanged={(e) => {
+                          if (e.value !== null && e.value !== undefined) {
+                            const currentPeriod = selectedPeriod || 0;
+                            const isIncrement = e.value > currentPeriod;
+                            handlePeriodChange(isIncrement);
+                          }
+                        }}
+                        className="period-number-box"
+                        width="60px"
+                        stylingMode="outlined"
+                      />
+                    </div>
                     <span className="secondary-info">(weeks from project start)</span>
                   </div>
                   <div className="info-item">
