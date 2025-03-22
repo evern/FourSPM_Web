@@ -167,11 +167,11 @@
           display: flex;
           align-items: center;
           margin: 0;
-          min-width: 60px !important; /* Minimum width to prevent collapse */
+          min-width: 120px !important; 
           flex-shrink: 0; /* Prevents container from shrinking */
 
           @media (max-width: 768px) {
-            min-width: 60px !important;
+            min-width: 120px !important;
             display: inline-flex;
             margin-right: 0.5rem;
           }
@@ -179,40 +179,76 @@
         
         .period-number-box {
           margin: 0 0.5rem;
-          width: 60px !important;
-          min-width: 60px !important;
+          width: 120px !important;
+          min-width: 120px !important;
           display: inline-block !important;
+
+          .dx-numberbox-container {
+            width: 120px !important;
+            display: flex;
+            justify-content: space-between;
+          }
           
+          /* Style for number display with large buttons */
+          .dx-texteditor-container {
+            width: 140px !important;
+            display: flex;
+            flex-direction: row;
+          }
+          
+          .dx-texteditor-input-container {
+            display: flex;
+            justify-content: center;
+            position: relative;
+          }
+
           .dx-numberbox-spin-container {
             border: none;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 120px !important;
           }
           
           .dx-texteditor-input {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             text-align: center;
             color: var(--primary);
             padding: 0;
-          }
-          
-          .dx-numberbox-spin-up, .dx-numberbox-spin-down {
-            min-width: 24px;
-            width: 24px;
-            height: 24px;
+            width: 50px !important;
+            min-width: 50px !important;
+            position: relative !important;
+            margin: 0 auto !important;
+            z-index: 5 !important;
+            border-radius: 4px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
           }
 
+          /* Fix for large spin buttons */
+          .dx-numberbox-spin-up, .dx-numberbox-spin-down {
+            width: 36px !important;
+            height: 36px !important;
+            position: absolute;
+            z-index: 4;
+            right: 5px;
+          }
+
+          .dx-numberbox-spin-up {
+            top: 0;
+          }
+
+          .dx-numberbox-spin-down {
+            bottom: 0;
+          }
+
+          /* Mobile styles */
           @media (max-width: 576px) {
-            width: 50px !important;
+            width: 140px !important;
             margin: 0 0.25rem;
             
             .dx-texteditor-input {
               font-size: 0.9rem;
-            }
-            
-            .dx-numberbox-spin-up, .dx-numberbox-spin-down {
-              min-width: 20px;
-              width: 20px;
-              height: 20px;
             }
           }
         }
