@@ -134,20 +134,22 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
         height="calc(100% - 56px)" // Adjust height to account for header
       >
         <div className={'container'}>
-          <ScrollView 
-            ref={scrollViewRef} 
-            className={'layout-body'}
-            direction="vertical"
-            scrollByContent={true}
-            scrollByThumb={true}
-            showScrollbar="always"
-          >
-            <div className={'content'}>
-              {React.Children.map(children, (item) => {
-                return item && React.isValidElement(item) && item.type !== Footer && item;
-              })}
-            </div>
-          </ScrollView>
+          <div className={'scroll-wrapper'}>
+            <ScrollView 
+              ref={scrollViewRef} 
+              className={'layout-body'}
+              direction="vertical"
+              scrollByContent={true}
+              scrollByThumb={true}
+              showScrollbar="always"
+            >
+              <div className={'content'}>
+                {React.Children.map(children, (item) => {
+                  return item && React.isValidElement(item) && item.type !== Footer && item;
+                })}
+              </div>
+            </ScrollView>
+          </div>
           <div className={'footer-container'}>
             {React.Children.map(children, (item) => {
               return item && React.isValidElement(item) && item.type === Footer && item;
