@@ -74,13 +74,27 @@ const Progress: React.FC = () => {
           {/* Project header with period info */}
           {project && (
             <div className="period-selector">
-              <div className="period-info">
-                <span>Reporting Period: </span>
-                <strong>{currentPeriod}</strong>
-              </div>
-              <div className="period-date">
-                <span>As of: </span>
-                <strong>{new Date().toLocaleDateString()}</strong>
+              <div className="period-details">
+                <div className="period-info">
+                  <span>Reporting Period: </span>
+                  <strong>{currentPeriod}</strong>
+                  <span className="secondary-info"> (weeks from project start)</span>
+                </div>
+                <div className="period-date">
+                  <span>Current Date: </span>
+                  <strong>{new Date().toLocaleDateString()}</strong>
+                </div>
+                <div className="project-start-date">
+                  <span>Project Start Date: </span>
+                  <strong>
+                    {project.progressStart
+                      ? `${new Date(project.progressStart).toLocaleDateString()}`
+                      : 'Not set'}
+                  </strong>
+                  {project.progressStart && (
+                    <span className="secondary-info"> ({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
