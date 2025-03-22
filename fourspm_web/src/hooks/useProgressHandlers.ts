@@ -27,43 +27,9 @@ export const useProgressHandlers = (
         return;
       }
       
-      // Calculate previous period earned percentage
-      // - This is derived from progressItems for periods less than currentPeriod
-      let previousPeriodEarnedPercentage = 0;
-      if (e.oldData.progressItems && Array.isArray(e.oldData.progressItems)) {
-        const previousPeriodItems = e.oldData.progressItems.filter(
-          (item: any) => item.period < currentPeriod && !item.deleted
-        );
-        
-        if (previousPeriodItems.length > 0) {
-          // Get the most recent previous period
-          const maxPreviousPeriod = Math.max(...previousPeriodItems.map((item: any) => item.period));
-          const previousPeriodItem = previousPeriodItems.find((item: any) => item.period === maxPreviousPeriod);
-          
-          if (previousPeriodItem && e.oldData.totalHours) {
-            previousPeriodEarnedPercentage = previousPeriodItem.units / e.oldData.totalHours;
-          }
-        }
-      }
-      
-      // Calculate future period earned percentage
-      // - This is derived from progressItems for periods greater than currentPeriod
-      let futurePeriodEarnedPercentage = 1.0; // Default to 100% if no future periods
-      if (e.oldData.progressItems && Array.isArray(e.oldData.progressItems)) {
-        const futurePeriodItems = e.oldData.progressItems.filter(
-          (item: any) => item.period > currentPeriod && !item.deleted
-        );
-        
-        if (futurePeriodItems.length > 0) {
-          // Get the earliest future period
-          const minFuturePeriod = Math.min(...futurePeriodItems.map((item: any) => item.period));
-          const futurePeriodItem = futurePeriodItems.find((item: any) => item.period === minFuturePeriod);
-          
-          if (futurePeriodItem && e.oldData.totalHours) {
-            futurePeriodEarnedPercentage = futurePeriodItem.units / e.oldData.totalHours;
-          }
-        }
-      }
+      // Use backend-provided values for previous and future period percentages
+      const previousPeriodEarnedPercentage = e.oldData.previousPeriodEarnedPercentage || 0;
+      const futurePeriodEarnedPercentage = e.oldData.futurePeriodEarnedPercentage || 1.0;
       
       // Validate that percentage doesn't decrease below previous period percentage
       if (newPercentage < previousPeriodEarnedPercentage) {
@@ -145,23 +111,8 @@ export const useProgressHandlers = (
       return Promise.reject('Selected gate not found');
     }
     
-    // Calculate previous period earned percentage (same logic as in validation)
-    let previousPeriodEarnedPercentage = 0;
-    if (oldData.progressItems && Array.isArray(oldData.progressItems)) {
-      const previousPeriodItems = oldData.progressItems.filter(
-        (item: any) => item.period < currentPeriod && !item.deleted
-      );
-      
-      if (previousPeriodItems.length > 0) {
-        // Get the most recent previous period
-        const maxPreviousPeriod = Math.max(...previousPeriodItems.map((item: any) => item.period));
-        const previousPeriodItem = previousPeriodItems.find((item: any) => item.period === maxPreviousPeriod);
-        
-        if (previousPeriodItem && oldData.totalHours) {
-          previousPeriodEarnedPercentage = previousPeriodItem.units / oldData.totalHours;
-        }
-      }
-    }
+    // Use backend-provided value for previous period percentage
+    const previousPeriodEarnedPercentage = oldData.previousPeriodEarnedPercentage || 0;
     
     // Get user's entered percentage and current percentage
     const userPercentage = newData.totalPercentageEarnt;
@@ -205,23 +156,8 @@ export const useProgressHandlers = (
       return Promise.reject('Selected gate not found');
     }
     
-    // Calculate previous period earned percentage (same logic as in validation)
-    let previousPeriodEarnedPercentage = 0;
-    if (oldData.progressItems && Array.isArray(oldData.progressItems)) {
-      const previousPeriodItems = oldData.progressItems.filter(
-        (item: any) => item.period < currentPeriod && !item.deleted
-      );
-      
-      if (previousPeriodItems.length > 0) {
-        // Get the most recent previous period
-        const maxPreviousPeriod = Math.max(...previousPeriodItems.map((item: any) => item.period));
-        const previousPeriodItem = previousPeriodItems.find((item: any) => item.period === maxPreviousPeriod);
-        
-        if (previousPeriodItem && oldData.totalHours) {
-          previousPeriodEarnedPercentage = previousPeriodItem.units / oldData.totalHours;
-        }
-      }
-    }
+    // Use backend-provided value for previous period percentage
+    const previousPeriodEarnedPercentage = oldData.previousPeriodEarnedPercentage || 0;
     
     // Check if we need to apply auto percentage
     if (selectedGate.autoPercentage !== null) {

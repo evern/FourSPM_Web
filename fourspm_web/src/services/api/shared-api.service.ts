@@ -12,6 +12,28 @@ class SharedApiService {
   }
 
   /**
+   * Generic method to perform a direct GET request to an API endpoint
+   * @param url Full endpoint URL including query parameters
+   * @param token Auth token
+   * @returns Promise resolving to the API response
+   */
+  async get<T>(url: string, token: string): Promise<T> {
+    if (!token) {
+      throw new Error('No auth token provided');
+    }
+
+    try {
+      console.log(`SharedApiService.get: Fetching ${url}`);
+      const response = await this.odataService.get<T>(url, token);
+      console.log(`SharedApiService.get: Response:`, response);
+      return response as unknown as T;
+    } catch (error: any) {
+      console.error(`Error fetching ${url}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Generic method to get an entity by ID
    * @param endpoint OData endpoint path
    * @param id Entity ID

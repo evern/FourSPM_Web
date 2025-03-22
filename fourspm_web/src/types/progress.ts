@@ -25,4 +25,8 @@ export interface DeliverableRowData {
   deliverableGateGuid: string;
   totalHours?: number;
   projectGuid: string;
+  previousPeriodEarnedPercentage?: number; // Added for tracking percentage earned in previous periods
+  futurePeriodEarnedPercentage?: number;   // Added for tracking percentage earned in future periods
+  periodPercentageEarnt?: number;          // Added for tracking percentage earned in current period
+  periodEarntHours?: number;               // Hours earned in the current period
 }

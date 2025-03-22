@@ -87,12 +87,11 @@ const Progress: React.FC = () => {
           {/* Progress tracking grid - using the ODataGrid component */}
           <ODataGrid
             title=" "
-            endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables`}
+            endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${currentPeriod}`}
             columns={createProgressColumns()}
             keyField="guid"
             onRowUpdating={handleRowUpdating}
             onRowValidating={handleRowValidating}
-            defaultFilter={[['projectGuid', '=', projectId]]}
             allowUpdating={true}
             allowAdding={false}
             allowDeleting={false}

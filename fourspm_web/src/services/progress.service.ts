@@ -33,12 +33,16 @@ export const handleProgressUpdate = async (
     
     console.log(`Updating progress for deliverable ${key} to ${values.totalPercentageEarnt * 100}% for period ${periodId}`);
 
+    // Calculate the period-specific percentage from total and previous percentages
+    const previousPeriodEarnedPercentage = oldData?.previousPeriodEarnedPercentage || 0;
+    const periodPercentageEarnt = values.totalPercentageEarnt - previousPeriodEarnedPercentage;
+    
     // Prepare the data for the API call
     const progressData = {
       guid: uuidv4(),
       deliverableGuid: key,
       period: periodId,
-      units: oldData && oldData.totalHours ? oldData.totalHours * values.totalPercentageEarnt : 0,
+      units: oldData && oldData.totalHours ? oldData.totalHours * periodPercentageEarnt : 0,
       createdBy: JSON.parse(localStorage.getItem('user') || '{}').accountId,
     };
 
