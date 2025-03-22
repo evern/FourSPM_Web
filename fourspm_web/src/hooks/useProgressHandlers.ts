@@ -11,13 +11,13 @@ export const useProgressHandlers = (
   // Handle row validation
   const handleRowValidating = (e: any) => {
     if (e.newData.cumulativeEarntPercentage !== undefined) {
-      // Get the old percentage value
-      const oldPercentage = e.oldData.cumulativeEarntPercentage || 0;
+      // Get the new percentage value
       const newPercentage = e.newData.cumulativeEarntPercentage;
       
-      // Get the current gate
+      // Get the current gate - check newData first in case the gate is being changed
+      const gateGuid = e.newData.deliverableGateGuid !== undefined ? e.newData.deliverableGateGuid : e.oldData.deliverableGateGuid;
       const currentGate = deliverableGates.find(gate => 
-        compareGuids(gate.guid, e.oldData.deliverableGateGuid)
+        compareGuids(gate.guid, gateGuid)
       );
       
       // Validate against gate max percentage
@@ -39,9 +39,9 @@ export const useProgressHandlers = (
       }
       
       // Validate that percentage doesn't exceed future period percentage
-      if (newPercentage > futurePeriodEarntPercentage) {
+      if (newPercentage + futurePeriodEarntPercentage > 1.0) {
         e.isValid = false;
-        e.errorText = `Percentage cannot exceed what's already reported in future periods (${(futurePeriodEarntPercentage * 100).toFixed(0)}%)`;
+        e.errorText = `Combined percentage with future periods cannot exceed 100% (current: ${(newPercentage * 100).toFixed(0)}%, future: ${(futurePeriodEarntPercentage * 100).toFixed(0)}%)`;
         return;
       }
     }
