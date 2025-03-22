@@ -62,6 +62,96 @@ The `ODataGrid` component provides direct integration with OData endpoints:
 - Handles CRUD operations through the OData protocol
 - Provides validation and custom editing capabilities
 
+## Creating Collection Views
+
+Collection views in FourSPM Web follow a consistent pattern, as demonstrated in `progress.tsx`. To create a new collection view:
+
+1. **Set up URL parameters and component structure**:
+
+```typescript
+// Define URL parameters interface
+interface MyViewParams {
+  someId: string;
+}
+
+const MyCollectionView: React.FC = () => {
+  // Extract parameters from URL
+  const { someId } = useParams<MyViewParams>();
+  const { user } = useAuth();
+  
+  // Component logic and return statement
+};
+```
+
+2. **Use custom hooks for data fetching**:
+
+```typescript
+// Fetch related data using custom hooks
+const { someData, isLoadingData } = useSomeDataHook(someId, user?.token);
+const { otherData, isLoadingOtherData } = useOtherDataHook(user?.token);
+```
+
+3. **Set up data manipulation handlers**:
+
+```typescript
+// Set up handlers for CRUD operations
+const { 
+  handleRowUpdating, 
+  handleRowValidating 
+} = useDataHandlers(dependencies, user?.token);
+```
+
+4. **Create a loading indicator**:
+
+```typescript
+// Combine loading states
+const isLoading = isLoadingData || isLoadingOtherData;
+
+// Add loading panel in the JSX
+<LoadPanel 
+  visible={isLoading} 
+  position={{ of: '.container-class' }}
+  showIndicator={true}
+  showPane={true}
+/>
+```
+
+5. **Implement the grid with ODataGrid component**:
+
+```typescript
+<ODataGrid
+  title="Collection Title"
+  endpoint={`${API_CONFIG.baseUrl}/odata/v1/SomeEntity?filter=${someId}`}
+  columns={createEntityColumns()}
+  keyField="guid"
+  onRowUpdating={handleRowUpdating}
+  onRowValidating={handleRowValidating}
+  allowUpdating={true}
+  allowAdding={false}
+  allowDeleting={false}
+/>
+```
+
+6. **Organize the layout with appropriate CSS classes**:
+
+```jsx
+<div className="collection-container">
+  {!isLoading && (
+    <div className="custom-grid-wrapper">
+      <div className="grid-custom-title">
+        {titleData ? `${titleData} View` : 'Default Title'}
+      </div>
+      {/* Optional metadata display */}
+      <div className="metadata-section">
+        <span>Label: </span>
+        <strong>{metadataValue}</strong>
+      </div>
+      {/* ODataGrid component */}
+    </div>
+  )}
+</div>
+```
+
 ## Usage Examples
 
 ### Using React hooks
