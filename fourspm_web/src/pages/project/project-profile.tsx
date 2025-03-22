@@ -61,6 +61,7 @@ export default function ProjectProfile() {
   }>({ name: null, number: null, email: null });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingClient, setIsLoadingClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); 
   const { user } = useAuth();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -78,10 +79,9 @@ export default function ProjectProfile() {
       
       if (response.ok) {
         const clientData = await response.json();
-        console.log('Retrieved client data:', clientData); // See what fields are actually available
+        console.log('Retrieved client data:', clientData); 
         setClientDetails(clientData);
         
-        // Use the exact field names from ClientsController.cs MapToEntity method
         const contact = {
           name: clientData.clientContactName || null,
           number: clientData.clientContactNumber || null,
@@ -107,7 +107,6 @@ export default function ProjectProfile() {
       const clientDataResult = await fetchClientDetails(e.value, user.token);
       if (clientDataResult && formRef) {
         const clientData = clientDataResult;
-        // Update form data with new client contact information
         setProjectData(prevData => {
           if (!prevData) return null;
           
@@ -128,16 +127,15 @@ export default function ProjectProfile() {
   useEffect(() => {
     const fetchProjectData = async () => {
       if (user?.token && projectId) {
+        setIsLoading(true); 
         try {
           const data = await getProjectDetails(projectId, user.token);
           setProjectData(data);
 
-          // If clientGuid exists, fetch client details
           if (data.clientGuid) {
             await fetchClientDetails(data.clientGuid, user.token);
           }
 
-          // Set initial contact values
           setSelectedClientContact({
             name: data.clientContactName || null,
             number: data.clientContactNumber || null,
@@ -146,6 +144,8 @@ export default function ProjectProfile() {
         } catch (error) {
           console.error('Error fetching project data:', error);
           notify('Error loading project data', 'error', 3000);
+        } finally {
+          setIsLoading(false); 
         }
       }
     };
@@ -173,17 +173,16 @@ export default function ProjectProfile() {
     }
   };
 
-  if (!projectData) {
+  if (isLoading || !projectData) {
     return (
-      <div className="profile-loading-container">
-        <LoadPanel
-          visible={true}
-          showIndicator={true}
-          shading={true}
-          showPane={true}
-          shadingColor="rgba(0, 0, 0, 0.1)"
-          message="Loading Project Data..."
-        />
+      <div className="profile-container">
+        <div className="custom-grid-wrapper">
+          <div className="grid-custom-title">Loading Project Details...</div>
+        </div>
+        <div className="profile-loading-container">
+          <LoadIndicator width={50} height={50} visible={true} />
+          <div className="loading-message">Loading project data...</div>
+        </div>
       </div>
     );
   }
@@ -192,10 +191,10 @@ export default function ProjectProfile() {
     itemType: 'group',
     caption: 'Project Information',
     colCountByScreen: {
-      xs: 1,    // Mobile phones
-      sm: 1,    // Tablets (portrait)
-      md: 2,    // Tablets (landscape) / small laptops
-      lg: 2     // Large screens
+      xs: 1,    
+      sm: 1,    
+      md: 2,    
+      lg: 2     
     },
     items: [
       { 
@@ -251,10 +250,10 @@ export default function ProjectProfile() {
     itemType: 'group',
     caption: 'Client Information',
     colCountByScreen: {
-      xs: 1,    // Mobile phones
-      sm: 1,    // Tablets (portrait)
-      md: 2,    // Tablets (landscape) / small laptops
-      lg: 2     // Large screens
+      xs: 1,    
+      sm: 1,    
+      md: 2,    
+      lg: 2     
     },
     items: [
       {
@@ -325,7 +324,6 @@ export default function ProjectProfile() {
 
   const handleCancelClick = () => {
     setIsEditing(false);
-    // Reset the form data to the original project data
     if (formRef) {
       formRef.instance.option('formData', projectData);
     }
@@ -377,7 +375,7 @@ export default function ProjectProfile() {
       </div>
 
       <ScrollView 
-        height="calc(100vh - 180px)" // Adjusted height since buttons are now at the top
+        height="calc(100vh - 180px)" 
         width="100%"
         direction="vertical"
         showScrollbar="always"
