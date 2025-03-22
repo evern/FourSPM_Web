@@ -92,6 +92,28 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
 };
 
 /**
+ * Gets client details by GUID
+ * @param clientId Client GUID
+ * @param token User authentication token
+ * @returns Client details including contact information
+ */
+export const getClientDetails = async (clientId: string, token: string): Promise<any> => {
+  try {
+    const data = await sharedApiService.getById<any>('/odata/v1/Clients', clientId, token);
+    
+    return {
+      ...data,
+      clientContactName: data.clientContactName || null,
+      clientContactNumber: data.clientContactNumber || null,
+      clientContactEmail: data.clientContactEmail || null
+    };
+  } catch (error) {
+    console.error('Error fetching client details:', error);
+    throw error;
+  }
+};
+
+/**
  * Gets detailed project information
  * @param projectId Project GUID
  * @param token User authentication token

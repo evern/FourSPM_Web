@@ -1,146 +1,68 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './project-profile.scss';
 import Form from 'devextreme-react/form';
-import type { IGroupItemProps } from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
-import { getProjectDetails, updateProject } from '../../services/project.service';
+import { getProjectDetails } from '../../services/project.service';
 import { ProjectDetails } from '../../types/project';
 import { useAuth } from '../../contexts/auth';
 import { Button } from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
-import { projectStatuses } from '../../types/project';
 import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
-import ODataStore from 'devextreme/data/odata/store';
-import { API_CONFIG } from '../../config/api';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { LoadIndicator } from 'devextreme-react/load-indicator';
 
-// Constants
-const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
+// Import custom hooks
+import { useProjectEdit } from '../../hooks/useProjectEdit';
+import { useClientData } from '../../hooks/useClientData';
 
-const getStatusDisplayName = (statusId: string) => {
-  const status = projectStatuses.find(s => s.id === statusId);
-  return status ? status.name : statusId;
-};
+// Import form items configuration
+import { createProjectFormItems } from './project-form-items';
 
-// Create Client lookup ODataStore
-const clientStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/Clients`,
-  version: 4,
-  key: 'guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    
-    if (!token) {
-      console.error('No token available');
-      return false;
-    }
+// Define URL parameters interface
+interface ProjectProfileParams {
+  projectId: string;
+}
 
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-
-    return true;
-  }
-});
-
-export default function ProjectProfile() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const [projectData, setProjectData] = useState<ProjectDetails | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formRef, setFormRef] = useState<Form | null>(null);
-  const [clientDetails, setClientDetails] = useState<any>(null);
-  const [selectedClientContact, setSelectedClientContact] = useState<{
-    name: string | null;
-    number: string | null;
-    email: string | null;
-  }>({ name: null, number: null, email: null });
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingClient, setIsLoadingClient] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); 
+const ProjectProfile: React.FC = () => {
+  // Extract parameters from URL
+  const { projectId } = useParams<ProjectProfileParams>();
   const { user } = useAuth();
+  
+  // Component state
+  const [projectData, setProjectData] = useState<ProjectDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true); 
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Fetch client details function to reuse for initial load and selection change
-  const fetchClientDetails = async (clientGuid: string, token: string) => {
-    setIsLoadingClient(true);
-    try {
-      const response = await fetch(`${API_CONFIG.baseUrl}/odata/v1/Clients(${clientGuid})`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (response.ok) {
-        const clientData = await response.json();
-        console.log('Retrieved client data:', clientData); 
-        setClientDetails(clientData);
-        
-        const contact = {
-          name: clientData.clientContactName || null,
-          number: clientData.clientContactNumber || null,
-          email: clientData.clientContactEmail || null
-        };
-        
-        console.log('Extracted contact info:', contact);
-        setSelectedClientContact(contact);
-        return { ...clientData, contact };
-      }
-    } catch (error) {
-      console.error('Error fetching client details:', error);
-      notify('Error loading client data', 'error', 3000);
-    } finally {
-      setIsLoadingClient(false);
-    }
-    return null;
-  };
+  // Use custom hooks
+  const { isEditing, isSaving, formRef, onFormRef, startEdit, cancelEdit, saveProjectChanges } = 
+    useProjectEdit(projectId, user?.token);
+  const { clientDetails, selectedClientContact, isLoadingClient, handleClientChange, loadClientData } = 
+    useClientData(user?.token);
 
-  // Handle client selection change
-  const handleClientChange = async (e: any) => {
-    if (user?.token && e.value) {
-      const clientDataResult = await fetchClientDetails(e.value, user.token);
-      if (clientDataResult && formRef) {
-        const clientData = clientDataResult;
-        setProjectData(prevData => {
-          if (!prevData) return null;
-          
-          console.log('Updating project data with client contact:', clientData.contact);
-          
-          return {
-            ...prevData,
-            clientGuid: e.value,
-            clientContactName: clientData.contact.name || '',
-            clientContactNumber: clientData.contact.number || '',
-            clientContactEmail: clientData.contact.email || ''
-          };
-        });
-      }
+  // Handle client selection change event (adapter for the form)
+  const handleClientSelectionChange = useCallback(async (e: any) => {
+    if (formRef && e.value) {
+      await handleClientChange(e.value, formRef);
     }
-  };
+  }, [formRef, handleClientChange]);
 
+  // Fetch project data on component mount
   useEffect(() => {
     const fetchProjectData = async () => {
       if (user?.token && projectId) {
         setIsLoading(true); 
         try {
           const data = await getProjectDetails(projectId, user.token);
+          console.log('Project data loaded:', data);
+          console.log('Client data from API:', data.client);
           setProjectData(data);
 
           if (data.clientGuid) {
-            await fetchClientDetails(data.clientGuid, user.token);
+            const clientData = await loadClientData(data.clientGuid);
+            console.log('Client data loaded separately:', clientData);
           }
-
-          setSelectedClientContact({
-            name: data.clientContactName || null,
-            number: data.clientContactNumber || null,
-            email: data.clientContactEmail || null
-          });
         } catch (error) {
           console.error('Error fetching project data:', error);
           notify('Error loading project data', 'error', 3000);
@@ -150,29 +72,35 @@ export default function ProjectProfile() {
       }
     };
     fetchProjectData();
-  }, [projectId, user?.token]);
+  }, [projectId, user?.token, loadClientData]);
 
-  const handleSave = async () => {
-    if (!formRef || !projectData || !user?.token) return;
-
-    setIsSaving(true);
-    try {
-      const formData = formRef.instance.option('formData');
-      const result = await updateProject(projectId!, formData, user.token);
+  // Handle save button click
+  const handleSave = useCallback(async () => {
+    if (!projectData) return;
+    
+    const updatedProject = await saveProjectChanges(projectData);
+    if (updatedProject) {
+      console.log('Project saved, updated data:', updatedProject);
+      console.log('Client data after save:', updatedProject.client);
+      setProjectData(updatedProject);
       
-      if (result) {
-        setProjectData(result);
-        setIsEditing(false);
-        notify('Project updated successfully', 'success', 3000);
+      // Reload client data if available
+      if (updatedProject.clientGuid) {
+        const refreshedClient = await loadClientData(updatedProject.clientGuid);
+        console.log('Client data refreshed after save:', refreshedClient);
       }
-    } catch (error) {
-      console.error('Error updating project:', error);
-      notify('Error updating project', 'error', 3000);
-    } finally {
-      setIsSaving(false);
     }
-  };
+  }, [projectData, saveProjectChanges, loadClientData]);
 
+  // Log projectData changes
+  useEffect(() => {
+    if (projectData) {
+      console.log('ProjectData state updated:', projectData);
+      console.log('Client in projectData:', projectData.client);
+    }
+  }, [projectData]);
+
+  // Loading state
   if (isLoading || !projectData) {
     return (
       <div className="profile-container">
@@ -187,212 +115,79 @@ export default function ProjectProfile() {
     );
   }
 
-  const formItems: IGroupItemProps[] = [{
-    itemType: 'group',
-    caption: 'Project Information',
-    colCountByScreen: {
-      xs: 1,    
-      sm: 1,    
-      md: 2,    
-      lg: 2     
-    },
-    items: [
-      { 
-        itemType: 'simple',
-        dataField: 'projectNumber',
-        editorOptions: { readOnly: true }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'name',
-        editorOptions: { readOnly: !isEditing }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'projectStatus',
-        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
-        editorOptions: isEditing ? { 
-          items: projectStatuses,
-          valueExpr: 'id',
-          displayExpr: 'name'
-        } : {
-          readOnly: true,
-          value: projectData.projectStatus ? 
-                 projectStatuses.find(s => s.id === projectData.projectStatus)?.name || projectData.projectStatus : 
-                 ''
-        }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'progressStart',
-        label: { 
-          text: 'Progress Start',
-          hint: PROGRESS_START_TOOLTIP
-        },
-        editorType: isEditing ? 'dxDateBox' : 'dxTextBox',
-        editorOptions: isEditing ? {
-          type: 'date',
-          displayFormat: 'MM/dd/yyyy'
-        } : {
-          readOnly: true,
-          value: projectData.progressStart ? new Date(projectData.progressStart).toLocaleDateString() : ''
-        }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'purchaseOrderNumber',
-        label: { text: 'Purchase Order #' },
-        editorOptions: { readOnly: !isEditing }
-      }
-    ]
-  },
-  {
-    itemType: 'group',
-    caption: 'Client Information',
-    colCountByScreen: {
-      xs: 1,    
-      sm: 1,    
-      md: 2,    
-      lg: 2     
-    },
-    items: [
-      {
-        itemType: 'simple',
-        dataField: 'clientGuid',
-        label: { text: 'Client' },
-        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
-        editorOptions: isEditing ? { 
-          dataSource: clientStore,
-          valueExpr: 'guid',
-          displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : '',
-          onValueChanged: handleClientChange
-        } : {
-          readOnly: true,
-          value: isLoadingClient ? 'Loading client details...' :
-                 (clientDetails ? 
-                 `${clientDetails.number} - ${clientDetails.description}` : 
-                 (projectData.clientGuid || 'No client selected'))
-        }
-      },
-      isLoadingClient && {
-        itemType: 'simple',
-        template: () => (
-          <div className="loading-indicator-container">
-            <LoadIndicator width="24" height="24" visible={true} />
-          </div>
-        )
-      },
-      {
-        itemType: 'simple',
-        label: { text: 'Client Contact' },
-        editorOptions: { 
-          readOnly: true,
-          value: isLoadingClient ? 'Loading...' :
-                 (isEditing ? selectedClientContact.name || 'No contact information' : 
-                           projectData.clientContactName || 'No contact information')
-        },
-        editorType: 'dxTextBox'
-      },
-      {
-        itemType: 'simple',
-        label: { text: 'Contact Number' },
-        editorOptions: { 
-          readOnly: true,
-          value: isLoadingClient ? 'Loading...' :
-                 (isEditing ? selectedClientContact.number || 'No contact information' : 
-                           projectData.clientContactNumber || 'No contact information')
-        },
-        editorType: 'dxTextBox'
-      },
-      {
-        itemType: 'simple',
-        label: { text: 'Contact Email' },
-        editorOptions: { 
-          readOnly: true,
-          value: isLoadingClient ? 'Loading...' :
-                 (isEditing ? selectedClientContact.email || 'No contact information' : 
-                           projectData.clientContactEmail || 'No contact information')
-        },
-        editorType: 'dxTextBox'
-      }
-    ]
-  }];
-
-  const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelClick = () => {
-    setIsEditing(false);
-    if (formRef) {
-      formRef.instance.option('formData', projectData);
-    }
-  };
-
-  const onFormRef = (ref: Form) => {
-    setFormRef(ref);
-  };
+  // Create form items for the current project data, passing clientDetails and loading state
+  const formItems = createProjectFormItems(
+    projectData, 
+    isEditing, 
+    handleClientSelectionChange,
+    clientDetails,
+    isLoadingClient
+  );
 
   return (
     <div className="profile-container">
+      <LoadPanel 
+        visible={isSaving} 
+        position={{ of: '.profile-container' }}
+        showIndicator={true}
+        showPane={true}
+      />
+      
       <div className="custom-grid-wrapper">
-        <div className="grid-custom-title">Project Details: {projectData.projectNumber} - {projectData.name}</div>
         <div className="grid-header-container">
-          <div className="profile-status">
-            Status: <span className="status-value">{getStatusDisplayName(projectData.projectStatus)}</span>
+          <div className="grid-custom-title">
+            {projectData ? `${projectData.projectNumber} - ${projectData.name}` : 'Project Details'}
           </div>
+          
           <div className="action-buttons">
             {!isEditing ? (
               <Button
                 text="Edit"
                 type="default"
                 stylingMode="contained"
-                onClick={handleEditClick}
+                onClick={startEdit}
               />
             ) : (
               <div style={{ display: 'flex', gap: '8px' }}>
-                <div className="save-button-container">
-                  {isSaving && <div className="save-loading-indicator"><LoadIndicator width={24} height={24} visible={true} /></div>}
-                  <Button
-                    text="Save"
-                    type="default"
-                    stylingMode="contained"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className={isSaving ? 'saving-button' : ''}
-                  />
-                </div>
+                <Button
+                  text="Save"
+                  type="success"
+                  stylingMode="contained"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                />
                 <Button
                   text="Cancel"
-                  stylingMode="outlined"
-                  onClick={handleCancelClick}
+                  type="normal"
+                  stylingMode="contained"
+                  onClick={cancelEdit}
                   disabled={isSaving}
                 />
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      <ScrollView 
-        height="calc(100vh - 180px)" 
-        width="100%"
-        direction="vertical"
-        showScrollbar="always"
-        scrollByContent={true}
-        scrollByThumb={true}
-      >
-        <div className="form-container">
-          <Form
-            ref={onFormRef}
-            formData={projectData}
-            items={formItems}
-            labelLocation="top"
-            minColWidth={233}
-            colCount="auto"
-          />
-        </div>
-      </ScrollView>
+        <ScrollView
+          className="scrollable-content"
+          ref={scrollViewRef}
+          height={"calc(100vh - 200px)"}
+          width={"100%"}
+        >
+          <div className="form-container">
+            <Form
+              ref={onFormRef}
+              formData={projectData}
+              items={formItems}
+              labelLocation="top"
+              minColWidth={233}
+              colCount="auto"
+            />
+          </div>
+        </ScrollView>
+      </div>
     </div>
   );
-}
+};
+
+export default ProjectProfile;
