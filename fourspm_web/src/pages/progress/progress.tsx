@@ -113,7 +113,7 @@ const Progress: React.FC = () => {
                         value={selectedPeriod || 0}
                         min={0}
                         showSpinButtons={true}
-                        useLargeSpinButtons={false}
+                        useLargeSpinButtons={true}
                         onValueChanged={(e) => {
                           if (e.value !== null && e.value !== undefined) {
                             const currentPeriod = selectedPeriod || 0;
@@ -122,9 +122,8 @@ const Progress: React.FC = () => {
                           }
                         }}
                         className="period-number-box"
-                        width="120px"
-                        stylingMode="outlined"
-                        height={62}
+                        width={140}
+                        stylingMode="filled"
                       />
                     </div>
                     <span className="secondary-info">(weeks from project start)</span>
