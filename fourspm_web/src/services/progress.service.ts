@@ -23,26 +23,32 @@ export const handleProgressUpdate = async (
       return Promise.reject('No key provided for progress update');
     }
 
-    if (values.totalPercentageEarnt === undefined) {
-      console.error('No totalPercentageEarnt provided for progress update');
-      return Promise.reject('No totalPercentageEarnt provided for progress update');
+    if (values.cumulativeEarntPercentage === undefined) {
+      console.error('No cumulativeEarntPercentage provided for progress update');
+      return Promise.reject('No cumulativeEarntPercentage provided for progress update');
     }
 
     const token = localStorage.getItem('user') ? 
       JSON.parse(localStorage.getItem('user') || '{}').token : null;
     
-    console.log(`Updating progress for deliverable ${key} to ${values.totalPercentageEarnt * 100}% for period ${periodId}`);
-
-    // Calculate the period-specific percentage from total and previous percentages
-    const previousPeriodEarnedPercentage = oldData?.previousPeriodEarnedPercentage || 0;
-    const periodPercentageEarnt = values.totalPercentageEarnt - previousPeriodEarnedPercentage;
+    // Calculate period-specific percentage (the change since the previous period)
+    const previousPeriodPercentage = oldData?.previousPeriodEarntPercentage || 0;
+    const totalEarnedPercentage = values.cumulativeEarntPercentage;
+    const currentPeriodPercentage = Math.max(0, totalEarnedPercentage - previousPeriodPercentage);
     
+    console.log(`Updating progress for deliverable ${key}:`);
+    console.log(`- Total earned up to period ${periodId}: ${totalEarnedPercentage * 100}%`);
+    console.log(`- Previous period total: ${previousPeriodPercentage * 100}%`);
+    console.log(`- Current period change: ${currentPeriodPercentage * 100}%`);
+
     // Prepare the data for the API call
     const progressData = {
       guid: uuidv4(),
       deliverableGuid: key,
       period: periodId,
-      units: oldData && oldData.totalHours ? oldData.totalHours * periodPercentageEarnt : 0,
+      cumulativeEarntPercentage: totalEarnedPercentage, // Total earned percentage up to this period
+      currentPeriodEarntPercentage: currentPeriodPercentage, // Percentage earned specifically in this period
+      units: oldData && oldData.totalHours ? oldData.totalHours * currentPeriodPercentage : 0,
       createdBy: JSON.parse(localStorage.getItem('user') || '{}').accountId,
     };
 

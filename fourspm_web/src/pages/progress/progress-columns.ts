@@ -78,16 +78,16 @@ export const createProgressColumns = (): ODataGridColumn[] => {
         displayExpr: (item: any) => item ? `${item.name}` : ''
       },
     },
+    // Progress percentage column - user edits the cumulative percentage earned up to the current period
     {
-      dataField: 'totalPercentageEarnt',
-      caption: 'Total % Earnt',
+      dataField: 'cumulativeEarntPercentage',
+      caption: 'Cumulative % Earnt',
       dataType: 'number',
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00%';
         return (cellInfo.value * 100).toFixed(2) + '%';
       },
       allowEditing: true,
-      hidingPriority: 19, // Second to last to hide
       editorOptions: {
         min: 0,
         max: 1.0, // Backend stores as decimal (0-1)
@@ -97,6 +97,45 @@ export const createProgressColumns = (): ODataGridColumn[] => {
           precision: 2
         }
       },
+      hidingPriority: 17, // Fourth to last to hide
+    },
+    // Current period percentage
+    {
+      dataField: 'currentPeriodEarntPercentage',
+      caption: 'Current Period % Earnt',
+      dataType: 'number',
+      customizeText: (cellInfo: any) => {
+        if (cellInfo.value === null || cellInfo.value === undefined) return '0.00%';
+        return (cellInfo.value * 100).toFixed(2) + '%';
+      },
+      allowEditing: false,
+      cellClass: 'faded-placeholder',
+      hidingPriority: 18, // Third to last to hide
+    },
+    // Period earned hours
+    {
+      dataField: 'currentPeriodEarntHours',
+      caption: 'Current Period Earnt Hours',
+      dataType: 'number',
+      customizeText: (cellInfo: any) => {
+        if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
+        return cellInfo.value.toFixed(2);
+      },
+      allowEditing: false,
+      cellClass: 'faded-placeholder',
+      hidingPriority: 16, // Fifth to last to hide
+    },
+    {
+      dataField: 'totalPercentageEarnt',
+      caption: 'Total % Earnt',
+      dataType: 'number',
+      customizeText: (cellInfo: any) => {
+        if (cellInfo.value === null || cellInfo.value === undefined) return '0.00%';
+        return (cellInfo.value * 100).toFixed(2) + '%';
+      },
+      allowEditing: false,
+      cellClass: 'faded-placeholder',
+      hidingPriority: 19, // Second to last to hide
     },
     {
       dataField: 'totalEarntHours',
@@ -105,30 +144,6 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       allowEditing: false,
       cellClass: 'faded-placeholder',
       hidingPriority: 15, // Sixth to last to hide
-      customizeText: (cellInfo: any) => {
-        if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
-        return cellInfo.value.toFixed(2);
-      }
-    },
-    {
-      dataField: 'periodPercentageEarnt',
-      caption: 'Period % Earnt',
-      dataType: 'number',
-      customizeText: (cellInfo: any) => {
-        if (cellInfo.value === null || cellInfo.value === undefined) return '0.00%';
-        return (cellInfo.value * 100).toFixed(2) + '%';
-      },
-      allowEditing: false,
-      hidingPriority: 17, // Fourth to last to hide
-      cellClass: 'faded-placeholder',
-    },
-    {
-      dataField: 'periodEarntHours',
-      caption: 'Period Earnt Hours',
-      dataType: 'number',
-      allowEditing: false,
-      cellClass: 'faded-placeholder',
-      hidingPriority: 16, // Fifth to last to hide
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);

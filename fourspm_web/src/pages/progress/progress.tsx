@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
 import './progress.scss';
@@ -11,6 +11,8 @@ import { useProgressHandlers } from '../../hooks/useProgressHandlers';
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import LoadPanel from 'devextreme-react/load-panel';
+import Button from 'devextreme-react/button';
+import NumberBox from 'devextreme-react/number-box';
 
 // Import types from shared location
 import { API_CONFIG } from '../../config/api';
@@ -29,9 +31,30 @@ const Progress: React.FC = () => {
   // Fetch project information
   const { 
     project, 
-    currentPeriod, 
+    currentPeriod: initialPeriod, 
     isLoading: isLoadingProject 
   } = useProjectInfo(projectId, user?.token);
+  
+  // State for user-selected period and calculated progress date
+  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
+  const [progressDate, setProgressDate] = useState<Date>(new Date());
+  
+  // Initialize selectedPeriod once initialPeriod is available
+  useEffect(() => {
+    if (initialPeriod !== null && selectedPeriod === null) {
+      setSelectedPeriod(initialPeriod);
+    }
+  }, [initialPeriod, selectedPeriod]);
+  
+  // Calculate progress date whenever period or project start date changes
+  useEffect(() => {
+    if (project?.progressStart && selectedPeriod !== null) {
+      const startDate = new Date(project.progressStart);
+      const newProgressDate = new Date(startDate);
+      newProgressDate.setDate(startDate.getDate() + (selectedPeriod * 7)); // Add weeks
+      setProgressDate(newProgressDate);
+    }
+  }, [selectedPeriod, project?.progressStart]);
   
   // Fetch deliverable gates
   const { 
@@ -43,7 +66,7 @@ const Progress: React.FC = () => {
   const { 
     handleRowUpdating, 
     handleRowValidating 
-  } = useProgressHandlers(deliverableGates, currentPeriod, user?.token);
+  } = useProgressHandlers(deliverableGates, selectedPeriod ?? initialPeriod ?? 0, user?.token);
   
   // Debug logs to help troubleshoot API issues
   console.log('Progress Component - Initial Render:', {
@@ -51,6 +74,13 @@ const Progress: React.FC = () => {
     hasToken: !!user?.token,
     isLoadingGates
   });
+
+  // Handle period increment/decrement
+  const handlePeriodChange = (increment: boolean) => {
+    if (selectedPeriod !== null) {
+      setSelectedPeriod(prevPeriod => (prevPeriod !== null ? prevPeriod + (increment ? 1 : -1) : null));
+    }
+  };
 
   // Check if any data is still loading
   const isLoading = isLoadingProject || isLoadingGates;
@@ -76,24 +106,38 @@ const Progress: React.FC = () => {
             <div className="period-selector">
               <div className="period-details">
                 <div className="period-info">
-                  <span>Reporting Period: </span>
-                  <strong>{currentPeriod}</strong>
-                  <span className="secondary-info"> (weeks from project start)</span>
-                </div>
-                <div className="period-date">
-                  <span>Current Date: </span>
-                  <strong>{new Date().toLocaleDateString()}</strong>
-                </div>
-                <div className="project-start-date">
-                  <span>Project Start Date: </span>
-                  <strong>
-                    {project.progressStart
-                      ? `${new Date(project.progressStart).toLocaleDateString()}`
-                      : 'Not set'}
-                  </strong>
-                  {project.progressStart && (
-                    <span className="secondary-info"> ({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
-                  )}
+                  <div className="info-item">
+                    <span>Reporting Period:</span>
+                    <NumberBox
+                      value={selectedPeriod || 0}
+                      min={0}
+                      showSpinButtons={true}
+                      onValueChanged={(e) => {
+                        if (e.value !== null && e.value !== undefined) {
+                          const currentPeriod = selectedPeriod || 0;
+                          const isIncrement = e.value > currentPeriod;
+                          handlePeriodChange(isIncrement);
+                        }
+                      }}
+                      className="period-number-box"
+                    />
+                    <span className="secondary-info">(weeks from project start)</span>
+                  </div>
+                  <div className="info-item">
+                    <span>Progress Date:</span>
+                    <strong>{progressDate.toLocaleDateString()}</strong>
+                  </div>
+                  <div className="info-item">
+                    <span>Project Start Date:</span>
+                    <strong>
+                      {project.progressStart
+                        ? new Date(project.progressStart).toLocaleDateString()
+                        : 'Not set'}
+                    </strong>
+                    {project.progressStart && (
+                      <span className="secondary-info">({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -101,7 +145,7 @@ const Progress: React.FC = () => {
           {/* Progress tracking grid - using the ODataGrid component */}
           <ODataGrid
             title=" "
-            endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${currentPeriod}`}
+            endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${selectedPeriod ?? initialPeriod ?? 0}`}
             columns={createProgressColumns()}
             keyField="guid"
             onRowUpdating={handleRowUpdating}

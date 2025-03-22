@@ -10,10 +10,10 @@ export const useProgressHandlers = (
 ) => {
   // Handle row validation
   const handleRowValidating = (e: any) => {
-    if (e.newData.totalPercentageEarnt !== undefined) {
+    if (e.newData.cumulativeEarntPercentage !== undefined) {
       // Get the old percentage value
-      const oldPercentage = e.oldData.totalPercentageEarnt || 0;
-      const newPercentage = e.newData.totalPercentageEarnt;
+      const oldPercentage = e.oldData.cumulativeEarntPercentage || 0;
+      const newPercentage = e.newData.cumulativeEarntPercentage;
       
       // Get the current gate
       const currentGate = deliverableGates.find(gate => 
@@ -28,20 +28,20 @@ export const useProgressHandlers = (
       }
       
       // Use backend-provided values for previous and future period percentages
-      const previousPeriodEarnedPercentage = e.oldData.previousPeriodEarnedPercentage || 0;
-      const futurePeriodEarnedPercentage = e.oldData.futurePeriodEarnedPercentage || 1.0;
+      const previousPeriodEarntPercentage = e.oldData.previousPeriodEarntPercentage || 0;
+      const futurePeriodEarntPercentage = e.oldData.futurePeriodEarntPercentage || 1.0;
       
       // Validate that percentage doesn't decrease below previous period percentage
-      if (newPercentage < previousPeriodEarnedPercentage) {
+      if (newPercentage < previousPeriodEarntPercentage) {
         e.isValid = false;
-        e.errorText = `Percentage cannot be less than what's already reported in previous periods (${(previousPeriodEarnedPercentage * 100).toFixed(0)}%)`;
+        e.errorText = `Percentage cannot be less than what's already reported in previous periods (${(previousPeriodEarntPercentage * 100).toFixed(0)}%)`;
         return;
       }
       
       // Validate that percentage doesn't exceed future period percentage
-      if (newPercentage > futurePeriodEarnedPercentage) {
+      if (newPercentage > futurePeriodEarntPercentage) {
         e.isValid = false;
-        e.errorText = `Percentage cannot exceed what's already reported in future periods (${(futurePeriodEarnedPercentage * 100).toFixed(0)}%)`;
+        e.errorText = `Percentage cannot exceed what's already reported in future periods (${(futurePeriodEarntPercentage * 100).toFixed(0)}%)`;
         return;
       }
     }
@@ -76,13 +76,13 @@ export const useProgressHandlers = (
     const { key, newData, oldData } = e;
     
     // Case 1: Updating both percentage and gate simultaneously
-    if (newData.totalPercentageEarnt !== undefined && newData.deliverableGateGuid !== undefined) {
+    if (newData.cumulativeEarntPercentage !== undefined && newData.deliverableGateGuid !== undefined) {
       console.log('Updating both percentage and gate');
       return handleCombinedUpdate(key, newData, oldData);
     }
     
     // Case 2: Updating percentage only
-    if (newData.totalPercentageEarnt !== undefined) {
+    if (newData.cumulativeEarntPercentage !== undefined) {
       console.log('Updating percentage only');
       return handleProgressUpdate(key, newData, currentPeriod, oldData);
     }
@@ -112,10 +112,10 @@ export const useProgressHandlers = (
     }
     
     // Use backend-provided value for previous period percentage
-    const previousPeriodEarnedPercentage = oldData.previousPeriodEarnedPercentage || 0;
+    const previousPeriodEarntPercentage = oldData.previousPeriodEarntPercentage || 0;
     
     // Get user's entered percentage and current percentage
-    const userPercentage = newData.totalPercentageEarnt;
+    const userPercentage = newData.cumulativeEarntPercentage;
     
     // Determine which percentage to use
     let percentageToUse = userPercentage;
@@ -123,7 +123,7 @@ export const useProgressHandlers = (
     // If gate has auto percentage and it's higher than user's percentage AND previous period percentage, use auto percentage
     if (selectedGate.autoPercentage !== null && 
         selectedGate.autoPercentage > userPercentage && 
-        selectedGate.autoPercentage > previousPeriodEarnedPercentage) {
+        selectedGate.autoPercentage > previousPeriodEarntPercentage) {
       console.log(`Using gate auto percentage (${selectedGate.autoPercentage}) instead of user percentage (${userPercentage})`);
       percentageToUse = selectedGate.autoPercentage ?? undefined;
     } else {
@@ -135,7 +135,7 @@ export const useProgressHandlers = (
       .then(() => {
         return handleProgressUpdate(
           deliverableKey, 
-          { totalPercentageEarnt: percentageToUse }, 
+          { cumulativeEarntPercentage: percentageToUse }, 
           currentPeriod, 
           oldData
         );
@@ -157,15 +157,15 @@ export const useProgressHandlers = (
     }
     
     // Use backend-provided value for previous period percentage
-    const previousPeriodEarnedPercentage = oldData.previousPeriodEarnedPercentage || 0;
+    const previousPeriodEarntPercentage = oldData.previousPeriodEarntPercentage || 0;
     
     // Check if we need to apply auto percentage
     if (selectedGate.autoPercentage !== null) {
-      const currentPercentage = oldData.totalPercentageEarnt || 0;
+      const currentPercentage = oldData.cumulativeEarntPercentage || 0;
       
       // Only apply auto percentage if it's higher than previous period percentage
-      if (selectedGate.autoPercentage > previousPeriodEarnedPercentage) {
-        console.log(`Applying auto percentage: ${selectedGate.autoPercentage} (previous period: ${previousPeriodEarnedPercentage})`);
+      if (selectedGate.autoPercentage > previousPeriodEarntPercentage) {
+        console.log(`Applying auto percentage: ${selectedGate.autoPercentage} (previous period: ${previousPeriodEarntPercentage})`);
         
         // Need to update both - first update the gate, then track progress
         return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '')
@@ -173,7 +173,7 @@ export const useProgressHandlers = (
             // Then update progress percentage
             return handleProgressUpdate(
               deliverableKey, 
-              { totalPercentageEarnt: selectedGate.autoPercentage ?? undefined }, 
+              { cumulativeEarntPercentage: selectedGate.autoPercentage ?? undefined }, 
               currentPeriod, 
               oldData
             );

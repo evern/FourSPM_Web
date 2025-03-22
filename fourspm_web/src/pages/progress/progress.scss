@@ -108,54 +108,106 @@
     display: flex;
     flex-direction: column;
     margin-bottom: 1.5rem;
-    padding: 1.25rem;
+    padding: 0.75rem 1.25rem;
     background-color: var(--base-bg);
     border-radius: var(--border-radius-lg);
     border: 1px solid var(--base-border-color);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     
-    .period-header {
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-      
-      h3 {
-        margin: 0;
-        color: var(--primary);
-        font-size: 1.3rem;
-        font-weight: 600;
-      }
-    }
-    
     .period-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
     }
     
-    .period-info, .period-date, .project-start-date {
+    .period-info {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      justify-content: space-between;
+      width: 100%;
+      
+      @media (max-width: 992px) {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      
+      .info-item {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.75rem;
+        
+        @media (max-width: 992px) {
+          width: 100%;
+          margin-right: 0;
+          margin-bottom: 0.5rem;
+        }
+        
+        .period-number-box {
+          margin: 0 0.75rem;
+          width: 70px;
+          
+          .dx-numberbox-spin-container {
+            border: none;
+          }
+          
+          .dx-texteditor-input {
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--primary);
+            padding: 0;
+          }
+          
+          .dx-numberbox-spin-up, .dx-numberbox-spin-down {
+            min-width: 26px;
+            width: 26px;
+            height: 26px;
+          }
+        }
+      }
       
       span {
-        font-weight: 500;
+        font-weight: normal;
         color: var(--base-text-color);
+        white-space: nowrap;
       }
       
       strong {
-        font-weight: 600;
+        font-weight: 500;
         color: var(--primary);
-        font-size: 1.1rem;
+        font-size: 1rem;
       }
       
       .secondary-info {
         font-weight: normal;
         font-size: 0.9rem;
         color: var(--base-text-color);
-        opacity: 0.8;
-        font-style: italic;
+        opacity: 0.7;
+        white-space: nowrap;
+      }
+      
+      .period-controls {
+        display: flex;
+        align-items: center;
+        margin: 0 0.5rem;
+        
+        .dx-button {
+          padding: 0;
+          min-width: 28px;
+          height: 28px;
+          border-radius: 4px;
+          
+          .dx-button-content {
+            padding: 0;
+          }
+          
+          &.dx-state-disabled {
+            opacity: 0.5;
+          }
+        }
       }
     }
   }
