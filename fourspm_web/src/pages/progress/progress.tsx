@@ -120,6 +120,8 @@ const Progress: React.FC = () => {
                         }
                       }}
                       className="period-number-box"
+                      width="60px"
+                      stylingMode="outlined"
                     />
                     <span className="secondary-info">(weeks from project start)</span>
                   </div>

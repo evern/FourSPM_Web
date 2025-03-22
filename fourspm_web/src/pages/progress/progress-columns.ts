@@ -66,12 +66,12 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       caption: 'Document Title',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 1 // Very important, hide near last
+      hidingPriority: 11 // Adjusted priority
     },
     {
       dataField: 'deliverableGateGuid',
       caption: 'Gate',
-      hidingPriority: 18, // Third to last to hide
+      hidingPriority: 18, // Third in sequence, after internalDocumentNumber and cumulativeEarntPercentage
       lookup: {
         dataSource: deliverableGatesStore,
         valueExpr: 'guid',
@@ -97,7 +97,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
           precision: 2
         }
       },
-      hidingPriority: 17, // Fourth to last to hide
+      hidingPriority: 19, // Second in sequence, after internalDocumentNumber
     },
     // Current period percentage
     {
@@ -110,7 +110,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       },
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 18, // Third to last to hide
+      hidingPriority: 16, // Fifth in sequence
     },
     // Period earned hours
     {
@@ -123,7 +123,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       },
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 16, // Fifth to last to hide
+      hidingPriority: 17, // Fourth in sequence
     },
     {
       dataField: 'totalPercentageEarnt',
@@ -135,7 +135,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       },
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 19, // Second to last to hide
+      hidingPriority: 14, // Seventh in sequence
     },
     {
       dataField: 'totalEarntHours',
@@ -143,7 +143,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       dataType: 'number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 15, // Sixth to last to hide
+      hidingPriority: 15, // Sixth in sequence
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);

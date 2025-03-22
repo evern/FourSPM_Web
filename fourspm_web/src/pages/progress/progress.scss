@@ -136,7 +136,7 @@
       .info-item {
         display: flex;
         align-items: center;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 0.75rem;
         
         @media (max-width: 992px) {
@@ -145,16 +145,23 @@
           margin-bottom: 0.5rem;
         }
         
+        @media (max-width: 768px) {
+          span:first-child {
+            width: 100%;
+            margin-bottom: 0.25rem;
+          }
+        }
+        
         .period-number-box {
-          margin: 0 0.75rem;
-          width: 70px;
+          margin: 0 0.5rem;
+          width: 60px !important;
           
           .dx-numberbox-spin-container {
             border: none;
           }
           
           .dx-texteditor-input {
-            font-size: 1.25rem;
+            font-size: 1rem;
             font-weight: 600;
             text-align: center;
             color: var(--primary);
@@ -162,9 +169,24 @@
           }
           
           .dx-numberbox-spin-up, .dx-numberbox-spin-down {
-            min-width: 26px;
-            width: 26px;
-            height: 26px;
+            min-width: 24px;
+            width: 24px;
+            height: 24px;
+          }
+
+          @media (max-width: 576px) {
+            width: 50px !important;
+            margin: 0 0.25rem;
+            
+            .dx-texteditor-input {
+              font-size: 0.9rem;
+            }
+            
+            .dx-numberbox-spin-up, .dx-numberbox-spin-down {
+              min-width: 20px;
+              width: 20px;
+              height: 20px;
+            }
           }
         }
       }
@@ -187,6 +209,12 @@
         color: var(--base-text-color);
         opacity: 0.7;
         white-space: nowrap;
+        
+        @media (max-width: 768px) {
+          margin-left: 0;
+          width: 100%;
+          margin-top: 0.25rem;
+        }
       }
       
       .period-controls {
