@@ -13,7 +13,7 @@ import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import { useAuth } from '../../contexts/auth';
 
-export interface ODataGridColumn {
+export interface ODataGridColumn extends Partial<Column> {
   dataField: string;
   caption: string;
   hidingPriority?: number;

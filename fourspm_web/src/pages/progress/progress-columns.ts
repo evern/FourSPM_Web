@@ -1,9 +1,12 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { DepartmentEnum } from '../../types/enums';
 import { deliverableGatesStore } from '../../stores/odataStores';
+import { Column } from 'devextreme/ui/data_grid';
+
+type ProgressColumn = ODataGridColumn & Partial<Column>;
 
 // Generic progress tracking columns configuration
-export const createProgressColumns = (): ODataGridColumn[] => {
+export const createProgressColumns = (): ProgressColumn[] => {
   return [
     {
       dataField: 'bookingCode',
@@ -88,16 +91,27 @@ export const createProgressColumns = (): ODataGridColumn[] => {
         return (cellInfo.value * 100).toFixed(2) + '%';
       },
       allowEditing: true,
-      editorOptions: {
-        min: 0,
-        max: 1.0, // Backend stores as decimal (0-1)
-        step: 0.05, // 5% increments
-        format: {
-          type: 'percent',
-          precision: 2
+      formItem: {
+        editorType: 'dxSlider',
+        editorOptions: {
+          min: 0,
+          max: 1.0,
+          step: 0.05,
+          tooltip: {
+            enabled: true,
+            format: (value: number) => (value * 100).toFixed(2) + '%',
+            showMode: 'always',
+            position: 'top'
+          },
+          label: {
+            visible: true,
+            format: (value: number) => (value * 100).toFixed(0) + '%',
+            position: 'top'
+          },
+          width: '100%'
         }
       },
-      hidingPriority: 19, // Second in sequence, after internalDocumentNumber
+      hidingPriority: 19,
     },
     // Current period percentage
     {
