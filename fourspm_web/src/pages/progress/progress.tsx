@@ -122,7 +122,7 @@ const Progress: React.FC = () => {
                           }
                         }}
                         className="period-number-box"
-                        width={140}
+                        width={100}
                         stylingMode="filled"
                       />
                     </div>

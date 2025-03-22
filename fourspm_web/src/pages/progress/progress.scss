@@ -181,7 +181,7 @@
           margin: 0 0.5rem;
 
           &.dx-numberbox.dx-widget {
-            width: 140px !important;
+            width: 100px !important;
           }
 
           .dx-texteditor-input {
@@ -189,27 +189,38 @@
             font-weight: 600;
             text-align: center;
             color: var(--primary);
-            padding-left: 40px !important;
-            padding-right: 40px !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
           }
 
           .dx-numberbox-spin-container {
             border: none;
             margin: 0;
             width: 100% !important;
+            position: relative;
+            height: 36px;
           }
 
           .dx-numberbox-spin-up, .dx-numberbox-spin-down {
-            width: 36px !important;
-            height: 36px !important;
-            border-radius: 4px;
+            width: 24px !important;
+            height: 16px !important;
+            border-radius: 3px;
+            right: 3px;
 
             .dx-icon {
-              width: 24px;
-              height: 24px;
-              font-size: 24px;
-              line-height: 24px;
+              width: 16px;
+              height: 16px;
+              font-size: 16px;
+              line-height: 16px;
             }
+          }
+
+          .dx-numberbox-spin-up {
+            top: 2px;
+          }
+
+          .dx-numberbox-spin-down {
+            bottom: 2px;
           }
 
           /* Mobile styles */
