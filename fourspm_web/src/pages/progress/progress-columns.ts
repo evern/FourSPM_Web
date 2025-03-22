@@ -52,14 +52,14 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       caption: 'Internal Number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 11 // High priority - important identifier
+      hidingPriority: 20 // Hidden last - most important
     },
     {
       dataField: 'clientDocumentNumber',
       caption: 'Client Number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 10 // High priority - important identifier
+      hidingPriority: 10 
     },
     {
       dataField: 'documentTitle',
@@ -71,7 +71,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
     {
       dataField: 'deliverableGateGuid',
       caption: 'Gate',
-      hidingPriority: 2,
+      hidingPriority: 18, // Third to last to hide
       lookup: {
         dataSource: deliverableGatesStore,
         valueExpr: 'guid',
@@ -87,7 +87,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
         return (cellInfo.value * 100).toFixed(2) + '%';
       },
       allowEditing: true,
-      hidingPriority: 9,
+      hidingPriority: 19, // Second to last to hide
       editorOptions: {
         min: 0,
         max: 1.0, // Backend stores as decimal (0-1)
@@ -104,7 +104,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       dataType: 'number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 12,
+      hidingPriority: 15, // Sixth to last to hide
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);
@@ -119,7 +119,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
         return (cellInfo.value * 100).toFixed(2) + '%';
       },
       allowEditing: false,
-      hidingPriority: 7,
+      hidingPriority: 17, // Fourth to last to hide
       cellClass: 'faded-placeholder',
     },
     {
@@ -128,7 +128,7 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       dataType: 'number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 8,
+      hidingPriority: 16, // Fifth to last to hide
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);
