@@ -113,6 +113,10 @@ export const createProgressColumns = (): ProgressColumn[] => {
       allowEditing: false,
       cellClass: 'faded-placeholder',
       hidingPriority: 16, // Fifth in sequence
+      editorOptions: {
+        format: 'percent',
+        step: 0.01
+      }
     },
     // Period earned hours
     {
@@ -138,6 +142,10 @@ export const createProgressColumns = (): ProgressColumn[] => {
       allowEditing: false,
       cellClass: 'faded-placeholder',
       hidingPriority: 14, // Seventh in sequence
+      editorOptions: {
+        format: 'percent',
+        step: 0.01
+      }
     },
     {
       dataField: 'totalEarntHours',
