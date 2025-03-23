@@ -91,25 +91,13 @@ export const createProgressColumns = (): ProgressColumn[] => {
         return (cellInfo.value * 100).toFixed(2) + '%';
       },
       allowEditing: true,
-      formItem: {
-        editorType: 'dxSlider',
-        editorOptions: {
-          min: 0,
-          max: 1.0,
-          step: 0.05,
-          tooltip: {
-            enabled: true,
-            format: (value: number) => (value * 100).toFixed(2) + '%',
-            showMode: 'always',
-            position: 'top'
-          },
-          label: {
-            visible: true,
-            format: (value: number) => (value * 100).toFixed(0) + '%',
-            position: 'top'
-          },
-          width: '100%'
-        }
+      editorOptions: {
+        showSpinButtons: true,
+        min: 0,
+        max: 1.0,
+        step: 0.01,
+        format: 'percent',
+        valueChangeEvent: 'keyup change'
       },
       hidingPriority: 19,
     },
@@ -157,7 +145,7 @@ export const createProgressColumns = (): ProgressColumn[] => {
       dataType: 'number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 15, // Sixth in sequence
+      hidingPriority: 13,
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);
@@ -169,7 +157,7 @@ export const createProgressColumns = (): ProgressColumn[] => {
       dataType: 'number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 13,
+      hidingPriority: 12,
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);

@@ -82,142 +82,99 @@ export const useProgressHandlers = (
           try {
             // Get the full row data from the store
             const dataSource = e.component.getDataSource();
-            const rowData = await dataSource.store().byKey(change.key);
             
-            // Extract the values using our utility function
-            totalHours = extractRowValue(rowData, 'totalHours', 0);
-            previousPeriodEarntPercentage = extractRowValue(rowData, 'previousPeriodEarntPercentage', 0);
+            // We need to include the period in the request to get correct calculated values
+            // Using the store's byKey method doesn't include the period parameter
+            // Instead, let's create a custom load options to include the period
+            const loadOptions = {
+              filter: [
+                ["guid", "=", change.key],
+                "and",
+                ["period", "=", currentPeriod]
+              ]
+            };
+            
+            // Load the data with our custom filter
+            const results = await dataSource.load(loadOptions);
+            const rowData = results && results.length > 0 ? results[0] : null;
+            
+            if (rowData) {
+              // Extract the values using our utility function
+              totalHours = extractRowValue(rowData, 'totalHours', 0);
+              previousPeriodEarntPercentage = extractRowValue(rowData, 'previousPeriodEarntPercentage', 0);
+              
+              // Create a properly structured oldData object with the original values
+              const completeData = {
+                ...rowData,  // Include all original data
+                totalHours,  // Ensure these calculated fields are set correctly
+                previousPeriodEarntPercentage
+              };
+              
+              await processRowUpdate({
+                key: change.key,
+                newData: change.data,
+                oldData: completeData,  // Use the full original data
+                component: e.component
+              });
+            } else {
+              // If we couldn't get the row data, still try to process with limited info
+              const completeData = {
+                totalHours,
+                previousPeriodEarntPercentage
+              };
+              
+              await processRowUpdate({
+                key: change.key,
+                newData: change.data,
+                oldData: completeData,
+                component: e.component
+              });
+            }
           } catch (error) {
             // Use default values if retrieval fails
-            console.error('Error retrieving row data:', error);
           }
-          
-          // Create a simulated oldData object with the values we need
-          const completeData = {
-            ...change.data,
-            totalHours,
-            previousPeriodEarntPercentage
-          };
-          
-          await processRowUpdate({
-            key: change.key,
-            newData: change.data,
-            oldData: completeData,
-            component: e.component
-          });
         } catch (error) {
-          console.error('Error processing change:', error);
+          // Handle errors during processing
+          e.component.refresh();
         }
       }
       
-      // After all changes are processed, refresh the grid
+      // Refresh the grid after all changes are processed
       e.component.refresh();
     };
     
-    // Start processing changes
-    processChanges().catch(error => {
-      console.error('Error in processChanges:', error);
-    });
+    // Start processing the changes
+    processChanges();
   };
   
-  // Process row updates based on what properties changed
-  const processRowUpdate = (e: any) => {
-    const { key, newData, oldData } = e;
-    
-    // Case 1: Updating both percentage and gate simultaneously
-    if (newData.cumulativeEarntPercentage !== undefined && newData.deliverableGateGuid !== undefined) {
-      return handleCombinedUpdate(key, newData, oldData);
-    }
-    
-    // Case 2: Updating percentage only
-    if (newData.cumulativeEarntPercentage !== undefined) {
-      return handleProgressUpdate(key, newData, currentPeriod, oldData);
-    }
-    
-    // Case 3: Updating gate only, with possible auto percentage
-    if (newData.deliverableGateGuid !== undefined) {
-      return handleGateUpdate(key, newData, oldData);
-    }
-    
-    // Case 4: Updating other fields (default handler)
-    return Promise.resolve();
-  };
-  
-  // Handle combined updates to both percentage and gate
-  const handleCombinedUpdate = (deliverableKey: string, newData: any, oldData: any) => {
-    // Find the selected gate
-    const selectedGate = deliverableGates.find(gate => 
-      compareGuids(gate.guid, newData.deliverableGateGuid)
-    );
-    
-    if (!selectedGate) {
-      return Promise.reject('Selected gate not found');
-    }
-    
-    // Use backend-provided value for previous period percentage
-    const previousPeriodEarntPercentage = oldData.previousPeriodEarntPercentage || 0;
-    
-    // Get user's entered percentage and current percentage
-    const userPercentage = newData.cumulativeEarntPercentage;
-    
-    // Determine which percentage to use
-    let percentageToUse = userPercentage;
-    
-    // If gate has auto percentage and it's higher than user's percentage AND previous period percentage, use auto percentage
-    if (selectedGate.autoPercentage !== null && 
-        selectedGate.autoPercentage > userPercentage && 
-        selectedGate.autoPercentage > previousPeriodEarntPercentage) {
-      percentageToUse = selectedGate.autoPercentage ?? undefined;
-    }
-    
-    // Update gate first, then the percentage
-    return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '')
-      .then(() => {
-        return handleProgressUpdate(
-          deliverableKey, 
-          { cumulativeEarntPercentage: percentageToUse }, 
-          currentPeriod, 
-          oldData
-        );
-      });
-  };
-  
-  // Handle deliverable gate updates with possible auto percentage
-  const handleGateUpdate = (deliverableKey: string, newData: any, oldData: any) => {
-    // Find the selected gate
-    const selectedGate = deliverableGates.find(gate => 
-      compareGuids(gate.guid, newData.deliverableGateGuid)
-    );
-    
-    if (!selectedGate) {
-      return Promise.reject('Selected gate not found');
-    }
-    
-    // Use backend-provided value for previous period percentage
-    const previousPeriodEarntPercentage = oldData.previousPeriodEarntPercentage || 0;
-    
-    // Check if we need to apply auto percentage
-    if (selectedGate.autoPercentage !== null) {
-      const currentPercentage = oldData.cumulativeEarntPercentage || 0;
+  // Process a single row update
+  const processRowUpdate = async (e: any) => {
+    try {
+      // First, check if gate update is needed
+      let gateUpdateNeeded = (
+        e.newData.deliverableGateGuid !== undefined &&
+        e.oldData.deliverableGateGuid !== e.newData.deliverableGateGuid
+      );
       
-      // Only apply auto percentage if it's higher than previous period percentage
-      if (selectedGate.autoPercentage > previousPeriodEarntPercentage) {
-        // Need to update both - first update the gate, then track progress
-        return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '')
-          .then(() => {
-            // Then update progress percentage
-            return handleProgressUpdate(
-              deliverableKey, 
-              { cumulativeEarntPercentage: selectedGate.autoPercentage ?? undefined }, 
-              currentPeriod, 
-              oldData
-            );
-          });
+      // If gate update is needed, do that first
+      if (gateUpdateNeeded) {
+        // Update the deliverable gate in the backend
+        await updateDeliverableGate(e.key, e.newData.deliverableGateGuid, userToken || '');
       }
+      
+      // Next, check if progress update is needed
+      if (e.newData.cumulativeEarntPercentage !== undefined) {
+        // Call the progress service to update the backend
+        await handleProgressUpdate(
+          e.key,
+          e.newData,
+          currentPeriod,
+          e.oldData
+        );
+      }
+    } catch (error) {
+      // Handle any errors that occur during updating
     }
-    
-    // Just update the gate without percentage change
-    return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '');
   };
   
   return {
