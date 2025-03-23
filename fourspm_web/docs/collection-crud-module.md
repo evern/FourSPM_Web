@@ -451,17 +451,82 @@ Implement grid filtering and sorting:
 />
 ```
 
-### Batch Editing
+### Edit Modes
 
-Enable batch editing mode for more efficient updates:
+The ODataGrid component in FourSPM Web uses cell editing mode by default, which provides immediate updates when a cell is edited. This is the recommended approach for most use cases as it provides the best user experience.
+
+#### Cell Editing
+
+Cell editing is enabled by default and requires no special configuration:
 
 ```tsx
 <ODataGrid
   // ... other props
-  editMode="batch"
-  onSavingChanges={handleSavingChanges}
-  onCancellingChanges={handleCancellingChanges}
+  onRowUpdating={handleRowUpdating}
+  allowUpdating={true}
 />
+```
+
+For function endpoints that don't support standard PATCH operations, implement a custom row updating handler:
+
+```tsx
+// Handle row updating event for cell editing with custom endpoint
+const handleRowUpdating = (e: any) => {
+  // Cancel default behavior for custom endpoints
+  e.cancel = true;
+  
+  // Create an update function that processes updates as needed
+  const update = async () => {
+    try {
+      // Process the update using custom service
+      await processRowUpdate(e);
+      
+      // Exit edit mode and refresh grid
+      if (e.component) {
+        setTimeout(() => {
+          if (e.component.hasEditData()) {
+            e.component.cancelEditData();
+          }
+          e.component.getDataSource().reload();
+        }, 50);
+      }
+    } catch (error) {
+      console.error('Error updating row:', error);
+      if (e.component) {
+        e.component.refresh();
+      }
+    }
+  };
+  
+  // Start the update process
+  update();
+};
+```
+
+#### Batch Editing
+
+Enable batch editing mode for more efficient updates of multiple cells:
+
+```tsx
+// Switch ODataGrid to batch mode
+<ODataGrid
+  // ... other props
+  onSaving={handleSaving}
+  allowUpdating={true}
+/>
+```
+
+For batch editing, implement a saving handler:
+
+```tsx
+const handleSaving = (e: any) => {
+  // Process all changes at once when Save button is clicked
+  const { changes } = e;
+  if (changes.length > 0) {
+    // Process all changes
+    // ...
+  }
+};
 ```
 
 ### Master-Detail Views

@@ -60,11 +60,6 @@ export const useGridOperations = ({
   };
 
   const handleRowRemoving: Properties['onRowRemoving'] = async (e) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) {
-      e.cancel = true;
-      return;
-    }
-    
     const changes = e.component.option('editing.changes') as Array<{ onSuccess?: (result: any) => void, onError?: (error: Error) => void }>;
     
     if (changes && changes.length > 0) {

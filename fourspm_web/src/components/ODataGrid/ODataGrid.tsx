@@ -191,7 +191,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             allowUpdating,
             allowDeleting,
             useIcons: true,
-            confirmDelete: true,
             texts: {
               saveAllChanges: 'Save Changes',
               cancelAllChanges: 'Discard Changes',
