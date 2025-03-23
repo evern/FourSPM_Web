@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { EventInfo } from 'devextreme/events';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
@@ -80,6 +80,21 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   const { user } = useAuth();
   const token = user?.token;
   const dataGridRef = useRef<DataGrid>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if the device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
+    };
+    
+    checkMobile(); // Check on initial render
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   let store;
   let dataSourceOptions: Options;
@@ -186,11 +201,21 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
-            mode: 'cell',
+            mode: isMobile ? 'popup' : 'cell',
             allowAdding,
             allowUpdating,
             allowDeleting,
             useIcons: true,
+            popup: isMobile ? {
+              title: `Edit ${title}`,
+              showTitle: true,
+              width: 'auto',
+              height: 'auto',
+              position: { my: 'center', at: 'center', of: window }
+            } : undefined,
+            form: isMobile ? {
+              labelLocation: 'top'
+            } : undefined,
             texts: {
               saveAllChanges: 'Save Changes',
               cancelAllChanges: 'Discard Changes',
