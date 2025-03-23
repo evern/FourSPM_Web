@@ -6,10 +6,11 @@ import './progress.scss';
 // Import custom hooks from shared location
 import { useProjectInfo } from '../../hooks/useProjectInfo';
 import { useDeliverableGates } from '../../hooks/useDeliverableGates';
-import { useProgressHandlers } from '../../hooks/useProgressHandlers';
+import { useProgressHandlers } from './progress.handlers';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import ScrollToTop from '../../components/scroll-to-top';
 import LoadPanel from 'devextreme-react/load-panel';
 import Button from 'devextreme-react/button';
 import NumberBox from 'devextreme-react/number-box';
@@ -43,9 +44,6 @@ const Progress: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
   const [progressDate, setProgressDate] = useState<Date>(new Date());
   
-  // State for scroll to top button visibility
-  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
-  
   // Initialize selectedPeriod once initialPeriod is available
   useEffect(() => {
     if (initialPeriod !== null && selectedPeriod === null) {
@@ -62,103 +60,6 @@ const Progress: React.FC = () => {
       setProgressDate(newProgressDate);
     }
   }, [selectedPeriod, project?.progressStart]);
-  
-  // Handle scroll events to show/hide scroll-to-top button
-  useEffect(() => {
-    // Check scroll position directly on mount
-    const checkScrollPosition = () => {
-      // First try to detect window scroll
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-      if (scrollY > 300) {
-        setShowScrollTop(true);
-        return;
-      }
-      
-      // Then check if we have a container element that's scrollable
-      const container = containerRef.current;
-      if (container && container.scrollTop > 300) {
-        setShowScrollTop(true);
-        return;
-      }
-      
-      // If neither is scrolled, hide the button
-      setShowScrollTop(false);
-    };
-    
-    // Run initial check
-    checkScrollPosition();
-    
-    // Handle window scroll
-    const handleWindowScroll = () => {
-      checkScrollPosition();
-    };
-    
-    // Handle container scroll
-    const handleContainerScroll = (e: Event) => {
-      if (e.target instanceof Element && e.target.scrollTop > 300) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-    
-    // Add scroll event listeners
-    window.addEventListener('scroll', handleWindowScroll);
-    
-    // Find potential scroll containers
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('scroll', handleContainerScroll);
-    }
-    
-    // Find DevExtreme scroll containers
-    const scrollContainers = document.querySelectorAll('.dx-scrollable-container');
-    scrollContainers.forEach(container => {
-      container.addEventListener('scroll', handleContainerScroll);
-    });
-    
-    // Clean up event listeners
-    return () => {
-      window.removeEventListener('scroll', handleWindowScroll);
-      
-      if (container) {
-        container.removeEventListener('scroll', handleContainerScroll);
-      }
-      
-      scrollContainers.forEach(container => {
-        container.removeEventListener('scroll', handleContainerScroll);
-      });
-    };
-  }, []);
-  
-  // Scroll to top function
-  const scrollToTop = () => {
-    // Try scrolling the window first
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-    
-    // Also try scrolling the container if present
-    const container = containerRef.current;
-    if (container) {
-      container.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-    
-    // Also try scrolling DevExtreme scrollable containers
-    const scrollContainers = document.querySelectorAll('.dx-scrollable-container');
-    scrollContainers.forEach(container => {
-      if (container instanceof HTMLElement) {
-        container.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }
-    });
-  };
   
   // Fetch deliverable gates
   const { 
@@ -294,16 +195,6 @@ const Progress: React.FC = () => {
             allowDeleting={false}
           />
         </div>
-      )}
-      
-      {/* Floating scroll-to-top button */}
-      {showScrollTop && (
-        <Button
-          className="scroll-top-button"
-          icon="chevronup"
-          onClick={scrollToTop}
-          stylingMode="outlined"
-        />
       )}
     </div>
   );

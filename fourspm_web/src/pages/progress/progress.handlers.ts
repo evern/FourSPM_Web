@@ -1,8 +1,7 @@
-import { compareGuids } from '../utils/guid-utils';
-import { handleProgressUpdate } from '../services/progress.service';
-import { updateDeliverableGate } from '../services/deliverable-gate.service';
-import { DeliverableGate } from '../types/progress';
-import { extractRowValue } from '../utils/grid-utils';
+import { compareGuids } from '../../utils/guid-utils';
+import { handleProgressUpdate } from '../../services/progress.service';
+import { updateDeliverableGate } from '../../services/deliverable-gate.service';
+import { DeliverableGate } from '../../types/progress';
 
 export const useProgressHandlers = (
   deliverableGates: DeliverableGate[],
