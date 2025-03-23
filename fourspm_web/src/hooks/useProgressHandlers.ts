@@ -50,101 +50,48 @@ export const useProgressHandlers = (
   
   // Handle row updating event for individual row edits
   const handleRowUpdating = (e: any) => {
-    // In batch mode, we don't cancel default behavior here
-    // This will collect changes for batch processing
-    
-    // However, we still validate the data
-    // The actual updates are processed in handleSaving
-  };
-  
-  // Handle saving event for batch mode
-  const handleSaving = (e: any) => {
-    if (!e.changes || !e.changes.length) {
-      return;
-    }
-    
-    // Cancel default save behavior to handle it manually
+    // In cell mode, we need to manually cancel and handle the update because we're using a function endpoint
     e.cancel = true;
     
-    // Process each change sequentially
-    const processChanges = async () => {
-      for (const change of e.changes) {
-        // For batch mode, we only care about update changes
-        if (change.type !== 'update') {
-          continue;
+    // Create a modified update function that handles the API call and grid refresh
+    const update = async () => {
+      try {
+        // Process the update using our custom service
+        await processRowUpdate(e);
+        
+        // Mark the grid as needing refresh after this edit
+        if (e.component) {
+          // Force the grid to refresh data from server
+          setTimeout(() => {
+            // This is important - first end edit mode, then reload data
+            if (e.component.hasEditData()) {
+              e.component.cancelEditData();
+            }
+            e.component.getDataSource().reload();
+          }, 50);
         }
         
-        try {
-          // Get values directly from the grid using the store method that we know works
-          let totalHours = 0; // Default fallback
-          let previousPeriodEarntPercentage = 0; // Default fallback
-          
-          try {
-            // Get the full row data from the store
-            const dataSource = e.component.getDataSource();
-            
-            // We need to include the period in the request to get correct calculated values
-            // Using the store's byKey method doesn't include the period parameter
-            // Instead, let's create a custom load options to include the period
-            const loadOptions = {
-              filter: [
-                ["guid", "=", change.key],
-                "and",
-                ["period", "=", currentPeriod]
-              ]
-            };
-            
-            // Load the data with our custom filter
-            const results = await dataSource.load(loadOptions);
-            const rowData = results && results.length > 0 ? results[0] : null;
-            
-            if (rowData) {
-              // Extract the values using our utility function
-              totalHours = extractRowValue(rowData, 'totalHours', 0);
-              previousPeriodEarntPercentage = extractRowValue(rowData, 'previousPeriodEarntPercentage', 0);
-              
-              // Create a properly structured oldData object with the original values
-              const completeData = {
-                ...rowData,  // Include all original data
-                totalHours,  // Ensure these calculated fields are set correctly
-                previousPeriodEarntPercentage
-              };
-              
-              await processRowUpdate({
-                key: change.key,
-                newData: change.data,
-                oldData: completeData,  // Use the full original data
-                component: e.component
-              });
-            } else {
-              // If we couldn't get the row data, still try to process with limited info
-              const completeData = {
-                totalHours,
-                previousPeriodEarntPercentage
-              };
-              
-              await processRowUpdate({
-                key: change.key,
-                newData: change.data,
-                oldData: completeData,
-                component: e.component
-              });
-            }
-          } catch (error) {
-            // Use default values if retrieval fails
-          }
-        } catch (error) {
-          // Handle errors during processing
+        return true;
+      } catch (error) {
+        console.error('Error updating row:', error);
+        
+        // Refresh grid on error too
+        if (e.component) {
           e.component.refresh();
         }
+        
+        return false;
       }
-      
-      // Refresh the grid after all changes are processed
-      e.component.refresh();
     };
     
-    // Start processing the changes
-    processChanges();
+    // Start the update process
+    update();
+  };
+  
+  // Handle saving event (not used in cell mode, but keeping for backward compatibility)
+  const handleSaving = (e: any) => {
+    // In cell mode, saving is handled at the row level in handleRowUpdating
+    // This function is kept for backward compatibility
   };
   
   // Process a single row update

@@ -186,11 +186,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
-            mode: 'batch',
+            mode: 'cell',
             allowAdding,
             allowUpdating,
             allowDeleting,
             useIcons: true,
+            confirmDelete: true,
             texts: {
               saveAllChanges: 'Save Changes',
               cancelAllChanges: 'Discard Changes',
