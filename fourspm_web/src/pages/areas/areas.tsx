@@ -44,12 +44,17 @@ const Areas: React.FC = () => {
     getProjectInfo();
   }, [projectId, user?.token]);
 
+  // Project filter used for both grid and auto-increment
+  // Using proper type annotation to satisfy TypeScript
+  const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];
+
   // Add auto-increment hook to get the next area number
   const { nextNumber: nextAreaNumber, refreshNextNumber } = useAutoIncrement({
     endpoint,
     field: 'number',
     padLength: 2,
-    startFrom: '01'
+    startFrom: '01',
+    filter: projectFilter
   });
 
   const { handleRowUpdating, handleRowRemoving } = useGridOperations({
@@ -99,7 +104,7 @@ const Areas: React.FC = () => {
           onInitNewRow={handleInitNewRow}
           onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
-          defaultFilter={[["projectGuid", "=", projectId]]}
+          defaultFilter={projectFilter}
         />
       </div>
     </div>
