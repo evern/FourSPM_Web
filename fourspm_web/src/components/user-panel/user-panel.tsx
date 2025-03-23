@@ -9,12 +9,6 @@ interface Props {
   menuMode: 'context' | 'list';
 }
 
-interface MenuItem {
-  text: string;
-  icon: string;
-  onClick: () => void;
-}
-
 export default function UserPanel({ menuMode }: Props): ReactElement {
   const { user, signOut } = useAuth();
   const history = useHistory();
@@ -68,10 +62,12 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
         </ContextMenu>
       )}
       {menuMode === 'list' && (
-        <List
-          items={menuItems}
-          className={'dx-toolbar-menu-action'}
-        />
+        <div className="user-panel-list-wrapper">
+          <List
+            items={menuItems}
+            className={'dx-toolbar-menu-action'}
+          />
+        </div>
       )}
     </div>
   );

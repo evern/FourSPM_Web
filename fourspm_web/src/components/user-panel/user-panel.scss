@@ -31,3 +31,12 @@
   }
 }
 
+.user-panel-list-wrapper {
+  // Style the list like the context menu
+  .dx-list {
+    // Target the dx-scrollview-content element directly
+    .dx-scrollview-content {
+      padding: 0px !important;
+    }
+  }
+}
