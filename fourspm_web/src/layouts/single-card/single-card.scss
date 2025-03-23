@@ -1,37 +1,58 @@
 @use "sass:color";
 @use "../../themes/generated/variables.base.scss" as vars;
 
-.single-card {
-
-  .dx-card {
-    width: 330px;
-    margin: auto auto;
-    padding: 40px;
-    flex-grow: 0;
-
-    .screen-x-small & {
-      width: 100%;
-      height: 100%;
-      border-radius: 0;
-      box-shadow: none;
-      margin: 0;
-      border: 0;
-      flex-grow: 1;
+.single-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  padding: 20px 0;
+  
+  .single-card-scroll {
+    height: auto !important; // Override default ScrollView height
+    
+    .dx-scrollable-content {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 40px); // Account for padding
     }
-
-    .header {
-      margin-bottom: 30px;
-
-      .title {
-        color: vars.$base-text-color;
-        line-height: 28px;
-        font-weight: 500;
-        font-size: 24px;
+  }
+  
+  .single-card {
+    width: 100%;
+    max-width: 330px;
+    margin: auto;
+    
+    .dx-card {
+      padding: 40px;
+      flex-grow: 0;
+  
+      .screen-x-small & {
+        width: 100%;
+        height: auto;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        border: 0;
+        flex-grow: 1;
       }
-
-      .description {
-        color: color.adjust(vars.$base-text-color, $alpha: -0.3);
-        line-height: 18px;
+  
+      .header {
+        margin-bottom: 30px;
+  
+        .title {
+          color: vars.$base-text-color;
+          line-height: 28px;
+          font-weight: 500;
+          font-size: 24px;
+        }
+  
+        .description {
+          color: color.adjust(vars.$base-text-color, $alpha: -0.3);
+          line-height: 18px;
+        }
       }
     }
   }
