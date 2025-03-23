@@ -178,20 +178,68 @@
           }
         }
         
+        .period-stepper {
+          display: flex;
+          align-items: center;
+          margin: 0;
+          min-width: 120px !important;
+          flex-shrink: 0;
+
+          @media (max-width: 768px) {
+            min-width: 120px !important;
+            display: inline-flex;
+            margin-right: 0.5rem;
+          }
+          
+          .period-button {
+            border-radius: var(--border-radius-base);
+            height: 36px;
+            width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            transition: background-color 0.2s;
+            
+            &:hover {
+              background-color: var(--base-accent);
+              color: var(--base-text-on-accent);
+            }
+            
+            .dx-button-content {
+              padding: 0;
+            }
+          }
+          
+          .down-button {
+            order: 1;
+          }
+          
+          .period-number-box {
+            order: 2;
+          }
+          
+          .up-button {
+            order: 3;
+          }
+        }
+        
         .period-number-box {
-          margin: 0 0.5rem;
+          margin: 0 0.25rem;
 
           &.dx-numberbox.dx-widget {
             width: 100px !important;
+            height: 36px !important;
           }
 
           .dx-texteditor-input {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             font-weight: 600;
             text-align: center;
             color: var(--primary);
-            padding-left: 20px !important;
-            padding-right: 20px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            height: 36px !important;
           }
 
           .dx-numberbox-spin-container {

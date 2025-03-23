@@ -183,7 +183,13 @@ const Progress: React.FC = () => {
   // Handle period increment/decrement
   const handlePeriodChange = (increment: boolean) => {
     if (selectedPeriod !== null) {
-      setSelectedPeriod(prevPeriod => (prevPeriod !== null ? prevPeriod + (increment ? 1 : -1) : null));
+      setSelectedPeriod(prevPeriod => {
+        if (!increment && (prevPeriod === null || prevPeriod <= 0)) {
+          // Don't allow decrements below 0
+          return 0;
+        }
+        return prevPeriod !== null ? prevPeriod + (increment ? 1 : -1) : null;
+      });
     }
   };
 
@@ -213,22 +219,44 @@ const Progress: React.FC = () => {
                 <div className="period-info">
                   <div className="info-item">
                     <span>Reporting Period:</span>
-                    <div className="number-box-container">
+                    <div className="period-stepper">
+                      <Button
+                        icon="spindown"
+                        onClick={() => handlePeriodChange(false)}
+                        stylingMode="outlined"
+                        className="period-button down-button"
+                      />
                       <NumberBox
                         value={selectedPeriod || 0}
                         min={0}
-                        showSpinButtons={true}
-                        useLargeSpinButtons={true}
+                        showSpinButtons={false}
+                        onKeyDown={(e) => {
+                          // Allow keyboard navigation (up/down arrows)
+                          if (e.event && e.event.key === 'ArrowUp') {
+                            handlePeriodChange(true);
+                            e.event.preventDefault();
+                          } else if (e.event && e.event.key === 'ArrowDown') {
+                            handlePeriodChange(false);
+                            e.event.preventDefault();
+                          }
+                        }}
                         onValueChanged={(e) => {
-                          if (e.value !== null && e.value !== undefined) {
-                            const currentPeriod = selectedPeriod || 0;
-                            const isIncrement = e.value > currentPeriod;
-                            handlePeriodChange(isIncrement);
+                          // Handle direct input
+                          if (e.event && e.event.type === 'change') {
+                            if (e.value !== null && e.value !== undefined) {
+                              setSelectedPeriod(parseInt(e.value.toString(), 10));
+                            }
                           }
                         }}
                         className="period-number-box"
-                        width={100}
+                        width={60}
                         stylingMode="filled"
+                      />
+                      <Button
+                        icon="spinup"
+                        onClick={() => handlePeriodChange(true)}
+                        stylingMode="outlined"
+                        className="period-button up-button"
                       />
                     </div>
                     <span className="secondary-info">(weeks from project start)</span>
