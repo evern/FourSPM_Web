@@ -4,6 +4,7 @@ import appInfo from './app-info';
 import routes from './app-routes';
 import { SideNavOuterToolbar as SideNavBarLayout } from './layouts';
 import { Footer } from './components';
+import ScrollToTop from './components/scroll-to-top';
 
 const Content: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const Content: React.FC = () => {
       <Footer>
         Copyright 2011-{new Date().getFullYear()} {appInfo.title} Inc.
       </Footer>
+      <ScrollToTop showAfterScrollHeight={120} />
     </SideNavBarLayout>
   );
 }
