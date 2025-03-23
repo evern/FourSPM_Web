@@ -65,7 +65,8 @@ const Progress: React.FC = () => {
   // Set up row updating and validation handlers
   const { 
     handleRowUpdating, 
-    handleRowValidating 
+    handleRowValidating,
+    handleSaving
   } = useProgressHandlers(deliverableGates, selectedPeriod ?? initialPeriod ?? 0, user?.token);
   
   // Debug logs to help troubleshoot API issues
@@ -155,6 +156,7 @@ const Progress: React.FC = () => {
             keyField="guid"
             onRowUpdating={handleRowUpdating}
             onRowValidating={handleRowValidating}
+            onSaving={handleSaving}
             allowUpdating={true}
             allowAdding={false}
             allowDeleting={false}

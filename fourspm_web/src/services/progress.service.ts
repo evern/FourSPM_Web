@@ -1,3 +1,4 @@
+// Service for handling progress updates
 import { v4 as uuidv4 } from 'uuid';
 import { DeliverableRowData } from '../types/progress';
 import { sharedApiService } from './api/shared-api.service';
@@ -36,10 +37,8 @@ export const handleProgressUpdate = async (
     const totalEarnedPercentage = values.cumulativeEarntPercentage;
     const currentPeriodPercentage = Math.max(0, totalEarnedPercentage - previousPeriodPercentage);
     
-    console.log(`Updating progress for deliverable ${key}:`);
-    console.log(`- Total earned up to period ${periodId}: ${totalEarnedPercentage * 100}%`);
-    console.log(`- Previous period total: ${previousPeriodPercentage * 100}%`);
-    console.log(`- Current period change: ${currentPeriodPercentage * 100}%`);
+    // Determine the total hours - using the value from oldData if available
+    const totalHours = oldData?.totalHours || 0;
 
     // Prepare the data for the API call
     const progressData = {
@@ -48,10 +47,10 @@ export const handleProgressUpdate = async (
       period: periodId,
       cumulativeEarntPercentage: totalEarnedPercentage, // Total earned percentage up to this period
       currentPeriodEarntPercentage: currentPeriodPercentage, // Percentage earned specifically in this period
-      units: oldData && oldData.totalHours ? oldData.totalHours * currentPeriodPercentage : 0,
+      units: currentPeriodPercentage * totalHours, // Calculate units based on the available totalHours
       createdBy: JSON.parse(localStorage.getItem('user') || '{}').accountId,
     };
-
+    
     // Use the shared API service to make the request
     const result = await sharedApiService.post<any>(
       '/odata/v1/Progress/AddOrUpdateExisting',
@@ -59,7 +58,6 @@ export const handleProgressUpdate = async (
       progressData
     );
 
-    console.log('Progress update successful:', result);
     return Promise.resolve(result);
   } catch (error) {
     console.error('Error updating progress:', error);

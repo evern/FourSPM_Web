@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { EventInfo } from 'devextreme/events';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
@@ -54,6 +54,7 @@ interface ODataGridProps {
   onRowValidating?: Properties['onRowValidating'];
   onEditorPreparing?: (e: any) => void;
   onInitialized?: (e: any) => void;
+  onSaving?: (e: any) => void;
   defaultFilter?: [string, string, any][];
 }
 
@@ -73,10 +74,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onRowValidating,
   onEditorPreparing,
   onInitialized,
+  onSaving: onSavingProp,
   defaultFilter = [],
 }) => {
   const { user } = useAuth();
   const token = user?.token;
+  const dataGridRef = useRef<DataGrid>(null);
 
   let store;
   let dataSourceOptions: Options;
@@ -100,7 +103,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         'Accept': 'application/json'
       };
 
-      if (options.method === 'PATCH') {
+      // Set appropriate headers for all HTTP methods
+      if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
         options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
         options.headers['Prefer'] = 'return=minimal';
       }
@@ -150,11 +154,26 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
   };
 
+  const onSaving = (e: any) => {
+    // If there are no changes, don't do anything
+    if (!e.changes || !e.changes.length) return;
+
+    // Log changes for debugging
+    console.log('Batch changes:', e.changes);
+
+    // Default saving behavior works fine
+    // But if you need custom saving logic, you can implement it here:
+    // e.cancel = true; // Cancel default saving behavior
+    // Process changes manually
+    // Then refresh the grid: dataGridRef.current?.instance.refresh();
+  };
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
       <div style={{ width: '100%', overflowX: 'auto', height: '600px' }}>
         <DataGrid
+          ref={dataGridRef}
           className={'dx-card wide-card'}
           dataSource={dataSourceInstance}
           showBorders={false}
@@ -167,12 +186,14 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
-            mode: 'row',
+            mode: 'batch',
             allowAdding,
             allowUpdating,
             allowDeleting,
             useIcons: true,
             texts: {
+              saveAllChanges: 'Save Changes',
+              cancelAllChanges: 'Discard Changes',
               saveRowChanges: 'Save',
               cancelRowChanges: 'Cancel',
               editRow: 'Edit',
@@ -187,6 +208,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onRowValidating={onRowValidating}
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
+          onSaving={onSavingProp || onSaving}
         >
           <Paging defaultPageSize={defaultPageSize} />
           <Pager showPageSizeSelector={true} showInfo={true} />

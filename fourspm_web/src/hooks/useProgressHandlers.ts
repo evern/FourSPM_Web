@@ -2,6 +2,7 @@ import { compareGuids } from '../utils/guid-utils';
 import { handleProgressUpdate } from '../services/progress.service';
 import { updateDeliverableGate } from '../services/deliverable-gate.service';
 import { DeliverableGate } from '../types/progress';
+import { extractRowValue } from '../utils/grid-utils';
 
 export const useProgressHandlers = (
   deliverableGates: DeliverableGate[],
@@ -29,7 +30,7 @@ export const useProgressHandlers = (
       
       // Use backend-provided values for previous and future period percentages
       const previousPeriodEarntPercentage = e.oldData.previousPeriodEarntPercentage || 0;
-      const futurePeriodEarntPercentage = e.oldData.futurePeriodEarntPercentage || 1.0;
+      const futurePeriodEarntPercentage = e.oldData.futurePeriodEarntPercentage || 0;
       
       // Validate that percentage doesn't decrease below previous period percentage
       if (newPercentage < previousPeriodEarntPercentage) {
@@ -47,28 +48,76 @@ export const useProgressHandlers = (
     }
   };
   
-  // Handle row updating event to manage progress updates and gate changes
+  // Handle row updating event for individual row edits
   const handleRowUpdating = (e: any) => {
-    console.log('Row updating:', e);
-    e.cancel = true; // Cancel default handling
+    // In batch mode, we don't cancel default behavior here
+    // This will collect changes for batch processing
     
-    // Create a function to handle refreshing the grid after update
-    const refreshGrid = () => {
-      if (e.component) {
-        e.component.refresh();
-        e.component.cancelEditData();
+    // However, we still validate the data
+    // The actual updates are processed in handleSaving
+  };
+  
+  // Handle saving event for batch mode
+  const handleSaving = (e: any) => {
+    if (!e.changes || !e.changes.length) {
+      return;
+    }
+    
+    // Cancel default save behavior to handle it manually
+    e.cancel = true;
+    
+    // Process each change sequentially
+    const processChanges = async () => {
+      for (const change of e.changes) {
+        // For batch mode, we only care about update changes
+        if (change.type !== 'update') {
+          continue;
+        }
+        
+        try {
+          // Get values directly from the grid using the store method that we know works
+          let totalHours = 0; // Default fallback
+          let previousPeriodEarntPercentage = 0; // Default fallback
+          
+          try {
+            // Get the full row data from the store
+            const dataSource = e.component.getDataSource();
+            const rowData = await dataSource.store().byKey(change.key);
+            
+            // Extract the values using our utility function
+            totalHours = extractRowValue(rowData, 'totalHours', 0);
+            previousPeriodEarntPercentage = extractRowValue(rowData, 'previousPeriodEarntPercentage', 0);
+          } catch (error) {
+            // Use default values if retrieval fails
+            console.error('Error retrieving row data:', error);
+          }
+          
+          // Create a simulated oldData object with the values we need
+          const completeData = {
+            ...change.data,
+            totalHours,
+            previousPeriodEarntPercentage
+          };
+          
+          await processRowUpdate({
+            key: change.key,
+            newData: change.data,
+            oldData: completeData,
+            component: e.component
+          });
+        } catch (error) {
+          console.error('Error processing change:', error);
+        }
       }
+      
+      // After all changes are processed, refresh the grid
+      e.component.refresh();
     };
     
-    // Handle different types of updates based on changed properties
-    const updatePromise = processRowUpdate(e);
-    
-    // Chain the promise to refresh the grid and handle errors
-    return updatePromise
-      .then(refreshGrid)
-      .catch(error => {
-        console.error('Error updating row:', error);
-      });
+    // Start processing changes
+    processChanges().catch(error => {
+      console.error('Error in processChanges:', error);
+    });
   };
   
   // Process row updates based on what properties changed
@@ -77,13 +126,11 @@ export const useProgressHandlers = (
     
     // Case 1: Updating both percentage and gate simultaneously
     if (newData.cumulativeEarntPercentage !== undefined && newData.deliverableGateGuid !== undefined) {
-      console.log('Updating both percentage and gate');
       return handleCombinedUpdate(key, newData, oldData);
     }
     
     // Case 2: Updating percentage only
     if (newData.cumulativeEarntPercentage !== undefined) {
-      console.log('Updating percentage only');
       return handleProgressUpdate(key, newData, currentPeriod, oldData);
     }
     
@@ -93,21 +140,17 @@ export const useProgressHandlers = (
     }
     
     // Case 4: Updating other fields (default handler)
-    console.log('Using default update handler for', Object.keys(newData));
     return Promise.resolve();
   };
   
   // Handle combined updates to both percentage and gate
   const handleCombinedUpdate = (deliverableKey: string, newData: any, oldData: any) => {
-    console.log('Handling combined gate and percentage update');
-    
     // Find the selected gate
     const selectedGate = deliverableGates.find(gate => 
       compareGuids(gate.guid, newData.deliverableGateGuid)
     );
     
     if (!selectedGate) {
-      console.warn('Selected gate not found');
       return Promise.reject('Selected gate not found');
     }
     
@@ -124,10 +167,7 @@ export const useProgressHandlers = (
     if (selectedGate.autoPercentage !== null && 
         selectedGate.autoPercentage > userPercentage && 
         selectedGate.autoPercentage > previousPeriodEarntPercentage) {
-      console.log(`Using gate auto percentage (${selectedGate.autoPercentage}) instead of user percentage (${userPercentage})`);
       percentageToUse = selectedGate.autoPercentage ?? undefined;
-    } else {
-      console.log(`Using user percentage (${userPercentage}) over gate auto percentage`);
     }
     
     // Update gate first, then the percentage
@@ -144,15 +184,12 @@ export const useProgressHandlers = (
   
   // Handle deliverable gate updates with possible auto percentage
   const handleGateUpdate = (deliverableKey: string, newData: any, oldData: any) => {
-    console.log('Updating deliverable gate');
-    
     // Find the selected gate
     const selectedGate = deliverableGates.find(gate => 
       compareGuids(gate.guid, newData.deliverableGateGuid)
     );
     
     if (!selectedGate) {
-      console.warn('Selected gate not found');
       return Promise.reject('Selected gate not found');
     }
     
@@ -165,8 +202,6 @@ export const useProgressHandlers = (
       
       // Only apply auto percentage if it's higher than previous period percentage
       if (selectedGate.autoPercentage > previousPeriodEarntPercentage) {
-        console.log(`Applying auto percentage: ${selectedGate.autoPercentage} (previous period: ${previousPeriodEarntPercentage})`);
-        
         // Need to update both - first update the gate, then track progress
         return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '')
           .then(() => {
@@ -182,12 +217,12 @@ export const useProgressHandlers = (
     }
     
     // Just update the gate without percentage change
-    console.log('Updating gate only (no auto percentage or no increase needed)');
     return updateDeliverableGate(deliverableKey, newData.deliverableGateGuid, userToken || '');
   };
   
   return {
     handleRowValidating,
-    handleRowUpdating
+    handleRowUpdating,
+    handleSaving
   };
 };
