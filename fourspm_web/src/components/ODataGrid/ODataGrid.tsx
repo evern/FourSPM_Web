@@ -56,6 +56,7 @@ interface ODataGridProps {
   onInitialized?: (e: any) => void;
   onSaving?: (e: any) => void;
   defaultFilter?: [string, string, any][];
+  expand?: string[];
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -76,6 +77,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onInitialized,
   onSaving: onSavingProp,
   defaultFilter = [],
+  expand,
 }) => {
   const { user } = useAuth();
   const token = user?.token;
@@ -109,7 +111,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     },
     beforeSend: (options: any) => {
       if (!token) {
-        console.error('No token available');
         return false;
       }
 
@@ -117,6 +118,46 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'
       };
+
+      // Handle expand parameter based on the request method
+      const url = new URL(options.url);
+      const method = (options.method || '').toLowerCase();
+      
+      if (method === 'get' && expand) {
+        url.searchParams.set('$expand', expand.join(','));
+      } else {
+        url.searchParams.delete('$expand');
+      }
+      
+      if ((method === 'patch' || method === 'put' || method === 'post') && expand && options.payload) {
+        try {
+          if (typeof options.payload === 'object' && options.payload !== null) {
+            expand.forEach(navProp => {
+              delete options.payload[navProp];
+              delete options.payload[navProp.toLowerCase()];
+            });
+          } else if (typeof options.payload === 'string') {
+            const payload = JSON.parse(options.payload);
+            let modified = false;
+            
+            expand.forEach(navProp => {
+              if (payload.hasOwnProperty(navProp) || payload.hasOwnProperty(navProp.toLowerCase())) {
+                delete payload[navProp];
+                delete payload[navProp.toLowerCase()];
+                modified = true;
+              }
+            });
+            
+            if (modified) {
+              options.payload = JSON.stringify(payload);
+            }
+          }
+        } catch (error) {
+          console.error('Error modifying payload:', error);
+        }
+      }
+      
+      options.url = url.toString();
 
       // Set appropriate headers for all HTTP methods
       if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
@@ -128,7 +169,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     },
     errorHandler: (error) => {
       if (error.httpStatus === 401) {
-        console.log('Token expired, redirecting to login...');
         localStorage.removeItem('user');
         window.location.href = '/login';
         return true;
@@ -148,7 +188,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   const dataSourceInstance = new DataSource(dataSourceOptions);
 
   const onCellPrepared = (e: any) => {
-    // Apply tooltips to data cells
     if (e.rowType === 'data') {
       const column = columns.find(col => col.dataField === e.column.dataField);
       if (column && (column.tooltip || column.hint)) {
@@ -156,7 +195,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       }
     }
     
-    // Apply tooltips to column headers
     if (e.rowType === 'header') {
       const column = columns.find(col => col.dataField === e.column.dataField);
       if (column && (column.tooltip || column.hint)) {
@@ -170,17 +208,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   };
 
   const onSaving = (e: any) => {
-    // If there are no changes, don't do anything
     if (!e.changes || !e.changes.length) return;
 
-    // Log changes for debugging
-    console.log('Batch changes:', e.changes);
-
-    // Default saving behavior works fine
-    // But if you need custom saving logic, you can implement it here:
-    // e.cancel = true; // Cancel default saving behavior
-    // Process changes manually
-    // Then refresh the grid: dataGridRef.current?.instance.refresh();
+    onSavingProp?.(e);
   };
 
   return (
@@ -233,7 +263,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onRowValidating={onRowValidating}
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
-          onSaving={onSavingProp || onSaving}
+          onSaving={onSaving}
         >
           <Paging defaultPageSize={defaultPageSize} />
           <Pager showPageSizeSelector={true} showInfo={true} />

@@ -118,19 +118,19 @@ export const createProjectFormItems = (
       // Client contact fields
       {
         itemType: 'simple',
-        dataField: 'clientContactName',
+        dataField: 'client.clientContactName',
         label: { text: 'Client Contact' },
         editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
-        dataField: 'clientContactNumber',
+        dataField: 'client.clientContactNumber',
         label: { text: 'Contact Number' },
         editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
-        dataField: 'clientContactEmail',
+        dataField: 'client.clientContactEmail',
         label: { text: 'Contact Email' },
         editorOptions: { 
           readOnly: !isEditing,

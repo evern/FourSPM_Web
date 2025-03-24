@@ -51,3 +51,26 @@ export const clientsStore = createODataStore('/odata/v1/Clients');
 export const deliverableGatesStore = createODataStore('/odata/v1/DeliverableGates');
 export const deliverablesStore = createODataStore('/odata/v1/Deliverables');
 export const projectsStore = createODataStore('/odata/v1/Projects');
+export const documentTypesStore = createODataStore('/odata/v1/DocumentTypes');
+export const areasStore = createODataStore('/odata/v1/Areas');
+export const disciplinesStore = createODataStore('/odata/v1/Disciplines');
+
+/**
+ * Creates an Area store with project filtering
+ * @param projectId Project GUID to filter areas by
+ * @returns DataSource with ODataStore and project filter
+ */
+export const createAreaStore = (projectId: string) => {
+  if (!projectId) {
+    console.error('No projectId provided for Areas lookup');
+    return null;
+  }
+
+  const store = createODataStore('/odata/v1/Areas');
+  
+  // Return a DataSource with filtering
+  return {
+    store: store,
+    filter: ['projectGuid', '=', projectId]
+  };
+};

@@ -50,6 +50,9 @@ export interface ClientDetails {
   number: string;
   description: string;
   clientContact: string | null;
+  clientContactName?: string | null;
+  clientContactNumber?: string | null;
+  clientContactEmail?: string | null;
 }
 
 // Detailed project information
@@ -68,10 +71,6 @@ export interface ProjectDetails {
   deleted: string | null;
   deletedBy: string | null;
   client?: ClientDetails | null;
-  // Additional client contact fields that may exist directly on project object
-  clientContactName?: string | null;
-  clientContactNumber?: string | null;
-  clientContactEmail?: string | null;
 }
 
 // Project status options

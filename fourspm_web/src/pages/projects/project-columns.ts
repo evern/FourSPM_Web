@@ -29,7 +29,7 @@ export const projectColumns: ODataGridColumn[] = [
     hidingPriority: 9  
   },
   {
-    dataField: 'clientContactName',
+    dataField: 'client.clientContactName',
     caption: 'Client Contact',
     hidingPriority: 5,  
     allowEditing: false, 
@@ -39,7 +39,7 @@ export const projectColumns: ODataGridColumn[] = [
     cellClass: 'faded-placeholder'
   },
   {
-    dataField: 'clientContactNumber',
+    dataField: 'client.clientContactNumber',
     caption: 'Contact Number',
     hidingPriority: 3,  
     allowEditing: false, 
@@ -49,7 +49,7 @@ export const projectColumns: ODataGridColumn[] = [
     cellClass: 'faded-placeholder'
   },
   {
-    dataField: 'clientContactEmail',
+    dataField: 'client.clientContactEmail',
     caption: 'Contact Email',
     hidingPriority: 4,  
     allowEditing: false, 

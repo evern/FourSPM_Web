@@ -1,6 +1,7 @@
 import { NavigationItem } from '../app-navigation';
 import { ProjectInfo, projectStatuses, ProjectNavigationItem, ClientDetails, ProjectDetails } from '../types/project';
 import { sharedApiService } from './api/shared-api.service';
+import { API_CONFIG } from '../config/api';
 
 /**
  * Fetch project information from the API
@@ -11,7 +12,7 @@ import { sharedApiService } from './api/shared-api.service';
 export const fetchProject = async (projectId: string, userToken: string): Promise<ProjectInfo> => {
   console.log('fetchProject: Calling sharedApiService.getById', { projectId });
   try {
-    const data = await sharedApiService.getById<any>('/odata/v1/Projects', projectId, userToken);
+    const data = await sharedApiService.getById<any>('/odata/v1/Projects', projectId, userToken, '$expand=Client');
     console.log('fetchProject: Raw API response', data);
     
     // Format project information
@@ -40,7 +41,8 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
   try {
     const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
       '/odata/v1/Projects',
-      token
+      token,
+      '$expand=Client'
     );
     
     // Create status-based navigation structure
@@ -92,28 +94,6 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
 };
 
 /**
- * Gets client details by GUID
- * @param clientId Client GUID
- * @param token User authentication token
- * @returns Client details including contact information
- */
-export const getClientDetails = async (clientId: string, token: string): Promise<any> => {
-  try {
-    const data = await sharedApiService.getById<any>('/odata/v1/Clients', clientId, token);
-    
-    return {
-      ...data,
-      clientContactName: data.clientContactName || null,
-      clientContactNumber: data.clientContactNumber || null,
-      clientContactEmail: data.clientContactEmail || null
-    };
-  } catch (error) {
-    console.error('Error fetching client details:', error);
-    throw error;
-  }
-};
-
-/**
  * Gets detailed project information
  * @param projectId Project GUID
  * @param token User authentication token
@@ -121,38 +101,16 @@ export const getClientDetails = async (clientId: string, token: string): Promise
  */
 export const getProjectDetails = async (projectId: string, token: string): Promise<ProjectDetails> => {
   try {
-    // Use the expand query parameter to include client information
-    const data = await sharedApiService.getById<any>(
-      '/odata/v1/Projects',
-      projectId,
-      token,
-      '$expand=Client'
+    console.log(`Getting project details for project ${projectId}`);
+    
+    // Use standard endpoint with $expand=Client to include related client data
+    const result = await sharedApiService.get<ProjectDetails>(
+      `/odata/v1/Projects(${projectId})?$expand=Client`,
+      token
     );
     
-    return {
-      guid: data.guid,
-      clientGuid: data.clientGuid,
-      projectNumber: data.projectNumber,
-      name: data.name,
-      purchaseOrderNumber: data.purchaseOrderNumber,
-      projectStatus: data.projectStatus,
-      progressStart: data.progressStart,
-      created: data.created,
-      createdBy: data.createdBy,
-      updated: data.updated,
-      updatedBy: data.updatedBy,
-      deleted: data.deleted,
-      deletedBy: data.deletedBy,
-      client: data.client ? {
-        guid: data.client.guid,
-        number: data.client.number,
-        description: data.client.description,
-        clientContact: data.client.clientContact
-      } : null,
-      clientContactName: data.clientContactName,
-      clientContactNumber: data.clientContactNumber,
-      clientContactEmail: data.clientContactEmail
-    };
+    console.log('Project details response:', result);
+    return result;
   } catch (error) {
     console.error('Error fetching project details:', error);
     throw error;
@@ -166,19 +124,40 @@ export const getProjectDetails = async (projectId: string, token: string): Promi
  * @param token User authentication token
  * @returns Updated project details
  */
-export async function updateProject(projectId: string, data: Partial<ProjectDetails>, token: string): Promise<ProjectDetails> {
+export const updateProject = async (
+  projectId: string, 
+  data: Partial<ProjectDetails>, 
+  token: string
+): Promise<ProjectDetails> => {
   try {
+    // Create a flattened version of the data to avoid complex objects
+    const flattenedData: Record<string, any> = {};
+    
+    // Only include primitive types, not objects like client
+    Object.entries(data).forEach(([key, value]) => {
+      // Only include primitive values, not objects
+      if (
+        value === null ||
+        typeof value !== 'object' ||
+        value instanceof Date
+      ) {
+        flattenedData[key] = value;
+      }
+    });
+    
+    console.log('Sending update with flattened data:', flattenedData);
+    
     await sharedApiService.update<ProjectDetails>(
       '/odata/v1/Projects',
       projectId,
-      data,
+      flattenedData,
       token
     );
     
-    // Return the data we sent as it was successfully updated
-    return { ...data } as ProjectDetails;
+    // Fetch updated project with client data included using custom endpoint
+    return await getProjectDetails(projectId, token);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;
   }
-}
+};

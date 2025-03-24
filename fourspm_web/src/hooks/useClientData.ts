@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getClientDetails } from '../services/project.service';
+import { getClientDetails, Client } from '../services/client.service';
 import notify from 'devextreme/ui/notify';
 import Form from 'devextreme-react/form';
 import { ClientDetails } from '../types/project';
@@ -56,15 +56,15 @@ export const useClientData = (userToken: string | undefined) => {
           formRef.instance.option('formData', {
             ...formData,
             clientGuid: clientId,
-            clientContactName: contact.name || '',
-            clientContactNumber: contact.number || '',
-            clientContactEmail: contact.email || '',
-            // Update the client object on the form data to ensure it's available for display
+            // Move the contact fields into the client object
             client: {
               guid: clientDataResult.guid,
               number: clientDataResult.number,
               description: clientDataResult.description,
-              clientContact: clientDataResult.clientContact
+              clientContact: clientDataResult.clientContact,
+              clientContactName: clientDataResult.clientContactName || '',
+              clientContactNumber: clientDataResult.clientContactNumber || '',
+              clientContactEmail: clientDataResult.clientContactEmail || ''
             }
           });
         }

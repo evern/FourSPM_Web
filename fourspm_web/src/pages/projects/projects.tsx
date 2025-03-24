@@ -10,6 +10,7 @@ import { useNavigation } from '../../contexts/navigation';
 import './projects.scss';
 
 const Projects: React.FC = () => {
+  // Use the standard endpoint without $expand parameter
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Projects`;
   const { refreshNavigation } = useNavigation();
   
@@ -68,6 +69,7 @@ const Projects: React.FC = () => {
           onInitNewRow={handleInitNewRow}
           onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
+          expand={['Client']} // Use the expand property we added to ODataGrid
         />
       </div>
     </div>

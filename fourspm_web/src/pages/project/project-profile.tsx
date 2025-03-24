@@ -57,12 +57,29 @@ const ProjectProfile: React.FC = () => {
           const data = await getProjectDetails(projectId, user.token);
           console.log('Project data loaded:', data);
           console.log('Client data from API:', data.client);
-          setProjectData(data);
-
+          
+          // Load client data if a client is associated with the project
           if (data.clientGuid) {
             const clientData = await loadClientData(data.clientGuid);
             console.log('Client data loaded separately:', clientData);
+            
+            // If client data was loaded successfully, ensure it's properly set in project data
+            if (clientData && data.client) {
+              // Make sure we're updating the client object with all required properties
+              data.client = {
+                // Ensure guid is always a string (not undefined)
+                guid: data.client.guid || clientData.guid,
+                number: data.client.number || '',
+                description: data.client.description || '',
+                clientContact: clientData.clientContact || null,
+                clientContactName: clientData.clientContactName || null,
+                clientContactNumber: clientData.clientContactNumber || null,
+                clientContactEmail: clientData.clientContactEmail || null
+              };
+            }
           }
+          
+          setProjectData(data);
         } catch (error) {
           console.error('Error fetching project data:', error);
           notify('Error loading project data', 'error', 3000);

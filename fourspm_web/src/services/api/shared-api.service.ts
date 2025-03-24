@@ -130,6 +130,31 @@ class SharedApiService {
       throw error;
     }
   }
+
+  /**
+   * Generic method to delete an entity
+   * @param endpoint OData endpoint path
+   * @param id Entity ID
+   * @param token Auth token
+   * @returns Promise that resolves when deletion is complete
+   */
+  async delete(endpoint: string, id: string, token: string): Promise<void> {
+    if (!token) {
+      throw new Error('No auth token provided');
+    }
+
+    if (!id) {
+      throw new Error(`No ID provided for ${endpoint} delete`);
+    }
+
+    try {
+      await this.odataService.delete(endpoint, token, id);
+      console.log(`Successfully deleted ${endpoint} with ID ${id}`);
+    } catch (error: any) {
+      console.error(`Error deleting ${endpoint}:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export a singleton instance
