@@ -2,9 +2,8 @@ import React from 'react';
 import { API_CONFIG } from '../../config/api';
 import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useAutoIncrement } from '../../hooks/useAutoIncrement';
-import { useGridValidation } from '../../hooks/useGridValidation';
-import { useGridOperations } from '../../hooks/useGridOperations';
+import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
+import { useProjectController } from '../../hooks/controllers/useProjectController';
 import { projectColumns } from './project-columns';
 import { useNavigation } from '../../contexts/navigation';
 import './projects.scss';
@@ -21,32 +20,37 @@ const Projects: React.FC = () => {
     startFrom: '01'
   });
 
-  const { handleRowUpdating, handleRowRemoving } = useGridOperations({
-    endpoint,
-    onDeleteError: (error) => console.error('Failed to delete project:', error),
-    onDeleteSuccess: () => {
-      refreshNextNumber();
-      refreshNavigation();
-    },
-    onUpdateSuccess: () => {
-      console.log('Project updated successfully');
-      refreshNextNumber();
-      refreshNavigation();
-    },
-    onUpdateError: (error) => console.error('Failed to update project:', error),
-    onInsertSuccess: () => {
-      console.log('Project inserted successfully');
-      refreshNextNumber();
-      refreshNavigation();
-    },
-    onInsertError: (error) => console.error('Failed to insert project:', error)
-  });
+  // Get user token from local storage
+  const userToken = localStorage.getItem('user') 
+    ? JSON.parse(localStorage.getItem('user') || '{}').token 
+    : null;
 
-  const handleRowValidating = useGridValidation([
-    { field: 'projectNumber', required: true, maxLength: 2, errorText: 'Project Number must be at most 2 characters' },
-    { field: 'name', required: true, maxLength: 200, errorText: 'Project Name is required and must be at most 200 characters' },
-    { field: 'clientGuid', required: true, errorText: 'Client is required' }
-  ]);
+  // Use the project data hook which handles grid operations
+  const { 
+    handleRowUpdating, 
+    handleRowRemoving, 
+    onRowValidating
+  } = useProjectController(
+    userToken,
+    {
+      endpoint,
+      onDeleteError: (error) => console.error('Failed to delete project:', error),
+      onDeleteSuccess: () => {
+        refreshNextNumber();
+        refreshNavigation();
+      },
+      onUpdateSuccess: () => {
+        refreshNextNumber();
+        refreshNavigation();
+      },
+      onUpdateError: (error) => console.error('Failed to update project:', error),
+      onInsertSuccess: () => {
+        refreshNextNumber();
+        refreshNavigation();
+      },
+      onInsertError: (error) => console.error('Failed to insert project:', error)
+    }
+  );
 
   const handleInitNewRow = (e: any) => {
     e.data = {
@@ -67,7 +71,7 @@ const Projects: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={handleRowValidating}
+          onRowValidating={onRowValidating}
           onRowRemoving={handleRowRemoving}
           expand={['Client']} // Use the expand property we added to ODataGrid
         />

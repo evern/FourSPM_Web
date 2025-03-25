@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, useCallback, PropsWithChildren } from 'react';
-import { getUser, signIn as sendSignInRequest } from '../services/auth.service';
+import { getUser, signIn as sendSignInRequest } from '../api/auth-api.service';
 import { User } from '@/types';
 
 // Define interfaces for our types

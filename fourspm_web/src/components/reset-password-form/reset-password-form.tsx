@@ -10,7 +10,7 @@ import Form, {
 } from 'devextreme-react/form';
 import LoadIndicator from 'devextreme-react/load-indicator';
 import notify from 'devextreme/ui/notify';
-import { resetPassword } from '../../services/auth.service';
+import { resetPassword } from '../../api/auth-api.service';
 import './reset-password-form.scss';
 
 interface FormData {

@@ -36,7 +36,7 @@ export const createODataStore = (endpointPath: string, keyField: string = 'guid'
     },
     errorHandler: (error) => {
       if (error.httpStatus === 401) {
-        console.log('Token expired, redirecting to login...');
+        // Handle token expiration
         localStorage.removeItem('user');
         window.location.href = '/login';
         return true;
@@ -62,7 +62,6 @@ export const disciplinesStore = createODataStore('/odata/v1/Disciplines');
  */
 export const createAreaStore = (projectId: string) => {
   if (!projectId) {
-    console.error('No projectId provided for Areas lookup');
     return null;
   }
 
@@ -71,6 +70,6 @@ export const createAreaStore = (projectId: string) => {
   // Return a DataSource with filtering
   return {
     store: store,
-    filter: ['projectGuid', '=', projectId]
+    filter: `projectGuid eq ${projectId}`
   };
 };

@@ -6,15 +6,15 @@ This directory contains shared API services and documentation for the FourSPM We
 
 ## Architecture
 
-The API service architecture follows a 5-layer approach:
+FourSPM Web's API services are organized into the following layers:
 
-1. **Base Layer**: `odata.service.ts` and `base-api.service.ts` - Provides low-level HTTP operations for OData endpoints and REST APIs (GET, POST, PATCH, DELETE)
-2. **Shared Service Layer**: `shared-api.service.ts` - Provides domain-specific operations using the base OData service
-3. **Domain Service Layer**: Individual service files (e.g., `progress.service.ts`, `auth.service.ts`) - Acts as a facade for business logic and backward compatibility
-4. **Hook Layer**: React hooks (e.g., `useProjectInfo.ts`, `useDeliverableGates.ts`) - Provides component state management and lifecycle integration
-5. **Component Layer**: Components like `ODataGrid` that provide UI integration with the API services
+1. **Base Layer**: Core functionality for HTTP requests and response handling.
+2. **Shared Layer**: Common services used across the application, including an OData client.
+3. **Adapter Layer**: Entity-specific adapters that transform data between API and frontend formats, encapsulate entity-specific business logic, and handle complex multi-step operations.
+4. **Domain Layer**: Domain-specific services for each entity type (e.g., Projects, Deliverables).
+5. **Controller Hook Layer**: Specialized hooks that combine domain services, adapters and component lifecycle for managing UI operations.
 
-### Base API Service
+### Base Layer
 
 The `base-api.service.ts` file implements a BaseApiService class that:
 - Provides a generic request method for RESTful API requests
@@ -22,7 +22,7 @@ The `base-api.service.ts` file implements a BaseApiService class that:
 - Provides consistent error handling and logging
 - Exports both a singleton instance and a backward-compatibility function
 
-### Shared API Service
+### Shared Layer
 
 The `shared-api.service.ts` file implements a SharedApiService class that:
 
@@ -31,14 +31,32 @@ The `shared-api.service.ts` file implements a SharedApiService class that:
 - Exports a singleton instance for use across the application
 - Manages API response formats including both direct entity responses and collections
 
-### OData Integration
+### Adapter Layer
 
-The `odata.service.ts` file provides the base ODataService class for:
-- Making standardized API requests with consistent headers
-- Handling OData response formats and error states
-- Supporting OData query options like $filter and $select
+The Adapter Layer contains entity-specific adapter modules that serve as an intermediary between the raw API services and controller hooks. Adapters are responsible for:
 
-### Domain Service Layer
+- Transforming data between API and frontend formats
+- Encapsulating entity-specific business logic
+- Handling complex operations that may involve multiple API calls
+- Providing consistent error handling for entity operations
+
+Adapters are typically imported by controller hooks and used to perform specialized operations. For example:
+
+```typescript
+// Example from progress.adapter.ts
+export const handleProgressUpdate = async (
+  deliverableGuid: string,
+  newData: Partial<DeliverableProgressDto>,
+  currentPeriod: number,
+  oldData: Partial<DeliverableProgressDto>
+): Promise<void> => {
+  // Complex operation logic that may involve multiple API calls
+  // Data transformation between formats
+  // Specialized error handling
+};
+```
+
+### Domain Layer
 
 Domain service files implement business logic and act as facades for the SharedApiService:
 
@@ -47,20 +65,27 @@ Domain service files implement business logic and act as facades for the SharedA
 - `deliverable-gate.service.ts` - Handles deliverable gate operations
 - `auth.service.ts` - Manages user authentication, session handling, and account operations
 
-### Hook Layer
+### Controller Hook Layer
 
-React hooks bridge domain services with React components:
+Controller hooks combine domain services with React component lifecycle management:
 
-- `useProjectInfo.ts` - Manages project data state and current period calculations
-- `useDeliverableGates.ts` - Provides state for deliverable gates data
-- `useProgressHandlers.ts` - Offers handlers for progress updates with validation
-- `useAutoIncrement.ts` - Handles auto-incrementing field values
+- `useDeliverableController.ts` - Provides state and handlers for deliverable CRUD operations
+- `useProgressController.ts` - Offers handlers for progress updates with validation
+- `useProjectEntityController.ts` - Manages project data state and current period calculations
+- `useDeliverableGatesController.ts` - Provides state for deliverable gates data
+
+Controller hooks are specialized to specific use cases and handle:
+- Form state management
+- Grid row operations (insert, update, delete)
+- Validation logic
+- Error handling and user feedback
 
 ### UI Component Integration
 
 The `ODataGrid` component provides direct integration with OData endpoints:
 - Handles CRUD operations through the OData protocol
 - Provides validation and custom editing capabilities
+- Integrates with controller hooks for specialized business logic
 
 ## Related Documentation
 
@@ -71,20 +96,32 @@ For detailed implementation guidelines, refer to:
 
 ## Usage Examples
 
-### Using React hooks
+### Using Controller Hooks
 
 ```typescript
-import { useProjectInfo } from '../hooks/useProjectInfo';
-import { useDeliverableGates } from '../hooks/useDeliverableGates';
+import { useDeliverableControllerWithProject } from '../hooks/controllers/useDeliverableController';
 
-function MyComponent() {
-  // Get project info with loading state
-  const { project, currentPeriod, isLoading } = useProjectInfo(projectId, token);
+function DeliverableComponent() {
+  const { 
+    handleRowUpdating, 
+    handleRowRemoving, 
+    handleRowInserting,
+    onRowValidating,
+    handleInitNewRow,
+    handleEditorPreparing,
+    handleGridInitialized,
+    project
+  } = useDeliverableControllerWithProject(
+    userToken,
+    projectId,
+    {
+      endpoint,
+      onDeleteError: (error) => console.error('Error:', error),
+      onUpdateError: (error) => console.error('Error:', error)
+    }
+  );
   
-  // Get deliverable gates with loading state
-  const { deliverableGates, isLoadingGates } = useDeliverableGates(token);
-  
-  // Component rendering using the fetched data...
+  // Component rendering using the controller hooks...
 }
 ```
 
@@ -170,6 +207,8 @@ const result = await response.json();
   allowUpdating={true}
   onRowUpdating={handleRowUpdating}
   onRowValidating={handleRowValidating}
+  onRowInserting={handleRowInserting}
+  onRowRemoving={handleRowRemoving}
 />
 ```
 

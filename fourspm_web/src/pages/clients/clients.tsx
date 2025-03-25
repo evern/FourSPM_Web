@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { API_CONFIG } from '../../config/api';
 import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useAutoIncrement } from '../../hooks/useAutoIncrement';
-import { useGridValidation } from '../../hooks/useGridValidation';
-import { useGridOperations } from '../../hooks/useGridOperations';
+import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
+import { useClientController } from '../../hooks/controllers/useClientController';
 import { clientColumns } from './client-columns';
 import { useNavigation } from '../../contexts/navigation';
+import { useAuth } from '../../contexts/auth';
 import './clients.scss';
 
 const Clients: React.FC = () => {
   const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Clients`;
   const { refreshNavigation } = useNavigation();
+  const { user } = useAuth();
   
   const { nextNumber, refreshNextNumber } = useAutoIncrement({
     endpoint,
@@ -20,26 +21,25 @@ const Clients: React.FC = () => {
     startFrom: '001'
   });
 
-  const { handleRowUpdating, handleRowRemoving } = useGridOperations({
+  const { 
+    handleRowUpdating, 
+    handleRowRemoving,
+    handleRowInserting,
+    handleRowValidating
+  } = useClientController(user?.token, {
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete client:', error),
     onDeleteSuccess: refreshNavigation,
     onUpdateSuccess: refreshNavigation,
-    onUpdateError: (error) => console.error('Failed to update client:', error)
+    onUpdateError: (error) => console.error('Failed to update client:', error),
+    onInsertSuccess: refreshNavigation
   });
 
-  const handleRowValidating = useGridValidation([
-    { field: 'number', required: true, maxLength: 3, errorText: 'Client Number must be at most 3 characters' },
-    { field: 'description', maxLength: 500, errorText: 'Description must be at most 500 characters' },
-    { field: 'clientContactName', maxLength: 500, errorText: 'Contact Name must be at most 500 characters' },
-    { field: 'clientContactNumber', maxLength: 100, errorText: 'Contact Phone must be at most 100 characters' },
-    { 
-      field: 'clientContactEmail', 
-      maxLength: 100, 
-      pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
-      errorText: 'Please enter a valid email address' 
-    }
-  ]);
+  // Create the validation function by calling handleRowValidating with an empty array
+  // since the validation rules are already provided in useClientData
+  const rowValidatingHandler = useMemo(() => {
+    return handleRowValidating([]);
+  }, [handleRowValidating]);
 
   const handleInitNewRow = (e: any) => {
     e.data = {
@@ -60,8 +60,9 @@ const Clients: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={handleRowValidating}
+          onRowValidating={rowValidatingHandler}
           onRowRemoving={handleRowRemoving}
+          onRowInserting={handleRowInserting}
         />
       </div>
     </div>

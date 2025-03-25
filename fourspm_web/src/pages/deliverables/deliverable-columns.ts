@@ -1,110 +1,6 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
-import { API_CONFIG } from '../../config/api';
-import ODataStore from 'devextreme/data/odata/store';
-
-// Department is now an enum, so we define the lookup values here
-const departmentEnum = [
-  { id: 'Administration', name: 'Administration' },
-  { id: 'Design', name: 'Design' },
-  { id: 'Engineering', name: 'Engineering' },
-  { id: 'Management', name: 'Management' }
-];
-
-// DeliverableType is now an enum, so we define the lookup values here
-const deliverableTypeEnum = [
-  { id: 'Task', name: 'Task' },
-  { id: 'NonDeliverable', name: 'Non Deliverable' },
-  { id: 'DeliverableICR', name: 'Deliverable ICR' },
-  { id: 'Deliverable', name: 'Deliverable' }
-];
-
-// Create ODataStore for DocumentType lookup
-const documentTypeStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/DocumentTypes`,
-  version: 4,
-  key: 'guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    
-    if (!token) {
-      console.error('No token available');
-      return false;
-    }
-
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-
-    return true;
-  }
-});
-
-// Create ODataStore for Areas lookup with project filtering
-const createAreaStore = (projectId: string) => {
-  if (!projectId) {
-    console.error('No projectId provided for Areas lookup');
-    return null;
-  }
-  
-  const store = new ODataStore({
-    url: `${API_CONFIG.baseUrl}/odata/v1/Areas`,
-    version: 4,
-    key: 'guid',
-    keyType: 'Guid',
-    fieldTypes: {
-      projectGuid: 'Guid'
-    },
-    beforeSend: (options: any) => {
-      const token = localStorage.getItem('user') ? 
-        JSON.parse(localStorage.getItem('user') || '{}').token : null;
-      
-      if (!token) {
-        console.error('No token available');
-        return false;
-      }
-
-      options.headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
-      return true;
-    }
-  });
-
-  // Return a DataSource with filtering instead of just the store
-  return {
-    store: store,
-    filter: ['projectGuid', '=', projectId]
-  };
-};
-
-// Create ODataStore for Discipline lookup
-const disciplineStore = new ODataStore({
-  url: `${API_CONFIG.baseUrl}/odata/v1/Disciplines`,
-  version: 4,
-  key: 'guid',
-  keyType: 'Guid',
-  beforeSend: (options: any) => {
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    
-    if (!token) {
-      console.error('No token available');
-      return false;
-    }
-
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    };
-
-    return true;
-  }
-});
+import { departmentEnum, deliverableTypeEnum } from '../../types/enums';
+import { documentTypesStore, createAreaStore, disciplinesStore } from '../../stores/odataStores';
 
 // Create columns with projectId parameter to filter areas
 export const createDeliverableColumns = (projectId: string): ODataGridColumn[] => {
@@ -136,29 +32,9 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
       } : undefined
     },
     {
-      dataField: 'discipline',
-      caption: 'Discipline',
-      hidingPriority: 6,
-      lookup: {
-        dataSource: disciplineStore,
-        valueExpr: 'code',
-        displayExpr: 'code'
-      }
-    },
-    {
-      dataField: 'documentType',
-      caption: 'Document Type',
-      hidingPriority: 0,
-      lookup: {
-        dataSource: documentTypeStore,
-        valueExpr: 'code',
-        displayExpr: 'code'
-      }
-    },
-    {
       dataField: 'departmentId',
       caption: 'Department',
-      hidingPriority: 1,
+      hidingPriority: 8,
       lookup: {
         dataSource: departmentEnum,
         valueExpr: 'id',
@@ -166,13 +42,47 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
       }
     },
     {
+      dataField: 'discipline',
+      caption: 'Discipline',
+      hidingPriority: 6,
+      lookup: {
+        dataSource: disciplinesStore,
+        valueExpr: 'code',
+        displayExpr: 'code'
+      }
+    },
+    {
       dataField: 'deliverableTypeId',
       caption: 'Deliverable Type',
-      hidingPriority: 2,
+      hidingPriority: 9,
       lookup: {
         dataSource: deliverableTypeEnum,
         valueExpr: 'id',
         displayExpr: 'name'
+      },
+      editorOptions: {
+        placeholder: 'Select type...',
+        showClearButton: false,
+        onInitialized: (e: any) => {
+          // Make sure the editor always displays a value
+          if (e.component && e.component.option) {
+            const value = e.component.option('value');
+            if (value === null || value === undefined) {
+              // Set the default value to 'Task'
+              e.component.option('value', 'Task');
+            }
+          }
+        }
+      }
+    },
+    {
+      dataField: 'documentType',
+      caption: 'Document Type',
+      hidingPriority: 7,
+      lookup: {
+        dataSource: documentTypesStore,
+        valueExpr: 'code',
+        displayExpr: 'code'
       }
     },
     {
@@ -193,17 +103,33 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
     {
       dataField: 'budgetHours',
       caption: 'Budget Hours',
-      hidingPriority: 7
+      hidingPriority: 8,
+      dataType: 'number',
+      editorOptions: {
+        type: 'number',
+        min: 0,
+        showSpinButtons: true,
+        showClearButton: false,
+        step: 1
+      }
     },
     {
       dataField: 'variationHours',
       caption: 'Variation Hours',
-      hidingPriority: 8
+      hidingPriority: 9,
+      dataType: 'number',
+      editorOptions: {
+        type: 'number',
+        min: 0,
+        showSpinButtons: true,
+        showClearButton: false,
+        step: 1
+      }
     },
     {
       dataField: 'totalHours',
       caption: 'Total Hours',
-      hidingPriority: 9,
+      hidingPriority: 10,
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
     },

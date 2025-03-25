@@ -4,17 +4,15 @@ import { useAuth } from '../../contexts/auth';
 import './progress.scss';
 
 // Import custom hooks from shared location
-import { useProjectInfo } from '../../hooks/useProjectInfo';
-import { useDeliverableGates } from '../../hooks/useDeliverableGates';
-import { useProgressHandlers } from './progress.handlers';
+import { useProjectEntityController } from '../../hooks/controllers/useProjectController';
+import { useDeliverableGatesController } from '../../hooks/controllers/useDeliverableGatesController';
+import { useProgressController } from '../../hooks/controllers/useProgressController';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import ScrollToTop from '../../components/scroll-to-top';
 import LoadPanel from 'devextreme-react/load-panel';
 import Button from 'devextreme-react/button';
 import NumberBox from 'devextreme-react/number-box';
-import ScrollView from 'devextreme-react/scroll-view';
 
 // Import types from shared location
 import { API_CONFIG } from '../../config/api';
@@ -37,8 +35,8 @@ const Progress: React.FC = () => {
   const { 
     project, 
     currentPeriod: initialPeriod, 
-    isLoading: isLoadingProject 
-  } = useProjectInfo(projectId, user?.token);
+    entity: { isLoading: isLoadingProject }
+  } = useProjectEntityController(projectId, user?.token);
   
   // State for user-selected period and calculated progress date
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
@@ -65,22 +63,19 @@ const Progress: React.FC = () => {
   const { 
     deliverableGates,
     isLoadingGates
-  } = useDeliverableGates(user?.token);
+  } = useDeliverableGatesController(user?.token);
 
-  // Set up row updating and validation handlers
+  // Use the progress controller hook for row operations
   const { 
     handleRowUpdating, 
-    handleRowValidating,
-    handleSaving
-  } = useProgressHandlers(deliverableGates, selectedPeriod ?? initialPeriod ?? 0, user?.token);
-  
-  // Debug logs to help troubleshoot API issues
-  console.log('Progress Component - Initial Render:', {
+    onRowValidating: handleRowValidating
+  } = useProgressController(
+    user?.token,
     projectId,
-    hasToken: !!user?.token,
-    isLoadingGates
-  });
-
+    deliverableGates,
+    selectedPeriod ?? initialPeriod ?? 0
+  );
+  
   // Handle period increment/decrement
   const handlePeriodChange = (increment: boolean) => {
     if (selectedPeriod !== null) {
@@ -107,94 +102,92 @@ const Progress: React.FC = () => {
         showPane={true}
       />
       
-      {/* Only render grid when data is loaded */}
-      {!isLoading && (
-        <div className="custom-grid-wrapper">
-          <div className="grid-custom-title">
-            {project ? `${project.projectNumber} - ${project.name} Progress Tracking` : 'Progress Tracking'}
-          </div>
-          {/* Project header with period info */}
-          {project && (
-            <div className="period-selector">
-              <div className="period-details">
-                <div className="period-info">
-                  <div className="info-item">
-                    <span>Reporting Period:</span>
-                    <div className="period-stepper">
-                      <Button
-                        icon="spindown"
-                        onClick={() => handlePeriodChange(false)}
-                        stylingMode="outlined"
-                        className="period-button down-button"
-                      />
-                      <NumberBox
-                        value={selectedPeriod || 0}
-                        min={0}
-                        showSpinButtons={false}
-                        onKeyDown={(e) => {
-                          // Allow keyboard navigation (up/down arrows)
-                          if (e.event && e.event.key === 'ArrowUp') {
-                            handlePeriodChange(true);
-                            e.event.preventDefault();
-                          } else if (e.event && e.event.key === 'ArrowDown') {
-                            handlePeriodChange(false);
-                            e.event.preventDefault();
+    {/* Only render grid when data is loaded */}
+    {!isLoading && (
+      <div className="custom-grid-wrapper">
+        <div className="grid-custom-title">
+          {project ? `${project.projectNumber} - ${project.name} Progress Tracking` : 'Progress Tracking'}
+        </div>
+        {/* Project header with period info */}
+        {project && (
+          <div className="period-selector">
+            <div className="period-details">
+              <div className="period-info">
+                <div className="info-item">
+                  <span>Reporting Period:</span>
+                  <div className="period-stepper">
+                    <Button
+                      icon="spindown"
+                      onClick={() => handlePeriodChange(false)}
+                      stylingMode="outlined"
+                      className="period-button down-button"
+                    />
+                    <NumberBox
+                      value={selectedPeriod || 0}
+                      min={0}
+                      showSpinButtons={false}
+                      onKeyDown={(e) => {
+                        // Allow keyboard navigation (up/down arrows)
+                        if (e.event && e.event.key === 'ArrowUp') {
+                          handlePeriodChange(true);
+                          e.event.preventDefault();
+                        } else if (e.event && e.event.key === 'ArrowDown') {
+                          handlePeriodChange(false);
+                          e.event.preventDefault();
+                        }
+                      }}
+                      onValueChanged={(e) => {
+                        // Handle direct input
+                        if (e.event && e.event.type === 'change') {
+                          if (e.value !== null && e.value !== undefined) {
+                            setSelectedPeriod(parseInt(e.value.toString(), 10));
                           }
-                        }}
-                        onValueChanged={(e) => {
-                          // Handle direct input
-                          if (e.event && e.event.type === 'change') {
-                            if (e.value !== null && e.value !== undefined) {
-                              setSelectedPeriod(parseInt(e.value.toString(), 10));
-                            }
-                          }
-                        }}
-                        className="period-number-box"
-                        width={60}
-                        stylingMode="filled"
-                      />
-                      <Button
-                        icon="spinup"
-                        onClick={() => handlePeriodChange(true)}
-                        stylingMode="outlined"
-                        className="period-button up-button"
-                      />
-                    </div>
-                    <span className="secondary-info">(weeks from project start)</span>
+                        }
+                      }}
+                      className="period-number-box"
+                      width={60}
+                      stylingMode="filled"
+                    />
+                    <Button
+                      icon="spinup"
+                      onClick={() => handlePeriodChange(true)}
+                      stylingMode="outlined"
+                      className="period-button up-button"
+                    />
                   </div>
-                  <div className="info-item">
-                    <span>Progress Date:</span>
-                    <strong>{progressDate.toLocaleDateString()}</strong>
-                  </div>
-                  <div className="info-item">
-                    <span>Project Start Date:</span>
-                    <strong>
-                      {project.progressStart
-                        ? new Date(project.progressStart).toLocaleDateString()
-                        : 'Not set'}
-                    </strong>
-                    {project.progressStart && (
-                      <span className="secondary-info">({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
-                    )}
-                  </div>
+                  <span className="secondary-info">(weeks from project start)</span>
+                </div>
+                <div className="info-item">
+                  <span>Progress Date:</span>
+                  <strong>{progressDate.toLocaleDateString()}</strong>
+                </div>
+                <div className="info-item">
+                  <span>Project Start Date:</span>
+                  <strong>
+                    {project.progressStart
+                      ? new Date(project.progressStart).toLocaleDateString()
+                      : 'Not set'}
+                  </strong>
+                  {project.progressStart && (
+                    <span className="secondary-info">({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
+                  )}
                 </div>
               </div>
             </div>
-          )}
-          {/* Progress tracking grid - using the ODataGrid component */}
-          <ODataGrid
+          </div>
+        )}
+        <ODataGrid
             title=" "
             endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${selectedPeriod ?? initialPeriod ?? 0}`}
             columns={createProgressColumns()}
             keyField="guid"
             onRowUpdating={handleRowUpdating}
             onRowValidating={handleRowValidating}
-            onSaving={handleSaving}
             allowUpdating={true}
             allowAdding={false}
             allowDeleting={false}
           />
-        </div>
+      </div>
       )}
     </div>
   );

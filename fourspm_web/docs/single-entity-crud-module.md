@@ -12,8 +12,9 @@ Single entity CRUD modules in FourSPM Web follow a layered architecture consisti
 
 1. **UI Component Layer**: The main React component (e.g., `ProjectProfile.tsx`)
 2. **Form Configuration Layer**: Separate configuration for form items (e.g., `project-form-items.ts`)
-3. **Custom Hooks Layer**: Specialized hooks for state management and business logic (e.g., `useProjectEdit.ts`, `useClientData.ts`)
-4. **Service Layer**: API services for data fetching and persistence (e.g., `project.service.ts`)
+3. **Controller Hook Layer**: Specialized hooks for state management and business logic (e.g., `useProjectEntityController.ts`)
+4. **Adapter Layer**: Entity-specific adapters for data transformation and complex operations (e.g., `project.adapter.ts`)
+5. **Service Layer**: API services for data fetching and persistence (e.g., `shared-api.service.ts`)
 
 This architecture promotes separation of concerns, reusability, and maintainability.
 
@@ -24,20 +25,18 @@ This architecture promotes separation of concerns, reusability, and maintainabil
 Start by creating your main component file (e.g., `entity-profile.tsx`) with the following structure:
 
 ```tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import './entity-profile.scss'; // Create matching SCSS file
 import Form from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
-import { getEntityDetails } from '../../services/entity.service';
-import { EntityDetails } from '../../types/entity';
 import { useAuth } from '../../contexts/auth';
 import { Button } from 'devextreme-react/button';
-import notify from 'devextreme/ui/notify';
 import { ScrollView } from 'devextreme-react/scroll-view';
-import { LoadPanel, LoadIndicator } from 'devextreme-react/load-panel';
+import { LoadPanel } from 'devextreme-react/load-panel';
+import ScrollToTop from '../../components/scroll-to-top';
 
-// Import custom hooks
-import { useEntityEdit } from '../../hooks/useEntityEdit';
+// Import controller hook
+import { useEntityController } from '../../hooks/controllers/useEntityController';
 
 // Import form items configuration
 import { createEntityFormItems } from './entity-form-items';
@@ -54,88 +53,121 @@ const EntityProfile: React.FC = () => {
 export default EntityProfile;
 ```
 
-### 2. Set Up Component State and Hooks
+### 2. Create or Update the Entity Adapter
 
-Define the component state and integrate custom hooks:
+Create a file in the `src/adapters` directory named `entity-name.adapter.ts` with functions for fetching, updating, and transforming entity data:
+
+```typescript
+// src/adapters/entity-name.adapter.ts
+import { EntityType } from '../types';
+import { sharedApiService } from '../api/shared-api.service';
+
+/**
+ * Fetch entity information from the API
+ * @param entityId The entity GUID to fetch information for
+ * @param userToken The user's authentication token
+ * @returns A promise resolving to the entity information
+ */
+export const fetchEntity = async (entityId: string, userToken: string): Promise<EntityType> => {
+  try {
+    const data = await sharedApiService.getById<any>('/odata/v1/Entities', entityId, userToken, '$expand=RelatedEntity');
+    
+    // Transform API data to frontend model
+    return {
+      guid: data.guid,
+      name: data.name || '',
+      // Map other properties as needed
+    };
+  } catch (error) {
+    console.error('fetchEntity: Error in getById call', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates entity information
+ * @param entityId Entity GUID
+ * @param data Partial entity data to update
+ * @param token User authentication token
+ * @returns Updated entity details
+ */
+export const updateEntity = async (
+  entityId: string, 
+  data: Partial<EntityType>, 
+  token: string
+): Promise<EntityType> => {
+  try {
+    // Clean data for API
+    const apiData = {
+      ...data,
+      // Remove nested objects if needed
+      relatedEntity: undefined
+    };
+    
+    // Perform update
+    await sharedApiService.update<Partial<EntityType>>(
+      '/odata/v1/Entities',
+      entityId,
+      apiData,
+      token
+    );
+    
+    // Fetch updated entity details
+    return fetchEntity(entityId, token);
+  } catch (error) {
+    console.error('Error updating entity:', error);
+    throw error;
+  }
+};
+```
+
+### 3. Create the Entity Controller Hook
+
+Implement the component using a specialized controller hook for handling entity operations:
 
 ```tsx
 // Extract parameters from URL
 const { entityId } = useParams<EntityProfileParams>();
 const { user } = useAuth();
 
-// Component state
-const [entityData, setEntityData] = useState<EntityDetails | null>(null);
-const [isLoading, setIsLoading] = useState(true);
-const scrollViewRef = useRef<ScrollView>(null);
+// Use the entity controller hook
+const {
+  entity,
+  isLoading,
+  isEditing,
+  isSaving,
+  formRef,
+  startEdit,
+  cancelEdit,
+  saveEntityChanges,
+  onFormRef
+} = useEntityController(entityId, user?.token);
 
-// Use custom hooks
-const { isEditing, isSaving, formRef, onFormRef, startEdit, cancelEdit, saveEntityChanges } = 
-  useEntityEdit(entityId, user?.token);
+// Create form items based on entity data and edit mode
+const formItems = createEntityFormItems(entity, isEditing);
 ```
 
-### 3. Implement Data Fetching
-
-Add a `useEffect` hook to fetch entity data when the component mounts:
-
-```tsx
-// Fetch entity data on component mount
-useEffect(() => {
-  const fetchEntityData = async () => {
-    if (user?.token && entityId) {
-      setIsLoading(true);
-      try {
-        const data = await getEntityDetails(entityId, user.token);
-        setEntityData(data);
-      } catch (error) {
-        console.error('Error fetching entity data:', error);
-        notify('Error loading entity data', 'error', 3000);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-  fetchEntityData();
-}, [entityId, user?.token]);
-```
-
-### 4. Create Save Handler
-
-Implement a handler for saving entity changes:
-
-```tsx
-// Handle save button click
-const handleSave = useCallback(async () => {
-  if (!entityData) return;
-  
-  const updatedEntity = await saveEntityChanges(entityData);
-  if (updatedEntity) {
-    setEntityData(updatedEntity);
-  }
-}, [entityData, saveEntityChanges]);
-```
-
-### 5. Render Component UI
+### 4. Implement Component Rendering
 
 Implement the rendering logic with loading state, form, and action buttons:
 
 ```tsx
 // Loading state
-if (isLoading || !entityData) {
+if (isLoading || !entity) {
   return (
     <div className="profile-container">
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Loading Entity Details...</div>
       </div>
-      <div className="profile-loading-container">
-        <LoadIndicator width={50} height={50} visible={true} />
-        <div className="loading-message">Loading entity data...</div>
-      </div>
+      <LoadPanel 
+        visible={true} 
+        position={{ of: '.profile-container' }}
+        showIndicator={true}
+        showPane={true}
+      />
     </div>
   );
 }
-
-// Create form items for the current entity data
-const formItems = createEntityFormItems(entityData, isEditing);
 
 return (
   <div className="profile-container">
@@ -149,7 +181,7 @@ return (
     <div className="custom-grid-wrapper">
       <div className="grid-header-container">
         <div className="grid-custom-title">
-          {entityData ? `Entity: ${entityData.name}` : 'Entity Details'}
+          {entity ? `Entity: ${entity.name}` : 'Entity Details'}
         </div>
         
         <div className="action-buttons">
@@ -161,12 +193,12 @@ return (
               onClick={startEdit}
             />
           ) : (
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="edit-buttons-container">
               <Button
                 text="Save"
                 type="success"
                 stylingMode="contained"
-                onClick={handleSave}
+                onClick={saveEntityChanges}
                 disabled={isSaving}
               />
               <Button
@@ -183,112 +215,213 @@ return (
 
       <ScrollView
         className="scrollable-content"
-        ref={scrollViewRef}
         height={"calc(100vh - 200px)"}
         width={"100%"}
       >
         <div className="form-container">
           <Form
             ref={onFormRef}
-            formData={entityData}
+            formData={entity}
             items={formItems}
             labelLocation="top"
             minColWidth={233}
             colCount="auto"
+            readOnly={!isEditing}
           />
         </div>
       </ScrollView>
     </div>
+    <ScrollToTop />
   </div>
 );
 ```
 
-### 6. Create Form Items Configuration
+### 5. Create Form Items Configuration
 
-Create a separate file (e.g., `entity-form-items.ts`) to define the form structure:
+Create a separate file for form configuration (e.g., `entity-form-items.ts`):
 
 ```typescript
-import { IGroupItemProps } from 'devextreme-react/form';
-import { EntityDetails } from '../../types/entity';
+import { Item } from 'devextreme/ui/form';
 
 /**
- * Creates the form items configuration for the Entity Profile form
- * @param entityData Current entity data
+ * Creates form items configuration for entity profile
+ * @param entity The entity data to display/edit
  * @param isEditing Whether the form is in edit mode
- * @returns Form items configuration
+ * @returns Array of form item configurations
  */
-export const createEntityFormItems = (
-  entityData: EntityDetails,
-  isEditing: boolean,
-): IGroupItemProps[] => [
-  {
-    itemType: 'group',
-    caption: 'Entity Information',
-    colCountByScreen: {
-      xs: 1,    
-      sm: 1,    
-      md: 2,    
-      lg: 2     
+export const createEntityFormItems = (entity: any, isEditing: boolean): Item[] => {
+  if (!entity) return [];
+  
+  return [
+    {
+      itemType: 'group',
+      caption: 'General Information',
+      items: [
+        {
+          dataField: 'name',
+          label: { text: 'Name' },
+          editorOptions: {
+            disabled: !isEditing
+          },
+          validationRules: [
+            { type: 'required', message: 'Name is required' }
+          ]
+        },
+        {
+          dataField: 'description',
+          label: { text: 'Description' },
+          editorType: 'dxTextArea',
+          editorOptions: {
+            height: 90,
+            disabled: !isEditing
+          }
+        },
+        {
+          dataField: 'typeId',
+          label: { text: 'Type' },
+          editorType: 'dxSelectBox',
+          editorOptions: {
+            items: [
+              { id: 0, name: 'Type 1' },
+              { id: 1, name: 'Type 2' },
+              { id: 2, name: 'Type 3' }
+            ],
+            valueExpr: 'id',
+            displayExpr: 'name',
+            disabled: !isEditing
+          }
+        }
+      ]
     },
-    items: [
-      { 
-        itemType: 'simple',
-        dataField: 'entityId',
-        editorOptions: { readOnly: true }
-      },
-      {
-        itemType: 'simple',
-        dataField: 'name',
-        editorOptions: { readOnly: !isEditing }
-      },
-      // Add more form fields as needed
-    ]
-  },
-  // Add more form groups as needed
-];
+    {
+      itemType: 'group',
+      caption: 'Additional Details',
+      items: [
+        {
+          dataField: 'status',
+          label: { text: 'Status' },
+          editorType: 'dxTextBox',
+          editorOptions: {
+            readOnly: true  // Always read-only
+          }
+        },
+        {
+          dataField: 'createdDate',
+          label: { text: 'Created Date' },
+          editorType: 'dxDateBox',
+          editorOptions: {
+            displayFormat: 'MM/dd/yyyy',
+            readOnly: true  // Always read-only
+          }
+        }
+      ]
+    }
+  ];
+};
 ```
 
-### 7. Create Custom Edit Hook
+### 6. Implement Entity Controller Hook
 
-Implement a custom hook to manage editing state and operations (e.g., `useEntityEdit.ts`):
+Create a controller hook that manages all entity operations (e.g., `useEntityController.ts`):
 
 ```typescript
-import { useState, useCallback } from 'react';
-import { EntityDetails } from '../types/entity';
-import { updateEntity } from '../services/entity.service';
-import notify from 'devextreme/ui/notify';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Form from 'devextreme-react/form';
+import { sharedApiService } from '../../services/api/shared-api.service';
+import notify from 'devextreme/ui/notify';
 
 /**
- * Hook to manage entity editing state and operations
- * @param entityId The entity GUID to edit
- * @param userToken The user's authentication token
- * @returns Object containing editing state and handler functions
+ * Hook for managing entity CRUD operations
+ * @param entityId ID of the entity to manage
+ * @param token Authentication token
+ * @returns Object containing entity state and handlers
  */
-export const useEntityEdit = (entityId: string | undefined, userToken: string | undefined) => {
+export const useEntityController = (
+  entityId: string | undefined,
+  token: string | undefined
+) => {
+  // State management
+  const [entity, setEntity] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [formRef, setFormRef] = useState<Form | null>(null);
-
-  /**
-   * Save entity changes
-   * @param currentData Current entity data object
-   * @returns Updated entity data if successful, null otherwise
-   */
-  const saveEntityChanges = useCallback(async (currentData: EntityDetails): Promise<EntityDetails | null> => {
-    if (!formRef || !entityId || !userToken) return null;
-
+  
+  // Form reference handler
+  const onFormRef = useCallback((ref: Form) => {
+    if (ref) {
+      setFormRef(ref);
+    }
+  }, []);
+  
+  // Fetch entity data on component mount
+  useEffect(() => {
+    const fetchEntityData = async () => {
+      if (!token || !entityId) {
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        const data = await sharedApiService.getById('/odata/v1/Entities', entityId, token);
+        setEntity(data);
+      } catch (error) {
+        console.error('Error fetching entity data:', error);
+        notify('Error loading entity data', 'error', 3000);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEntityData();
+  }, [entityId, token]);
+  
+  // Enter edit mode
+  const startEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+  
+  // Cancel edit mode
+  const cancelEdit = useCallback(() => {
+    setIsEditing(false);
+    
+    // Reset form data to original entity data
+    if (formRef && entity) {
+      formRef.instance.updateData(entity);
+    }
+  }, [entity, formRef]);
+  
+  // Save entity changes
+  const saveEntityChanges = useCallback(async () => {
+    if (!token || !entityId || !formRef) {
+      return;
+    }
+    
+    // Validate form before saving
+    const validationResult = formRef.instance.validate();
+    if (!validationResult.isValid) {
+      return;
+    }
+    
+    // Get updated data from form
+    const updatedData = { ...formRef.instance.option('formData') };
+    
     setIsSaving(true);
     try {
-      const formData = formRef.instance.option('formData');
-      const result = await updateEntity(entityId, formData, userToken);
+      // Update entity via service
+      const result = await sharedApiService.update(
+        `/odata/v1/Entities(${entityId})`,
+        token,
+        updatedData
+      );
       
-      if (result) {
-        notify('Entity updated successfully', 'success', 3000);
-        setIsEditing(false);
-        return result;
-      }
-      return null;
+      // Update local state with result
+      setEntity(result);
+      setIsEditing(false);
+      notify('Entity updated successfully', 'success', 3000);
+      
+      return result;
     } catch (error) {
       console.error('Error updating entity:', error);
       notify('Error updating entity', 'error', 3000);
@@ -296,226 +429,187 @@ export const useEntityEdit = (entityId: string | undefined, userToken: string | 
     } finally {
       setIsSaving(false);
     }
-  }, [formRef, entityId, userToken]);
-
-  /**
-   * Set the form reference for accessing form data
-   */
-  const onFormRef = useCallback((ref: Form) => {
-    setFormRef(ref);
-  }, []);
-
-  /**
-   * Start editing the entity
-   */
-  const startEdit = useCallback(() => {
-    setIsEditing(true);
-  }, []);
-
-  /**
-   * Cancel editing and revert changes
-   */
-  const cancelEdit = useCallback(() => {
-    setIsEditing(false);
-    // Reset form data to original entity data
-    if (formRef) {
-      formRef.instance.resetValues();
-    }
-  }, [formRef]);
-
+  }, [entityId, token, formRef]);
+  
   return {
+    entity,
+    isLoading,
     isEditing,
     isSaving,
     formRef,
-    onFormRef,
     startEdit,
     cancelEdit,
-    saveEntityChanges
+    saveEntityChanges,
+    onFormRef
   };
 };
 ```
 
-### 8. Create Entity Service
+### 7. Create SCSS Styling
 
-Implement API service functions for your entity (e.g., `entity.service.ts`):
-
-```typescript
-import { sharedApiService } from './shared-api.service';
-import { EntityDetails } from '../types/entity';
-
-/**
- * Retrieves detailed entity information by ID
- * @param entityId Entity GUID
- * @param token Authentication token
- * @returns Promise resolving to entity details
- */
-export const getEntityDetails = async (
-  entityId: string,
-  token: string
-): Promise<EntityDetails> => {
-  try {
-    const data = await sharedApiService.getById<any>(
-      '/odata/v1/Entities',
-      entityId,
-      token,
-      '$expand=RelatedEntities'
-    );
-    
-    // Transform API response to match component data structure if needed
-    return {
-      guid: data.guid,
-      entityId: data.entityId,
-      name: data.name,
-      // Map other properties
-    };
-  } catch (error) {
-    console.error('Error fetching entity details:', error);
-    throw error;
-  }
-};
-
-/**
- * Updates an entity with new data
- * @param entityId Entity GUID
- * @param entityData Updated entity data
- * @param token Authentication token
- * @returns Promise resolving to updated entity details
- */
-export const updateEntity = async (
-  entityId: string,
-  entityData: EntityDetails,
-  token: string
-): Promise<EntityDetails | null> => {
-  try {
-    // Prepare data for API if needed
-    const apiData = {
-      name: entityData.name,
-      // Include other fields that should be updated
-    };
-
-    // Update entity through API
-    const updatedData = await sharedApiService.update<any>(
-      '/odata/v1/Entities',
-      entityId,
-      apiData,
-      token
-    );
-
-    if (updatedData) {
-      // Fetch the updated entity to get all data including related entities
-      return await getEntityDetails(entityId, token);
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error updating entity:', error);
-    throw error;
-  }
-};
-```
-
-## Advanced Patterns
-
-### Handling Related Entities
-
-The [Project Profile](../src/pages/project/project-profile.tsx) component demonstrates how to handle related entities (like clients). To implement this pattern:
-
-1. Create a custom hook for the related entity data (e.g., `useClientData.ts`)
-2. Pass the related entity data and loading state to the form items creation function
-3. Implement UI elements that show loading states for related data
-4. Handle selection changes for related entities with proper form updates
-
-### Form Validation
-
-To add validation to your entity form:
-
-1. Define validation rules in your form items configuration
-2. Implement client-side validation in your custom edit hook
-3. Handle server-side validation errors in your API service functions
-
-### Responsive Layout
-
-The component uses several techniques for responsiveness:
-
-1. The `useScreenSize` hook to detect screen dimensions
-2. `colCountByScreen` property in form groups to adjust columns based on screen size
-3. CSS Grid layout with appropriate media queries in the SCSS file
-
-## CSS Structure
-
-Create a matching SCSS file (e.g., `entity-profile.scss`) with these core styles:
+Implement styling for the profile component:
 
 ```scss
 .profile-container {
   height: 100%;
+  width: 100%;
+  padding: 20px;
   position: relative;
   
   .custom-grid-wrapper {
     height: 100%;
     display: flex;
     flex-direction: column;
+    background: var(--dx-background-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
     
     .grid-header-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--dx-border-color);
       
       .grid-custom-title {
-        font-size: 18px;
-        font-weight: 500;
+        font-size: 1.2rem;
+        font-weight: 600;
       }
       
       .action-buttons {
         display: flex;
-        gap: 8px;
+        
+        .edit-buttons-container {
+          display: flex;
+          gap: 8px;
+        }
       }
     }
-  }
-  
-  .scrollable-content {
-    flex: 1;
-  }
-  
-  .form-container {
-    padding: 16px;
-  }
-  
-  .profile-loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: calc(100% - 48px);
     
-    .loading-message {
-      margin-top: 16px;
+    .scrollable-content {
+      flex: 1;
+      
+      .form-container {
+        padding: 20px;
+      }
     }
   }
 }
 ```
 
-## Common Patterns and Best Practices
+## Common Implementation Patterns
 
-1. **Separation of Concerns**: Keep UI components, form configuration, business logic, and API services in separate files
-2. **Custom Hooks for Reusability**: Create custom hooks for common operations like editing, data fetching, and validation
-3. **Loading States**: Always show loading indicators during asynchronous operations
-4. **Error Handling**: Implement consistent error handling and user notifications
-5. **Form Reset**: Provide a way to cancel edits and reset the form to its original state
-6. **Responsive Design**: Ensure the component works well on different screen sizes
-7. **Console Logging**: Include strategic console logging during development, but remove or disable in production
+### Related Entity Lookups
+
+When a form field requires selection from a related entity, implement a lookup:
+
+```typescript
+{
+  dataField: 'relatedEntityId',
+  label: { text: 'Related Entity' },
+  editorType: 'dxSelectBox',
+  editorOptions: {
+    dataSource: {
+      store: {
+        type: 'odata',
+        url: `${API_CONFIG.baseUrl}/odata/v1/RelatedEntities`,
+        key: 'guid',
+        beforeSend: (option) => {
+          option.headers = {
+            'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          };
+        }
+      },
+      paginate: true
+    },
+    valueExpr: 'guid',
+    displayExpr: 'name',
+    searchEnabled: true,
+    disabled: !isEditing
+  }
+}
+```
+
+### Conditional Form Items
+
+Implement conditional form items based on entity state or user role:
+
+```typescript
+const formItems = [
+  // Standard form items...
+];
+
+// Add conditional items
+if (entity.status === 'Active' && userHasPermission) {
+  formItems.push({
+    itemType: 'group',
+    caption: 'Advanced Settings',
+    items: [
+      // Advanced form items...
+    ]
+  });
+}
+
+return formItems;
+```
+
+### Custom Validation Rules
+
+Implement custom validation rules for form fields:
+
+```typescript
+{
+  dataField: 'customField',
+  label: { text: 'Custom Field' },
+  validationRules: [
+    { 
+      type: 'custom',
+      validationCallback: (e: any) => {
+        // Custom validation logic
+        return isValid(e.value);
+      },
+      message: 'Invalid value'
+    }
+  ]
+}
+```
+
+### Form Group Layout
+
+Organize form fields into logical groups for better user experience:
+
+```typescript
+[
+  {
+    itemType: 'group',
+    caption: 'General Information',
+    colCount: 2,
+    items: [
+      // General info fields...
+    ]
+  },
+  {
+    itemType: 'group',
+    caption: 'Contact Information',
+    colCount: 2,
+    items: [
+      // Contact fields...
+    ]
+  }
+]
+```
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-1. **Form Data Not Updating**: Ensure the form reference is correctly set and accessed
-2. **API Errors**: Check network requests, authentication tokens, and API endpoint URLs
-3. **Loading States**: Verify that loading states are properly initialized and updated
-4. **Related Entity Data**: Make sure related entity data is loaded and passed correctly to form items
+1. **Form Validation**: Ensure validation rules are correctly defined and triggered
+2. **Data Synchronization**: Keep form data synchronized with entity state, especially after canceling edits
+3. **API Integration**: Handle API errors gracefully and show appropriate notifications
+4. **Performance**: Use memoization for callbacks and avoid unnecessary rerenders
+5. **Form References**: Ensure form references are properly managed with useCallback
 
 ## Conclusion
 
-This guide provides a foundation for creating single entity CRUD modules in the FourSPM Web application. By following these patterns and practices, you can create consistent, maintainable, and user-friendly interfaces for managing entity data.
-
-For more information about the underlying API service architecture, please refer to the [API Services Documentation](./api-services-documentation.md).
+By following this guide and using the controller hook pattern, you can create consistent and maintainable single entity CRUD modules. This approach centralizes business logic in specialized hooks while keeping the UI components clean and focused on presentation concerns.

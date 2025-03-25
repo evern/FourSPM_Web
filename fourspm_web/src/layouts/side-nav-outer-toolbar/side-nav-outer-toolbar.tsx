@@ -67,13 +67,7 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
   }, []);
 
   const toggleMenu = useCallback(({ event }: ToggleMenuEvent) => {
-    console.log('Toggle menu called', { currentMenuStatus: menuStatus, isLarge });
-    
     setMenuStatus(prevStatus => {
-      console.log('Toggling menu:', {
-        prevStatus,
-        willBe: prevStatus === MenuStatus.Closed ? 'Opened' : 'Closed'
-      });
       return prevStatus === MenuStatus.Closed ? MenuStatus.Opened : MenuStatus.Closed;
     });
     

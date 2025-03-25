@@ -1,12 +1,9 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
-import { DepartmentEnum } from '../../types/enums';
+import { departmentEnum } from '../../types/enums';
 import { deliverableGatesStore } from '../../stores/odataStores';
-import { Column } from 'devextreme/ui/data_grid';
-
-type ProgressColumn = ODataGridColumn & Partial<Column>;
 
 // Generic progress tracking columns configuration
-export const createProgressColumns = (): ProgressColumn[] => {
+export const createProgressColumns = (): ODataGridColumn[] => {
   return [
     {
       dataField: 'bookingCode',
@@ -43,11 +40,9 @@ export const createProgressColumns = (): ProgressColumn[] => {
       cellClass: 'faded-placeholder',
       hidingPriority: 3,
       lookup: {
-        dataSource: Object.entries(DepartmentEnum)
-          .filter(([key]) => !isNaN(Number(key)))
-          .map(([value, text]) => ({ value: Number(value), text })),
-        valueExpr: 'value',
-        displayExpr: 'text'
+        dataSource: departmentEnum,
+        valueExpr: 'id',
+        displayExpr: 'name'
       }
     },
     {

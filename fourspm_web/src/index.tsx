@@ -10,9 +10,11 @@ const root = ReactDOM.createRoot(
 );
 
 root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  // <React.StrictMode> is commented out because it causes components to render twice (in dev but not production)
+  // This double rendering can cause issues with some components and makes debugging more difficult
+  // StrictMode is a development tool that helps detect problems but is enabled by default in create-react-app
+  <App />
+  // </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

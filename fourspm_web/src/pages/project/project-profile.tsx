@@ -1,208 +1,152 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import './project-profile.scss';
-import Form from 'devextreme-react/form';
 import { useParams } from 'react-router-dom';
-import { getProjectDetails } from '../../services/project.service';
-import { ProjectDetails } from '../../types/project';
 import { useAuth } from '../../contexts/auth';
-import { Button } from 'devextreme-react/button';
-import notify from 'devextreme/ui/notify';
-import { useScreenSize } from '../../utils/media-query';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { LoadIndicator } from 'devextreme-react/load-indicator';
-
-// Import custom hooks
-import { useProjectEdit } from '../../hooks/useProjectEdit';
-import { useClientData } from '../../hooks/useClientData';
-
-// Import form items configuration
-import { createProjectFormItems } from './project-form-items';
+import Form from 'devextreme-react/form';
+import { useProjectEntityController } from '../../hooks/controllers/useProjectController';
+import { useScreenSize } from '../../utils/media-query';
+import { useNavigation } from '../../contexts/navigation';
+import { createProjectFormItems } from './project-profile-items';
+import { Project } from '../../types/index';
+import Toolbar, { Item } from 'devextreme-react/toolbar';
 
 // Define URL parameters interface
-interface ProjectProfileParams {
+export interface ProjectProfileParams {
   projectId: string;
 }
 
 const ProjectProfile: React.FC = () => {
-  // Extract parameters from URL
-  const { projectId } = useParams<ProjectProfileParams>();
+  // Get projectId from URL parameters
+  const { projectId = '' } = useParams<ProjectProfileParams>();
   const { user } = useAuth();
-  
-  // Component state
-  const [projectData, setProjectData] = useState<ProjectDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true); 
+  const { refreshNavigation } = useNavigation();
   const { isXSmall, isSmall } = useScreenSize();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Use custom hooks
-  const { isEditing, isSaving, formRef, onFormRef, startEdit, cancelEdit, saveProjectChanges } = 
-    useProjectEdit(projectId, user?.token);
-  const { clientDetails, selectedClientContact, isLoadingClient, handleClientChange, loadClientData } = 
-    useClientData(user?.token);
-
+  // Use enhanced project entity hook with standardized naming
+  const { 
+    isUpdating, 
+    isSaving, 
+    onFormRef, 
+    startUpdate, 
+    cancelUpdate, 
+    saveEntity,
+    updateProjectClient,
+    entity
+  } = useProjectEntityController(projectId, user?.token);
+  
   // Handle client selection change event (adapter for the form)
-  const handleClientSelectionChange = useCallback(async (e: any) => {
-    if (formRef && e.value) {
-      await handleClientChange(e.value, formRef);
-    }
-  }, [formRef, handleClientChange]);
-
-  // Fetch project data on component mount
-  useEffect(() => {
-    const fetchProjectData = async () => {
-      if (user?.token && projectId) {
-        setIsLoading(true); 
-        try {
-          const data = await getProjectDetails(projectId, user.token);
-          console.log('Project data loaded:', data);
-          console.log('Client data from API:', data.client);
-          
-          // Load client data if a client is associated with the project
-          if (data.clientGuid) {
-            const clientData = await loadClientData(data.clientGuid);
-            console.log('Client data loaded separately:', clientData);
-            
-            // If client data was loaded successfully, ensure it's properly set in project data
-            if (clientData && data.client) {
-              // Make sure we're updating the client object with all required properties
-              data.client = {
-                // Ensure guid is always a string (not undefined)
-                guid: data.client.guid || clientData.guid,
-                number: data.client.number || '',
-                description: data.client.description || '',
-                clientContact: clientData.clientContact || null,
-                clientContactName: clientData.clientContactName || null,
-                clientContactNumber: clientData.clientContactNumber || null,
-                clientContactEmail: clientData.clientContactEmail || null
-              };
-            }
-          }
-          
-          setProjectData(data);
-        } catch (error) {
-          console.error('Error fetching project data:', error);
-          notify('Error loading project data', 'error', 3000);
-        } finally {
-          setIsLoading(false); 
-        }
-      }
-    };
-    fetchProjectData();
-  }, [projectId, user?.token, loadClientData]);
-
-  // Handle save button click
-  const handleSave = useCallback(async () => {
-    if (!projectData) return;
+  const handleClientSelectionChange = useCallback((e: any) => {
+    // Get selected clientId from the event value
+    const clientId = e.value;
     
-    const updatedProject = await saveProjectChanges(projectData);
-    if (updatedProject) {
-      console.log('Project saved, updated data:', updatedProject);
-      console.log('Client data after save:', updatedProject.client);
-      setProjectData(updatedProject);
-      
-      // Reload client data if available
-      if (updatedProject.clientGuid) {
-        const refreshedClient = await loadClientData(updatedProject.clientGuid);
-        console.log('Client data refreshed after save:', refreshedClient);
-      }
+    if (clientId && updateProjectClient) {
+      updateProjectClient(clientId);
     }
-  }, [projectData, saveProjectChanges, loadClientData]);
+  }, [updateProjectClient]);
 
-  // Log projectData changes
-  useEffect(() => {
-    if (projectData) {
-      console.log('ProjectData state updated:', projectData);
-      console.log('Client in projectData:', projectData.client);
-    }
-  }, [projectData]);
-
-  // Loading state
-  if (isLoading || !projectData) {
+  // If project is still loading, show loading indicator
+  if (entity.isLoading) {
     return (
-      <div className="profile-container">
-        <div className="custom-grid-wrapper">
-          <div className="grid-custom-title">Loading Project Details...</div>
-        </div>
-        <div className="profile-loading-container">
-          <LoadIndicator width={50} height={50} visible={true} />
-          <div className="loading-message">Loading project data...</div>
-        </div>
+      <div className="profile-loading">
+        <LoadPanel 
+          visible={true} 
+          showIndicator={true} 
+          showPane={true} 
+          shading={true}
+          position={{ of: '.profile-loading' }}
+        />
       </div>
     );
   }
 
-  // Create form items for the current project data, passing clientDetails and loading state
+  const projectData = entity.data || {} as Project;
+
+  // Create form items for the current project data, passing entity and loading state
   const formItems = createProjectFormItems(
     projectData, 
-    isEditing, 
+    Boolean(isUpdating), 
     handleClientSelectionChange,
-    clientDetails,
-    isLoadingClient
+    false // isLoadingClient parameter
   );
 
   return (
     <div className="profile-container">
       <LoadPanel 
         visible={isSaving} 
+        message="Saving..." 
         position={{ of: '.profile-container' }}
         showIndicator={true}
-        showPane={true}
       />
       
-      <div className="custom-grid-wrapper">
-        <div className="grid-header-container">
-          <div className="grid-custom-title">
-            {projectData ? `${projectData.projectNumber} - ${projectData.name}` : 'Project Details'}
-          </div>
-          
-          <div className="action-buttons">
-            {!isEditing ? (
-              <Button
-                text="Edit"
-                type="default"
-                stylingMode="contained"
-                onClick={startEdit}
-              />
-            ) : (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <Button
-                  text="Save"
-                  type="success"
-                  stylingMode="contained"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                />
-                <Button
-                  text="Cancel"
-                  type="normal"
-                  stylingMode="contained"
-                  onClick={cancelEdit}
-                  disabled={isSaving}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <ScrollView
-          className="scrollable-content"
-          ref={scrollViewRef}
-          height={"calc(100vh - 200px)"}
-          width={"100%"}
-        >
-          <div className="form-container">
-            <Form
-              ref={onFormRef}
-              formData={projectData}
-              items={formItems}
-              labelLocation="top"
-              minColWidth={233}
-              colCount="auto"
-            />
-          </div>
-        </ScrollView>
+      <div className="profile-header">
+        <h2>
+          {projectData?.projectNumber && projectData?.name ? 
+            `Project ${projectData.projectNumber} - ${projectData.name}` : 
+            'New Project'}
+        </h2>
       </div>
+
+      <ScrollView 
+        ref={scrollViewRef}
+        className="profile-scrollview"
+        height={isSmall ? 'calc(100vh - 130px)' : 'auto'}
+      >
+        <div className="profile-form">
+          <Form
+            ref={onFormRef}
+            formData={projectData}
+            readOnly={!isUpdating}
+            showValidationSummary={true}
+            validationGroup="projectData"
+            items={formItems}
+          />
+          
+          <Toolbar className="profile-toolbar">
+            <Item
+              location="after"
+              widget="dxButton"
+              visible={!isUpdating}
+              options={{
+                text: 'Edit',
+                type: 'default',
+                stylingMode: 'contained',
+                onClick: startUpdate,
+              }}
+            />
+            <Item
+              location="after"
+              widget="dxButton"
+              visible={isUpdating}
+              options={{
+                text: 'Cancel',
+                stylingMode: 'outlined',
+                onClick: cancelUpdate,
+              }}
+            />
+            <Item
+              location="after"
+              widget="dxButton"
+              visible={isUpdating}
+              options={{
+                text: 'Save',
+                type: 'default',
+                stylingMode: 'contained',
+                onClick: () => {
+                  if (projectData) {
+                    saveEntity(projectData).then(() => {
+                      // Update navigation to reflect changes
+                      if (refreshNavigation) refreshNavigation();
+                    });
+                  }
+                },
+              }}
+            />
+          </Toolbar>
+        </div>
+      </ScrollView>
     </div>
   );
 };
