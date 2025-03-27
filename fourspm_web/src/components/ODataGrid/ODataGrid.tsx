@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { EventInfo } from 'devextreme/events';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
@@ -7,7 +7,8 @@ import DataGrid, {
   Pager,
   FilterRow,
   Editing,
-  Lookup
+  Lookup,
+  Toolbar
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -55,8 +56,11 @@ interface ODataGridProps {
   onEditorPreparing?: (e: any) => void;
   onInitialized?: (e: any) => void;
   onSaving?: (e: any) => void;
+  onSetCellValue?: (rowIndex: number, fieldName: string, value: any) => boolean;
   defaultFilter?: [string, string, any][];
   expand?: string[];
+  formConfig?: any;
+  fetchSuggestedDocumentNumber?: (deliverableTypeId: string, areaNumber: string, discipline: string, documentType: string) => Promise<string>;
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -74,20 +78,31 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onInitNewRow,
   onRowValidating,
   onEditorPreparing,
-  onInitialized,
+  onInitialized: onInitializedProp,
   onSaving: onSavingProp,
+  onSetCellValue,
   defaultFilter = [],
   expand,
+  formConfig,
+  fetchSuggestedDocumentNumber,
 }) => {
   const { user } = useAuth();
   const token = user?.token;
   const dataGridRef = useRef<DataGrid>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [editingMode, setEditingMode] = useState<'cell' | 'popup'>(isMobile ? 'popup' : 'cell');
+  const [isAddingRow, setIsAddingRow] = useState(false);
+  const gridInitializedRef = useRef(false);
 
-  // Check if the device is mobile
+  // Update mobile check effect to also update editingMode
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+      // Only change editing mode on mobile change if not actively editing
+      if (!isAddingRow) {
+        setEditingMode(isMobileView ? 'popup' : 'cell');
+      }
     };
     
     checkMobile(); // Check on initial render
@@ -96,15 +111,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     return () => {
       window.removeEventListener('resize', checkMobile);
     };
-  }, []);
+  }, [isAddingRow]);
 
   let store;
-  let dataSourceOptions: Options;
+  let dataSource;
 
   store = new ODataStore({
     url: endpoint,
-    version: 4,
     key: keyField,
+    version: 4,
     keyType: 'Guid',
     fieldTypes: {
       projectGuid: 'Guid'
@@ -157,8 +172,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         }
       }
       
-      options.url = url.toString();
-
+        options.url = url.toString();
+      
       // Set appropriate headers for all HTTP methods
       if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
         options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
@@ -177,15 +192,27 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
   });
 
-  dataSourceOptions = {
-    store
-  };
+  // Helper function to create data source based on props
+  const getDataSource = useCallback(() => {
+    if (!dataSource && store) {
+      // Create a data source with the store
+      const dsOptions: Options = {
+        store: store
+      };
+      
+      // Apply default filters if provided
+      if (defaultFilter.length > 0) {
+        dsOptions.filter = defaultFilter;
+      }
+      
+      // Create the DataSource instance
+      dataSource = new DataSource(dsOptions);
+    }
+    
+    return dataSource;
+  }, [dataSource, store, defaultFilter]);
 
-  if (defaultFilter.length > 0) {
-    dataSourceOptions.filter = defaultFilter;
-  }
-
-  const dataSourceInstance = new DataSource(dataSourceOptions);
+  const dataSourceInstance = getDataSource();
 
   const onCellPrepared = (e: any) => {
     if (e.rowType === 'data') {
@@ -213,6 +240,123 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     onSavingProp?.(e);
   };
 
+  // Setup grid options on initial render
+  const onInitialized = useCallback((e: any) => {
+    // Call the user-provided onInitialized if available
+    if (onInitializedProp) {
+      onInitializedProp(e);
+    }
+    
+    // Cache the grid instance to prevent reloading
+    if (e.component && !gridInitializedRef.current) {
+      const gridInstance = e.component;
+      
+      // Listen for row adding event to help distinguish between add/edit operations
+      gridInstance.option('onEditingStart', (e: any) => {
+        // Set editing mode based on whether this is a new row or existing row
+        if (e.data && !e.key) {
+          // This is a new row
+          console.log('Add mode detected');
+          setIsAddingRow(true);
+        } else {
+          // This is an existing row
+          console.log('Edit mode detected');
+          setIsAddingRow(false);
+        }
+      });
+      
+      // Override how save is processed to ensure proper insert handling
+      const originalGetSaveChange = gridInstance._getSaveChange;
+      if (originalGetSaveChange) {
+        gridInstance._getSaveChange = function(changes) {
+          const change = changes[0];
+          if (change && change.type === 'insert') {
+            console.log('INSERT detected, marking record as new');
+            // Force additional marker to ensure insert
+            change.data.__IS_NEW = true;
+          }
+          return originalGetSaveChange.apply(this, arguments);
+        };
+      }
+      
+      gridInitializedRef.current = true;
+    }
+  }, [onInitializedProp]);
+
+  // Handle form init event to maintain adding state
+  const handleFormInit = useCallback((e: any) => {
+    console.log('Form initialized', e);
+    // Important: Don't mark it as a new row by adding a __isNewRow property
+    // This can confuse DevExtreme's internal insert vs update logic
+  }, []);
+
+  // Handle adding a row - following the DevExtreme recommended pattern from memory
+  const handleAddRowWithoutReload = useCallback(() => {
+    if (dataGridRef.current?.instance) {
+      // First switch to popup mode
+      setEditingMode('popup');
+      
+      // Use setTimeout to ensure the mode change is processed
+      // This directly follows the pattern from the memory
+      setTimeout(() => {
+        // Set adding flag to track state
+        setIsAddingRow(true);
+        
+        // Add the row after mode is properly set
+        if (dataGridRef.current?.instance) {
+          dataGridRef.current.instance.addRow();
+        }
+      }, 0);
+    }
+  }, []);
+
+  // Handle popup hiding - exactly like the DevExtreme Angular example
+  const handlePopupHiding = useCallback(() => {
+    // This matches the onHiding in the Angular example
+    setIsAddingRow(false);
+    
+    if (dataGridRef.current?.instance) {
+      // Switch back to preferred mode
+      const newMode = isMobile ? 'popup' : 'cell';
+      
+      // First update the grid directly (like in the example)
+      dataGridRef.current.instance.option('editing.mode', newMode);
+      
+      // Then update our state to match
+      setEditingMode(newMode);
+    }
+  }, [isMobile]);
+
+  // Handle row insertion events
+  const handleRowInserted = useCallback(() => {
+    // Reset the flag after successful insertion
+    setIsAddingRow(false);
+  }, []);
+
+  // Custom toolbar with Add button
+  const renderToolbar = useCallback((e: any) => {
+    // Find and remove the default add button if it exists
+    const addButtonIndex = e.toolbarOptions.items.findIndex(
+      (item: any) => item.name === 'addRowButton'
+    );
+    if (addButtonIndex !== -1) {
+      e.toolbarOptions.items.splice(addButtonIndex, 1);
+    }
+    
+    // Add our custom add button if adding is allowed
+    if (allowAdding) {
+      e.toolbarOptions.items.unshift({
+        location: 'before',
+        widget: 'dxButton',
+        options: {
+          icon: 'plus',
+          text: `Add New ${title.replace(/s$/, '')}`,
+          onClick: handleAddRowWithoutReload
+        }
+      });
+    }
+  }, [allowAdding, title, handleAddRowWithoutReload]);
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
@@ -231,24 +375,26 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
-            mode: isMobile ? 'popup' : 'cell',
+            mode: editingMode,
             allowAdding,
             allowUpdating,
             allowDeleting,
             useIcons: true,
-            popup: isMobile ? {
-              title: `Edit ${title}`,
+            popup: editingMode === 'popup' ? {
+              title: `${isAddingRow ? 'Add' : 'Edit'} ${title}`,
               showTitle: true,
               width: 'auto',
               height: 'auto',
-              position: { my: 'center', at: 'center', of: window }
+              position: { my: 'center', at: 'center', of: window },
+              onHiding: handlePopupHiding,
+              onInitialized: handleFormInit,
+              showCloseButton: true
             } : undefined,
-            form: isMobile ? {
-              labelLocation: 'top'
+            form: editingMode === 'popup' ? {
+              labelLocation: 'top',
+              ...formConfig
             } : undefined,
             texts: {
-              saveAllChanges: 'Save Changes',
-              cancelAllChanges: 'Discard Changes',
               saveRowChanges: 'Save',
               cancelRowChanges: 'Cancel',
               editRow: 'Edit',
@@ -258,12 +404,14 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onCellPrepared={onCellPrepared}
           onRowUpdating={onRowUpdating}
           onRowInserting={onRowInserting}
+          onRowInserted={handleRowInserted}
           onRowRemoving={onRowRemoving}
           onInitNewRow={onInitNewRow}
           onRowValidating={onRowValidating}
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
           onSaving={onSaving}
+          onToolbarPreparing={renderToolbar}
         >
           <Paging defaultPageSize={defaultPageSize} />
           <Pager showPageSizeSelector={true} showInfo={true} />

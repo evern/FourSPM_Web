@@ -29,6 +29,8 @@ const Deliverables: React.FC = () => {
     handleRowValidating,
     handleInitNewRow,
     handleGridInitialized,
+    fetchSuggestedDocumentNumber,
+    setCellValue,
     project
   } = useProjectDeliverableCollectionController(
     user?.token,
@@ -44,13 +46,13 @@ const Deliverables: React.FC = () => {
   const { areasDataSource } = useAreaDataProvider(projectId);
   
   // Get disciplines using the standardized hook
-  const { disciplinesStore } = useDisciplineDataProvider();
+  const { disciplinesDataSource } = useDisciplineDataProvider();
   
   // Get document types using the standardized hook
-  const { documentTypesStore } = useDocumentTypeDataProvider();
+  const { documentTypesDataSource } = useDocumentTypeDataProvider();
 
   // Create columns with the areas, disciplines, and document types data
-  const columns = createDeliverableColumns(areasDataSource, disciplinesStore, documentTypesStore);
+  const columns = createDeliverableColumns(areasDataSource, disciplinesDataSource, documentTypesDataSource);
 
   return (
     <div className="deliverables-container">
@@ -61,13 +63,14 @@ const Deliverables: React.FC = () => {
           endpoint={endpoint}
           columns={columns}
           keyField="guid"
-          onRowUpdating={handleRowUpdating}
+          allowAdding={true}
+          allowUpdating={true}
+          allowDeleting={false}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={handleRowValidating}
-          onRowRemoving={handleRowRemoving}
-          onRowInserting={handleRowInserting}
           onEditorPreparing={handleEditorPreparing}
           onInitialized={handleGridInitialized}
+          onSetCellValue={setCellValue}
+          fetchSuggestedDocumentNumber={fetchSuggestedDocumentNumber}
           defaultFilter={[['projectGuid', '=', projectId]]}
         />
       </div>
