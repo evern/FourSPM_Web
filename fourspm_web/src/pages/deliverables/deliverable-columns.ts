@@ -12,21 +12,21 @@ export const createDeliverableColumns = (
     {
       dataField: 'clientNumber',
       caption: 'Client No.',
-      hidingPriority: 3,
+      hidingPriority: 3, // Mid-range priority
       allowEditing: false, // Read-only field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'projectNumber',
       caption: 'Project No.',
-      hidingPriority: 4,
+      hidingPriority: 4, // Mid-range priority
       allowEditing: false, // Read-only field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'areaNumber',
       caption: 'Area No.',
-      hidingPriority: 5,
+      hidingPriority: 5, // Mid-range priority
       lookup: {
         dataSource: areasDataSource, // Use the DataSource with filter
         valueExpr: 'number',
@@ -36,7 +36,7 @@ export const createDeliverableColumns = (
     {
       dataField: 'departmentId',
       caption: 'Department',
-      hidingPriority: 8,
+      hidingPriority: 8, // Will be hidden earlier
       lookup: {
         dataSource: departmentEnum,
         valueExpr: 'id',
@@ -46,7 +46,7 @@ export const createDeliverableColumns = (
     {
       dataField: 'discipline',
       caption: 'Discipline',
-      hidingPriority: 6,
+      hidingPriority: 7, // Will be hidden earlier
       lookup: {
         dataSource: disciplinesDataSource, // Use the DataSource
         valueExpr: 'code',
@@ -56,7 +56,7 @@ export const createDeliverableColumns = (
     {
       dataField: 'deliverableTypeId',
       caption: 'Deliverable Type',
-      hidingPriority: 9,
+      hidingPriority: 9, // Will be hidden earlier
       lookup: {
         dataSource: deliverableTypeEnum,
         valueExpr: 'id',
@@ -80,7 +80,7 @@ export const createDeliverableColumns = (
     {
       dataField: 'documentType',
       caption: 'Document Type',
-      hidingPriority: 7,
+      hidingPriority: 6, // Will be hidden earlier
       lookup: {
         dataSource: documentTypesDataSource, // Use the DataSource
         valueExpr: 'code',
@@ -90,22 +90,24 @@ export const createDeliverableColumns = (
     {
       dataField: 'internalDocumentNumber',
       caption: 'Internal Doc. No.',
-      hidingPriority: 14 // Will be hidden last (identifier)
+      hidingPriority: 14, // Will be hidden last (highest number = shown longest)
+      allowEditing: false, // Read-only calculated field
+      cellClass: 'faded-placeholder'
     },
     {
       dataField: 'clientDocumentNumber',
       caption: 'Client Doc. No.',
-      hidingPriority: 13 // Near last (identifier)
+      hidingPriority: 13, // Near last
     },
     {
       dataField: 'documentTitle',
       caption: 'Document Title',
-      hidingPriority: 12  // Will be hidden after metadata but before identifiers (name)
+      hidingPriority: 12, // Hide after metadata but before identifiers
     },
     {
       dataField: 'budgetHours',
       caption: 'Budget Hours',
-      hidingPriority: 8,
+      hidingPriority: 10,
       dataType: 'number',
       editorOptions: {
         type: 'number',
@@ -131,14 +133,14 @@ export const createDeliverableColumns = (
     {
       dataField: 'totalHours',
       caption: 'Total Hours',
-      hidingPriority: 10,
+      hidingPriority: 2, // Change from 13 to ensure it's hidden earlier
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
     },
     {
       dataField: 'bookingCode',
       caption: 'Booking Code',
-      hidingPriority: 11, // Higher hiding priority (identifier, but not the main one)
+      hidingPriority: 1, // Change from 14 to ensure it's hidden earlier
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
     }
