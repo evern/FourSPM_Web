@@ -21,7 +21,7 @@ const Content: React.FC = () => {
         <Redirect to={'/home'} />
       </Switch>
       <Footer>
-        Copyright 2011-{new Date().getFullYear()} {appInfo.title} Inc.
+        Copyright 2024-{new Date().getFullYear()} {appInfo.title} Pty Ltd.
       </Footer>
       <ScrollToTop showAfterScrollHeight={120} />
     </SideNavBarLayout>

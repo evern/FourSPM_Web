@@ -13,6 +13,7 @@ import { Project } from '../../types/index';
 import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { updateProject } from '../../adapters/project.adapter';
+import { createPortal } from 'react-dom';
 
 // Define URL parameters interface
 export interface ProjectProfileParams {
@@ -25,6 +26,7 @@ const ProjectProfile: React.FC = () => {
   const { user } = useAuth();
   const { refreshNavigation } = useNavigation();
   const { isXSmall, isSmall } = useScreenSize();
+  const isMobile = isXSmall || isSmall;
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Use enhanced project entity controller with integrated form operations
@@ -150,32 +152,30 @@ const ProjectProfile: React.FC = () => {
         showIndicator={true}
       />
       
-      <div className="grid-header-container">
-        <div className="grid-custom-title">
-          {projectData ? `${projectData.projectNumber} - ${projectData.name}` : 
-            projectId ? `Project ${projectId}` : 
-            'New Project'}
-        </div>
-        
-        <div className="action-buttons">
+      {/* Conditionally render floating action buttons only on mobile */}
+      {isMobile && createPortal(
+        <div className="floating-action-buttons-portal">
           {!isEditing ? (
             <Button
-              text="Edit"
+              text=""
+              icon="edit"
               type="default"
               stylingMode="contained"
               onClick={startEditing}
             />
           ) : (
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="action-button-group">
               <Button
-                text="Save"
+                text=""
+                icon="save"
                 type="success"
                 stylingMode="contained"
                 onClick={handleSave}
                 disabled={isSaving}
               />
               <Button
-                text="Cancel"
+                text=""
+                icon="close"
                 type="normal"
                 stylingMode="contained"
                 onClick={handleCancel}
@@ -183,6 +183,15 @@ const ProjectProfile: React.FC = () => {
               />
             </div>
           )}
+        </div>,
+        document.body
+      )}
+
+      <div className="grid-header-container">
+        <div className="grid-custom-title">
+          {projectData ? `${projectData.projectNumber} - ${projectData.name}` : 
+            projectId ? `Project ${projectId}` : 
+            'New Project'}
         </div>
       </div>
 
@@ -192,6 +201,43 @@ const ProjectProfile: React.FC = () => {
         height={isSmall ? 'calc(100vh - 130px)' : 'auto'}
       >
         <div className="profile-form">
+          {/* Edit button inline with project information - desktop only */}
+          {!isMobile && !isEditing && (
+            <div className="inline-edit-button">
+              <Button
+                text="Edit"
+                type="default"
+                stylingMode="contained"
+                onClick={startEditing}
+                icon="edit"
+              />
+            </div>
+          )}
+
+          {/* Save/Cancel buttons in the same position when editing - desktop only */}
+          {!isMobile && isEditing && (
+            <div className="inline-edit-button">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  text="Save"
+                  icon="save"
+                  type="success"
+                  stylingMode="contained"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                />
+                <Button
+                  text="Cancel"
+                  icon="close"
+                  type="normal"
+                  stylingMode="contained"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+          )}
+          
           <Form
             formData={projectData}
             readOnly={!isEditing}

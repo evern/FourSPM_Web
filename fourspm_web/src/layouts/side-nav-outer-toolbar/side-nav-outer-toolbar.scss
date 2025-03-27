@@ -1,3 +1,5 @@
+@use "../../styles/breakpoints.scss" as breakpoints;
+
 .side-nav-outer-toolbar {
   flex-direction: column;
   display: flex;
@@ -9,6 +11,17 @@
   z-index: 1501;
   position: sticky;
   top: 0;
+  flex: 0 0 auto;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+
+  .dx-tabs {
+    height: 100%;
+  }
+
+  .dx-icon {
+    line-height: normal;
+  }
 }
 
 .layout-body {
@@ -41,7 +54,7 @@
   z-index: 1501;
   padding: 0 20px;
   
-  @media (max-width: 768px) {
+  @include breakpoints.respond-to("mobile") {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -60,5 +73,17 @@
     height: calc(100vh - 116px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+#navigation-header {
+  @include breakpoints.respond-to("mobile") {
+    padding-left: 20px;
+  }
+}
+
+.dx-card {
+  @include breakpoints.respond-to("mobile") {
+    margin-top: 10px;
   }
 }

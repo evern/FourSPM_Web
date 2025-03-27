@@ -1,4 +1,5 @@
 @use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/breakpoints.scss" as breakpoints;
 
 .footer {
   display: block;
@@ -8,7 +9,7 @@
   padding-bottom: 14px;
   font-size: 14px;
   
-  @media (max-width: 768px) {
+  @include breakpoints.respond-to("mobile") {
     padding-top: 8px;
     padding-bottom: 8px;
     font-size: 12px;

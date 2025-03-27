@@ -1,5 +1,6 @@
 @use "../../themes/generated/variables.base.scss" as vars;
 @use "../../styles/shared-styles.scss";
+@use "../../styles/breakpoints.scss" as breakpoints;
 
 .period-info {
   display: flex;
@@ -149,7 +150,7 @@
           margin-bottom: 0.75rem;
         }
         
-        @media (max-width: 768px) {
+        @include breakpoints.respond-to("mobile") {
           display: flex;
           flex-direction: row;
           flex-wrap: wrap;
@@ -174,7 +175,7 @@
           min-width: 120px !important;
           flex-shrink: 0;
 
-          @media (max-width: 768px) {
+          @include breakpoints.respond-to("mobile") {
             min-width: 120px !important;
             display: inline-flex;
             margin-right: 0.5rem;
@@ -287,7 +288,7 @@
         opacity: 0.7;
         white-space: nowrap;
         
-        @media (max-width: 768px) {
+        @include breakpoints.respond-to("mobile") {
           margin-left: 0;
           width: 100%;
           margin-top: 0.25rem;
@@ -402,14 +403,14 @@
     color: var(--base-text-color);
   }
   
-  @media (max-width: 768px) {
+  @include breakpoints.respond-to("mobile") {
     bottom: 20px !important;
     right: 20px !important;
     width: 45px !important;
     height: 45px !important;
   }
 
-  @media (max-width: 480px) {
+  @include breakpoints.respond-to("phone-only") {
     bottom: 15px !important;
     right: 15px !important;
     width: 40px !important;

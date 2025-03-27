@@ -1,0 +1,66 @@
+// Standardized breakpoints for responsive design
+// These match the breakpoints in src/utils/media-query.ts
+
+// Breakpoint values (exclusive)
+$breakpoint-xsmall-max: 599.99px;  // max-width for x-small screens
+$breakpoint-small-min: 600px;      // min-width for small screens
+$breakpoint-small-max: 959.99px;   // max-width for small screens
+$breakpoint-medium-min: 960px;     // min-width for medium screens
+$breakpoint-medium-max: 1279.99px; // max-width for medium screens
+$breakpoint-large-min: 1280px;     // min-width for large screens
+
+// Additional breakpoints for specific cases
+$breakpoint-phone-max: 480px;      // Small phones breakpoint
+
+// Convenience mixins for media queries
+@mixin for-phone-only {
+  @media (max-width: $breakpoint-xsmall-max) { @content; }
+}
+
+@mixin for-tablet-portrait-up {
+  @media (min-width: $breakpoint-small-min) { @content; }
+}
+
+@mixin for-tablet-landscape-down {
+  @media (max-width: $breakpoint-small-max) { @content; }
+}
+
+@mixin for-desktop-up {
+  @media (min-width: $breakpoint-medium-min) { @content; }
+}
+
+@mixin for-large-desktop-up {
+  @media (min-width: $breakpoint-large-min) { @content; }
+}
+
+// Mobile-first responsive approach
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == "xs" {
+    // Extra small devices
+    @media (max-width: $breakpoint-xsmall-max) { @content; }
+  }
+  @else if $breakpoint == "sm" {
+    // Small devices
+    @media (min-width: $breakpoint-small-min) and (max-width: $breakpoint-small-max) { @content; }
+  }
+  @else if $breakpoint == "md" {
+    // Medium devices
+    @media (min-width: $breakpoint-medium-min) and (max-width: $breakpoint-medium-max) { @content; }
+  }
+  @else if $breakpoint == "lg" {
+    // Large devices
+    @media (min-width: $breakpoint-large-min) { @content; }
+  }
+  @else if $breakpoint == "mobile" {
+    // All mobile devices (xs and sm)
+    @media (max-width: $breakpoint-small-max) { @content; }
+  }
+  @else if $breakpoint == "desktop" {
+    // All desktop devices (md and lg)
+    @media (min-width: $breakpoint-medium-min) { @content; }
+  }
+  @else if $breakpoint == "phone-only" {
+    // Smaller phone screens
+    @media (max-width: $breakpoint-phone-max) { @content; }
+  }
+}
