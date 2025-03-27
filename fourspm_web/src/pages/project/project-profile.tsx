@@ -42,6 +42,7 @@ const ProjectProfile: React.FC = () => {
     cancelEditing,
     saveForm,
     loadEntity,
+    silentlyUpdateEntity,
     
     // Client data and operations
     clients,
@@ -84,6 +85,12 @@ const ProjectProfile: React.FC = () => {
       if (result) {
         // Refresh navigation if needed
         if (refreshNavigation) refreshNavigation();
+        
+        // Silently update the entity data without triggering loading state
+        // This prevents the form from flickering while still displaying the updated values
+        if (silentlyUpdateEntity) {
+          silentlyUpdateEntity(result);
+        }
       }
     } catch (error) {
       notify('Error saving project', 'error', 3000);
@@ -101,22 +108,27 @@ const ProjectProfile: React.FC = () => {
     cancelEditing();
   }, [cancelEditing]);
 
-  // If project is still loading, show loading indicator
-  if (entity.isLoading) {
-    return (
-      <div className="profile-loading">
-        <LoadPanel 
-          visible={true} 
-          showIndicator={true} 
-          showPane={true} 
-          shading={true}
-          position={{ of: window, my: 'center', at: 'center' }}
-        />
-      </div>
-    );
-  }
+  // Ensure we have a proper project data object with all fields, even during loading
+  // This prevents layout shifts that cause flickering
+  const projectData = entity.data ? { ...entity.data } : {} as Project;
 
-  // If error occurred while loading project
+  // Create form items for the current project data, passing entity and loading state
+  const formItems = createProjectFormItems(
+    projectData, 
+    Boolean(isEditing), 
+    handleClientSelectionChange,
+    isClientLoading,
+    clients
+  );
+
+  // Prepare the title text based on available data
+  const titleText = projectData && projectData.projectNumber && projectData.name
+    ? `${projectData.projectNumber} - ${projectData.name}` 
+    : projectId 
+      ? `Project ${projectId}` 
+      : 'New Project';
+
+  // If an error occurred while loading project, show error message
   if (entity.error) {
     // Safely extract error message regardless of type
     const errorMessage = typeof entity.error === 'object' && entity.error !== null
@@ -131,25 +143,15 @@ const ProjectProfile: React.FC = () => {
     );
   }
 
-  // Ensure we have a proper project data object with all fields
-  const projectData = entity.data ? { ...entity.data } : {} as Project;
-
-  // Create form items for the current project data, passing entity and loading state
-  const formItems = createProjectFormItems(
-    projectData, 
-    Boolean(isEditing), 
-    handleClientSelectionChange,
-    isClientLoading,
-    clients
-  );
-
   return (
     <div className="profile-container">
+      {/* Show loading panel as overlay instead of replacing content */}
       <LoadPanel 
-        visible={isSaving} 
-        message="Saving..." 
+        visible={entity.isLoading || isSaving} 
+        message={isSaving ? "Saving..." : "Loading..."} 
         position={{ of: window, my: 'center', at: 'center' }}
         showIndicator={true}
+        shading={true}
       />
       
       {/* Conditionally render floating action buttons only on mobile */}
@@ -189,9 +191,7 @@ const ProjectProfile: React.FC = () => {
 
       <div className="grid-header-container">
         <div className="grid-custom-title">
-          {projectData ? `${projectData.projectNumber} - ${projectData.name}` : 
-            projectId ? `Project ${projectId}` : 
-            'New Project'}
+          {titleText}
         </div>
       </div>
 

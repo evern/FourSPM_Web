@@ -237,6 +237,22 @@ export function createEntityHook<T>(
   }, [entity.data, token, setEntity]);
   
   /**
+   * Silently update entity data without triggering loading state
+   * This is useful for updating the entity after a form save operation
+   * without causing the UI to flicker with loading indicators
+   */
+  const silentlyUpdateEntity = useCallback((data: T): void => {
+    if (!data) return;
+    
+    setEntity(prev => ({
+      ...prev,
+      data,
+      isDirty: false,
+      originalData: null
+    }));
+  }, []);
+
+  /**
    * Auto-load an entity by ID when the hook is used
    * This is useful for components that need to immediately load an entity when mounted
    */
@@ -257,6 +273,7 @@ export function createEntityHook<T>(
     updateEntity,
     deleteEntity,
     loadRelatedEntity,
+    silentlyUpdateEntity,
     callbacks: config.callbacks || {}
   };
 }

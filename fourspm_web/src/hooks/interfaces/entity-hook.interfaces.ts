@@ -135,6 +135,13 @@ export interface EntityHook<T> {
   loadRelatedEntity?: <R>(relatedOperation: EntityRelatedOperation<T, R>) => Promise<T | null>;
 
   /**
+   * Silently update entity data without triggering loading state
+   * This is useful for updating the entity after a form save operation
+   * without causing the UI to flicker with loading indicators
+   */
+  silentlyUpdateEntity?: (data: T) => void;
+
+  /**
    * Callbacks configured for this hook
    */
   callbacks?: EntityHookConfig<T>['callbacks'];
