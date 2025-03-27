@@ -1,7 +1,7 @@
 import { NavigationItem } from '../app-navigation';
 import { Project, projectStatuses, ProjectNavigationItem } from '../types/index';
 import { sharedApiService } from '../api/shared-api.service';
-import { API_CONFIG } from '../config/api';
+import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Project data adapter - provides methods for fetching and manipulating project data
@@ -15,28 +15,16 @@ import { API_CONFIG } from '../config/api';
  */
 export const fetchProject = async (projectId: string, userToken: string): Promise<Project> => {
   try {
-    const data = await sharedApiService.getById<any>('/odata/v1/Projects', projectId, userToken, '$expand=Client');
+
+    // Fetch project with expanded client information
+    const project = await sharedApiService.getById<Project>(PROJECTS_ENDPOINT, projectId, userToken, '$expand=Client');
     
-    // Format project information to maintain ProjectInfo interface for backward compatibility
-    const projectInfo = {
-      guid: data.guid,
-      projectNumber: data.projectNumber || '',
-      name: data.name || '',
-      progressStart: data.progressStart ? new Date(data.progressStart) : new Date(),
-      projectStatus: data.projectStatus,
-      // Include all Project fields needed by the full Project interface
-      created: data.created,
-      createdBy: data.createdBy,
-      updated: data.updated,
-      updatedBy: data.updatedBy,
-      deleted: data.deleted,
-      deletedBy: data.deletedBy,
-      clientGuid: data.clientGuid,
-      client: data.client,
-      purchaseOrderNumber: data.purchaseOrderNumber
-    };
+    // Only transform date fields if needed
+    if (project.progressStart) {
+      project.progressStart = new Date(project.progressStart);
+    }
     
-    return projectInfo;
+    return project;
   } catch (error) {
     console.error('fetchProject: Error in getById call', error);
     throw error;
@@ -51,7 +39,7 @@ export const fetchProject = async (projectId: string, userToken: string): Promis
 export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
   try {
     const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
-      '/odata/v1/Projects',
+      PROJECTS_ENDPOINT,
       token,
       '$expand=Client'
     );
@@ -105,39 +93,6 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
 };
 
 /**
- * Gets detailed project information
- * @param projectId Project GUID
- * @param token User authentication token
- * @returns Project details including client information
- */
-export const getProjectDetails = async (projectId: string, token: string): Promise<Project> => {
-  try {
-    const data = await sharedApiService.getById<any>('/odata/v1/Projects', projectId, token, '$expand=Client');
-    
-    // Map API response to Project interface
-    return {
-      guid: data.guid,
-      projectNumber: data.projectNumber || '',
-      name: data.name || '',
-      purchaseOrderNumber: data.purchaseOrderNumber || '',
-      projectStatus: data.projectStatus || '',
-      progressStart: data.progressStart || null,
-      client: data.client || null,
-      clientGuid: data.clientGuid || null,
-      created: data.created || new Date().toISOString(),
-      createdBy: data.createdBy || '',
-      updated: data.updated || null,
-      updatedBy: data.updatedBy || null,
-      deleted: data.deleted || null,
-      deletedBy: data.deletedBy || null
-    };
-  } catch (error) {
-    console.error('Error fetching project details:', error);
-    throw error;
-  }
-};
-
-/**
  * Updates project information
  * @param projectId Project GUID
  * @param data Partial project data to update
@@ -159,14 +114,14 @@ export const updateProject = async (
     
     // Perform update
     const result = await sharedApiService.update<Partial<Project>>(
-      '/odata/v1/Projects',
+      PROJECTS_ENDPOINT,
       projectId,
       apiData,
       token
     );
     
     // Fetch updated project details
-    return getProjectDetails(projectId, token);
+    return fetchProject(projectId, token);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;

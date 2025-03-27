@@ -1,6 +1,8 @@
 import { sharedApiService } from '../api/shared-api.service';
 import { baseApiService } from '../api/base-api.service';
 import { API_CONFIG } from '../config/api';
+import { createProjectFilter } from '../utils/odata-filters';
+import { DELIVERABLES_ENDPOINT, getDeliverablesWithProgressQuery } from '../config/api-endpoints';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -47,27 +49,12 @@ export const getDeliverables = async (token: string, projectId?: string): Promis
       if (!projectId) {
         throw new Error('Invalid project ID provided');
       }
-      query = `$filter=projectGuid eq '${projectId}'`;
+      query = createProjectFilter(projectId);
     }
     
-    return await sharedApiService.getAll<Deliverable>('/odata/v1/Deliverables', token, query);
+    return await sharedApiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, token, query);
   } catch (error) {
     console.error('Error fetching deliverables:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets a specific deliverable by GUID
- * @param deliverableId Deliverable GUID
- * @param token User authentication token
- * @returns Deliverable details
- */
-export const getDeliverableDetails = async (deliverableId: string, token: string): Promise<Deliverable> => {
-  try {
-    return await sharedApiService.getById<Deliverable>('/odata/v1/Deliverables', deliverableId, token);
-  } catch (error) {
-    console.error('Error fetching deliverable details:', error);
     throw error;
   }
 };
@@ -91,7 +78,7 @@ export const getSuggestedDocumentNumber = async (
   token: string
 ): Promise<string> => {
   try {
-    const url = `${API_CONFIG.baseUrl}/odata/v1/Deliverables/SuggestInternalDocumentNumber` +
+    const url = `${DELIVERABLES_ENDPOINT}/SuggestInternalDocumentNumber` +
                `?projectGuid=${encodeURIComponent(projectId)}` +
                `&deliverableTypeId=${encodeURIComponent(deliverableTypeId)}` +
                `&areaNumber=${encodeURIComponent(areaNumber)}` +
@@ -127,15 +114,75 @@ export const getDeliverablesWithProgressPercentages = async (
   userToken: string
 ) => {
   try {
-    // The backend now returns the array directly instead of an OData response object
-    const result = await sharedApiService.get<any[]>(
-      `/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${period}`,
-      userToken
+    // Use the standardized query function from api-endpoints.ts
+    const query = getDeliverablesWithProgressQuery(projectId, period);
+    
+    const result = await sharedApiService.getAll<any>(
+      DELIVERABLES_ENDPOINT,
+      userToken,
+      query
     );
     
-    return result;
+    // Process the result to calculate percentages similar to what the backend was doing
+    const processedResults = result.map(deliverable => {
+      // Calculate progress percentages based on deliverable gate and progress items
+      const gate = deliverable.deliverableGate || {};
+      const maxPercentage = gate.maxPercentage || 100;
+      const progressItems = deliverable.progressItems || [];
+      
+      // Sum up units from progress items for this period
+      const periodUnits = progressItems.reduce((sum: number, item: any) => {
+        return sum + (item.period === period ? Number(item.units) || 0 : 0);
+      }, 0);
+      
+      // Calculate percentage based on total hours
+      const totalHours = Number(deliverable.totalHours) || 0;
+      const earnedPercentage = totalHours > 0 ? (periodUnits / totalHours) * 100 : 0;
+      
+      // Apply max percentage limit from gate if available
+      const cappedPercentage = Math.min(earnedPercentage, maxPercentage);
+      
+      return {
+        ...deliverable,
+        periodEarntPercentage: earnedPercentage,
+        cumulativeEarntPercentage: cappedPercentage,
+        totalUnits: periodUnits
+      };
+    });
+    
+    return processedResults;
   } catch (error) {
     console.error('Error fetching deliverables with progress percentages:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update a deliverable's gate
+ * @param deliverableKey The GUID of the deliverable to update
+ * @param gateGuid The GUID of the new gate
+ * @param userToken The user's authentication token
+ * @returns A promise that resolves when the update is complete
+ */
+export const updateDeliverableGate = async (
+  deliverableKey: string, 
+  gateGuid: string, 
+  userToken: string
+): Promise<void> => {
+  try {
+    // Create the request payload
+    const payload = {
+      deliverableGateGuid: gateGuid
+    };
+
+    return sharedApiService.update<any>(
+      DELIVERABLES_ENDPOINT,
+      deliverableKey,
+      payload,
+      userToken
+    );
+  } catch (error) {
+    console.error(`Error updating deliverable ${deliverableKey} to gate ${gateGuid}: ${error}`);
     throw error;
   }
 };

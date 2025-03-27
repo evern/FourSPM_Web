@@ -1,16 +1,16 @@
-interface ApiEndpoints {
+interface AuthEndpoints {
     login: string;
     logout: string;
     register: string;
     create: string;
-    projects: string;
+    projects: string; // Used for token validation
     resetPassword: string;
     changePassword: string;
 }
 
 interface ApiConfig {
     baseUrl: string;
-    endpoints: ApiEndpoints;
+    endpoints: AuthEndpoints;
 }
 
 const productionConfig: ApiConfig = {
@@ -22,7 +22,7 @@ const productionConfig: ApiConfig = {
         create: '/api/auth/create',
         resetPassword: '/api/auth/reset-password',
         changePassword: '/api/auth/change-password',
-        projects: '/odata/v1/Projects'  // Full path for OData endpoint
+        projects: '/odata/v1/Projects'  // Full path for OData endpoint, used for token validation
     }
 };
 

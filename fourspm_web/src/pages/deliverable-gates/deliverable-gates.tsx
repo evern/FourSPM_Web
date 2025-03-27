@@ -1,35 +1,25 @@
 import React from 'react';
-import { API_CONFIG } from '../../config/api';
-import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useDeliverableGatesController } from '../../hooks/controllers/useDeliverableGatesController';
+import { useDeliverableGatesCollectionController } from '../../hooks/controllers/useDeliverableGatesCollectionController';
 import { deliverableGateColumns } from './deliverable-gate-columns';
 import { useAuth } from '../../contexts/auth';
+import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
 import './deliverable-gates.scss';
 
 const DeliverableGates: React.FC = () => {
   const { user } = useAuth();
-  const endpoint = `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`;
+  const endpoint = DELIVERABLE_GATES_ENDPOINT;
   
-  // Use the enhanced useDeliverableGates hook with integrated grid operations and validation
   const { 
     handleRowUpdating,
     handleRowRemoving,
     handleRowInserting,
-    onRowValidating
-  } = useDeliverableGatesController(user?.token, {
+    handleRowValidating,
+    handleInitNewRow
+  } = useDeliverableGatesCollectionController(user?.token, {
     endpoint,
-    onUpdateError: (error) => console.error('Failed to update discipline:', error)
+    onUpdateError: (error) => console.error('Failed to update deliverable gate:', error)
   });
-
-  const handleInitNewRow = (e: any) => {
-    e.data = {
-      guid: uuidv4(),
-      name: '',
-      maxPercentage: 1,
-      autoPercentage: 0
-    };
-  };
 
   return (
     <div className="deliverable-gates-container">
@@ -42,7 +32,7 @@ const DeliverableGates: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={onRowValidating}
+          onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
           onRowInserting={handleRowInserting}
         />

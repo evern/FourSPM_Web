@@ -6,7 +6,7 @@ export interface ODataResponse<T> {
 }
 
 export class ODataService {
-  constructor(private baseUrl: string = API_CONFIG.baseUrl) {}
+  constructor() {}
 
   private getHeaders(token: string) {
     return {
@@ -17,7 +17,7 @@ export class ODataService {
   }
 
   async get<T>(endpoint: string, token: string, query?: string): Promise<ODataResponse<T>> {
-    const url = query ? `${this.baseUrl}${endpoint}?${query}` : `${this.baseUrl}${endpoint}`;
+    const url = query ? `${endpoint}?${query}` : endpoint;
     const response = await fetch(url, {
       headers: this.getHeaders(token)
     });
@@ -30,7 +30,7 @@ export class ODataService {
   }
 
   async post<T>(endpoint: string, token: string, data: any): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: this.getHeaders(token),
       body: JSON.stringify(data)
@@ -44,7 +44,7 @@ export class ODataService {
   }
 
   async patch<T>(endpoint: string, token: string, id: string, data: Partial<T>): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${endpoint}(${id})`, {
+    const response = await fetch(`${endpoint}(${id})`, {
       method: 'PATCH',
       headers: {
         ...this.getHeaders(token),
@@ -59,7 +59,7 @@ export class ODataService {
   }
 
   async delete(endpoint: string, token: string, id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${endpoint}(${id})`, {
+    const response = await fetch(`${endpoint}(${id})`, {
       method: 'DELETE',
       headers: this.getHeaders(token)
     });

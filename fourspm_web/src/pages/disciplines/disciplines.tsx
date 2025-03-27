@@ -1,35 +1,27 @@
 import React from 'react';
-import { API_CONFIG } from '../../config/api';
-import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useDisciplineController } from '../../hooks/controllers/useDisciplineController';
+import { useDisciplineCollectionController } from '../../hooks/controllers/useDisciplineCollectionController';
 import { disciplineColumns } from './discipline-columns';
 import { useAuth } from '../../contexts/auth';
+import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import './disciplines.scss';
 
 const Disciplines: React.FC = () => {
   const { user } = useAuth();
-  const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Disciplines`;
+  const endpoint = DISCIPLINES_ENDPOINT;
   
   // Use the enhanced useDisciplineData hook with integrated grid operations and validation
   const { 
     handleRowUpdating, 
     handleRowRemoving,
     handleRowInserting,
-    onRowValidating
-  } = useDisciplineController(user?.token, {
+    handleRowValidating,
+    handleInitNewRow
+  } = useDisciplineCollectionController(user?.token, {
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete discipline:', error),
     onUpdateError: (error) => console.error('Failed to update discipline:', error)
   });
-
-  const handleInitNewRow = (e: any) => {
-    e.data = {
-      guid: uuidv4(),
-      code: '',
-      name: ''
-    };
-  };
 
   return (
     <div className="disciplines-container">
@@ -42,7 +34,7 @@ const Disciplines: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={onRowValidating}
+          onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
           onRowInserting={handleRowInserting}
         />

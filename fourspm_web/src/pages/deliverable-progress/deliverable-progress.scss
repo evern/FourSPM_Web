@@ -39,10 +39,13 @@
 
 .period-selector {
   display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  flex-direction: column;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--base-bg);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--base-border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .period-info, .period-date {
@@ -161,20 +164,6 @@
         @media (max-width: 480px) {
           .number-box-container {
             margin-bottom: 0.25rem;
-          }
-        }
-        
-        .number-box-container {
-          display: flex;
-          align-items: center;
-          margin: 0;
-          min-width: 140px !important; 
-          flex-shrink: 0; /* Prevents container from shrinking */
-
-          @media (max-width: 768px) {
-            min-width: 140px !important;
-            display: inline-flex;
-            margin-right: 0.5rem;
           }
         }
         

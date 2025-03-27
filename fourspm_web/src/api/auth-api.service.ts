@@ -1,7 +1,14 @@
 import defaultUser from '../utils/default-user';
-import { API_CONFIG } from "../config/api";
 import { apiRequest } from './base-api.service';
 import { User } from '../types';
+import { 
+  LOGIN_ENDPOINT, 
+  LOGOUT_ENDPOINT, 
+  PROJECTS_ENDPOINT, 
+  REGISTER_ENDPOINT, 
+  CHANGE_PASSWORD_ENDPOINT, 
+  RESET_PASSWORD_ENDPOINT 
+} from '../config/api-endpoints';
 
 // Define interfaces for the application types
 export interface ApiResponse<T = any> {
@@ -18,7 +25,7 @@ export interface ApiResponse<T = any> {
  */
 export async function signIn(email: string, password: string): Promise<ApiResponse<User>> {
   try {
-    const response = await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.login}`, {
+    const response = await apiRequest(LOGIN_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
@@ -50,7 +57,7 @@ export async function signIn(email: string, password: string): Promise<ApiRespon
  */
 export async function signOut(): Promise<ApiResponse<void>> {
   try {
-    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.logout}`, {
+    await apiRequest(LOGOUT_ENDPOINT, {
       method: 'POST'
     });
     // Remove user from localStorage
@@ -85,7 +92,7 @@ export async function getUser(): Promise<ApiResponse<User>> {
 
     // Validate token with a backend request
     try {
-      const response = await apiRequest(`${API_CONFIG.baseUrl}/odata/v1/Projects`, {
+      const response = await apiRequest(PROJECTS_ENDPOINT, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -137,7 +144,7 @@ export async function createAccount(
 ): Promise<ApiResponse> {
   try {
     // Send the registration data to the server
-    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.register}`, {
+    await apiRequest(REGISTER_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({
         email,
@@ -184,7 +191,7 @@ export async function changePassword(
     }
     
     // Send the password change request
-    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.changePassword}`, {
+    await apiRequest(CHANGE_PASSWORD_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -208,7 +215,7 @@ export async function changePassword(
 export async function resetPassword(email: string): Promise<ApiResponse> {
   try {
     // Send the reset password request
-    await apiRequest(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.resetPassword}`, {
+    await apiRequest(RESET_PASSWORD_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({ email })
     });

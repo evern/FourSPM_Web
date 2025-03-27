@@ -263,8 +263,9 @@
   height: 60px !important;
   border-top: 1px solid var(--base-border-color) !important;
   box-shadow: 0 -2px 10px var(--base-shadow-color) !important;
-  z-index: 1000 !important;
+  z-index: 1500 !important; 
   margin: 0 !important;
+  pointer-events: auto !important; 
   
   .button-group {
     display: flex;
@@ -275,6 +276,18 @@
   &.dx-toolbar {
     background-color: var(--base-bg-color) !important;
     padding: 10px 20px !important;
+    
+    .dx-toolbar-items-container {
+      pointer-events: auto !important;
+      
+      .dx-toolbar-after {
+        pointer-events: auto !important;
+      }
+    }
+  }
+  
+  .dx-button {
+    pointer-events: auto !important;
   }
 }
 
@@ -305,56 +318,36 @@
 .profile-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   position: relative;
   padding-bottom: 60px; /* Add space at the bottom for the toolbar */
-}
-
-/* Profile header styling with action buttons */
-.profile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  margin-top: 20px; /* Add top margin for spacing from header */
-  padding: 0 0 15px 0;
-  border-bottom: 1px solid var(--base-border-color);
-
-  .title-section {
-    flex: 1;
-  }
-
-  .profile-title {
-    margin-bottom: 10px;
-    color: var(--base-text-color);
-  }
-
-  .profile-status {
-    margin: 0 0 10px 20px;
   
-    .status-value {
-      font-weight: 500;
-    }
-  }
-
-  .action-buttons {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-left: 20px;
-    padding-top: 5px; /* Add a bit of top padding to align buttons better */
-  }
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 768px) {
+  /* Profile header styling with action buttons */
   .profile-header {
+    display: flex;
     flex-direction: column;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--base-border-color);
+    background-color: var(--base-bg);
+    width: 100%;
     
-    .action-buttons {
-      margin-left: 0;
-      margin-top: 15px;
+    h2 {
+      margin: 0 0 15px 0;
+      font-size: 1.5rem;
+      color: var(--base-text-color);
       width: 100%;
+    }
+    
+    .button-container {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      
+      .dx-button {
+        min-width: 80px;
+        margin: 0;
+      }
     }
   }
 }
@@ -364,11 +357,35 @@
   justify-content: space-between;
   align-items: center;
   margin: 0 20px 10px 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--base-border-color);
+}
+
+.grid-custom-title {
+  font-size: 1.5rem;
+  color: var(--base-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
 .action-buttons {
   display: flex;
   justify-content: flex-end;
+}
+
+.profile-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  z-index: 1000;
 }
 
 .profile-loading-container {
@@ -432,5 +449,31 @@
   
   .saving-button {
     color: transparent; // Hide text while loading
+  }
+}
+
+/* Styling for form refresh handling */
+.profile-form {
+  padding: 20px;
+  background-color: var(--base-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.profile-form.refreshing {
+  opacity: 0.9;
+  transition: opacity 0.1s ease;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .profile-header {
+    flex-direction: column;
+    
+    .actions-section {
+      margin-left: 0;
+      margin-top: 15px;
+      width: 100%;
+    }
   }
 }

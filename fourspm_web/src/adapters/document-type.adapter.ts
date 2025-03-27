@@ -1,5 +1,6 @@
 import { sharedApiService } from '../api/shared-api.service';
 import { DocumentType } from '../types/index';
+import { DOCUMENT_TYPES_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Gets all document types
@@ -8,24 +9,9 @@ import { DocumentType } from '../types/index';
  */
 export const getDocumentTypes = async (token: string): Promise<DocumentType[]> => {
   try {
-    return await sharedApiService.getAll<DocumentType>('/odata/v1/DocumentTypes', token);
+    return await sharedApiService.getAll<DocumentType>(DOCUMENT_TYPES_ENDPOINT, token);
   } catch (error) {
     console.error('Error fetching document types:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets document type details by GUID
- * @param documentTypeId Document type GUID
- * @param token User authentication token
- * @returns Document type details
- */
-export const getDocumentTypeDetails = async (documentTypeId: string, token: string): Promise<DocumentType> => {
-  try {
-    return await sharedApiService.getById<DocumentType>('/odata/v1/DocumentTypes', documentTypeId, token);
-  } catch (error) {
-    console.error('Error fetching document type details:', error);
     throw error;
   }
 };

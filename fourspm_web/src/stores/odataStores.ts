@@ -1,75 +1,77 @@
 import ODataStore from 'devextreme/data/odata/store';
-import { API_CONFIG } from '../config/api';
+import { useAuth } from '../contexts/auth';
+import { AREAS_ENDPOINT } from '../config/api-endpoints';
+import { useMemo } from 'react';
 
 /**
- * Helper function to create a configured ODataStore with authentication
- * @param endpointPath The relative path to the OData endpoint
+ * Custom hook to create a configured ODataStore with authentication
+ * @param endpointPath The full path to the OData endpoint (including base URL)
  * @param keyField The key field name for the entity
  * @returns An ODataStore instance configured for the specified endpoint
  */
-export const createODataStore = (endpointPath: string, keyField: string = 'guid') => {
-  return new ODataStore({
-    url: `${API_CONFIG.baseUrl}${endpointPath}`,
-    version: 4,
-    key: keyField,
-    keyType: 'Guid',
-    beforeSend: (options: any) => {
-      const token = localStorage.getItem('user') ? 
-        JSON.parse(localStorage.getItem('user') || '{}').token : null;
-      
-      if (!token) {
-        console.error('No token available');
+export const useODataStore = (endpointPath: string, keyField: string = 'guid') => {
+  const { user } = useAuth();
+  
+  // Use useMemo to prevent creating a new store on every render
+  return useMemo(() => {
+    return new ODataStore({
+      url: endpointPath, // Endpoint already includes the base URL from api-endpoints.ts
+      version: 4,
+      key: keyField,
+      keyType: 'Guid',
+      beforeSend: (options: any) => {
+        const token = user?.token;
+        
+        if (!token) {
+          console.error('No token available');
+          return false;
+        }
+
+        options.headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        };
+
+        if (options.method === 'PATCH') {
+          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
+          options.headers['Prefer'] = 'return=minimal';
+        }
+
+        return true;
+      },
+      errorHandler: (error) => {
+        if (error.httpStatus === 401) {
+          // Handle token expiration - redirect to login
+          // No need to clear localStorage as AuthContext will handle this
+          window.location.href = '/login';
+          return true;
+        }
         return false;
       }
-
-      options.headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
-      if (options.method === 'PATCH') {
-        options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-        options.headers['Prefer'] = 'return=minimal';
-      }
-
-      return true;
-    },
-    errorHandler: (error) => {
-      if (error.httpStatus === 401) {
-        // Handle token expiration
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return true;
-      }
-      return false;
-    }
-  });
+    });
+  }, [endpointPath, keyField, user?.token]); // Only recreate the store when these dependencies change
 };
 
-// Pre-configured OData stores for common entities
-export const clientsStore = createODataStore('/odata/v1/Clients');
-export const deliverableGatesStore = createODataStore('/odata/v1/DeliverableGates');
-export const deliverablesStore = createODataStore('/odata/v1/Deliverables');
-export const projectsStore = createODataStore('/odata/v1/Projects');
-export const documentTypesStore = createODataStore('/odata/v1/DocumentTypes');
-export const areasStore = createODataStore('/odata/v1/Areas');
-export const disciplinesStore = createODataStore('/odata/v1/Disciplines');
-
 /**
- * Creates an Area store with project filtering
+ * Custom hook to create an Area store with project filtering
  * @param projectId Project GUID to filter areas by
- * @returns DataSource with ODataStore and project filter
+ * @returns DataSource configured for the areas or null if projectId is not provided
  */
-export const createAreaStore = (projectId: string) => {
-  if (!projectId) {
-    return null;
-  }
-
-  const store = createODataStore('/odata/v1/Areas');
+export const useAreaStoreForProject = (projectId: string | null | undefined) => {
+  // Always call hooks at the top level, before any conditionals
+  const store = useODataStore(AREAS_ENDPOINT);
   
-  // Return a DataSource with filtering
-  return {
-    store: store,
-    filter: `projectGuid eq ${projectId}`
-  };
+  // Use useMemo before any conditional returns
+  const dataSource = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+    
+    return {
+      store,
+      filter: ['projectGuid', '=', projectId]
+    };
+  }, [store, projectId]); // Only recreate when store or projectId changes
+  
+  return dataSource;
 };

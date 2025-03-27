@@ -1,8 +1,6 @@
 import { IGroupItemProps } from 'devextreme-react/form';
 import { Project, Client } from '../../types/index';
 import { projectStatuses } from '../../types/index';
-import { clientsStore } from '../../stores/odataStores';
-import { EntityState } from '../../hooks/interfaces/entity-hook.interfaces';
 
 // Constants
 const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
@@ -13,13 +11,15 @@ const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly
  * @param isEditing Whether the form is in edit mode
  * @param onClientChange Event handler for client selection changes
  * @param isLoadingClient Whether client data is currently loading
+ * @param clients Array of available clients
  * @returns Form items configuration
  */
 export const createProjectFormItems = (
   projectData: Project,
   isEditing: boolean,
   onClientChange: (e: any) => void,
-  isLoadingClient: boolean = false
+  isLoadingClient: boolean = false,
+  clients: Client[] = []
 ): IGroupItemProps[] => [
   {
     itemType: 'group',
@@ -34,26 +34,26 @@ export const createProjectFormItems = (
       { 
         itemType: 'simple',
         dataField: 'projectNumber',
-        editorOptions: { readOnly: true }
+        editorOptions: { readOnly: true },
+        validationRules: [{ type: 'required', message: 'Project number is required' }]
       },
       {
         itemType: 'simple',
         dataField: 'name',
-        editorOptions: { readOnly: !isEditing }
+        editorOptions: { readOnly: !isEditing },
+        validationRules: [{ type: 'required', message: 'Project name is required' }]
       },
       {
         itemType: 'simple',
         dataField: 'projectStatus',
-        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
-        editorOptions: isEditing ? { 
+        editorType: 'dxSelectBox',
+        editorOptions: { 
           items: projectStatuses,
           valueExpr: 'id',
-          displayExpr: 'name'
-        } : {
-          readOnly: true,
-          value: projectData.projectStatus ? 
-                 projectStatuses.find(s => s.id === projectData.projectStatus)?.name || projectData.projectStatus : 
-                 ''
+          displayExpr: 'name',
+          readOnly: !isEditing,
+          searchEnabled: isEditing,
+          showClearButton: isEditing
         }
       },
       {
@@ -95,23 +95,18 @@ export const createProjectFormItems = (
       lg: 2     
     },
     items: [
-      // Client selection/display
       {
-        itemType: 'simple',
         dataField: 'clientGuid',
         label: { text: 'Client' },
-        editorType: isEditing ? 'dxSelectBox' : 'dxTextBox',
-        editorOptions: isEditing ? { 
-          dataSource: clientsStore,
+        editorType: 'dxSelectBox',
+        editorOptions: {
+          dataSource: clients,
           valueExpr: 'guid',
-          displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : '',
+          displayExpr: item => item ? `${item.number} - ${item.description}` : '',
+          readOnly: !isEditing,
+          searchEnabled: isEditing,
+          showClearButton: isEditing,
           onValueChanged: onClientChange
-        } : {
-          readOnly: true,
-          value: isLoadingClient ? 'Loading client details...' :
-                 (projectData.client && projectData.client.number ? 
-                 `${projectData.client.number} - ${projectData.client.description}` : 
-                 (projectData.clientGuid ? 'Client data not available' : 'No client selected'))
         }
       },
       // Loading indicator (only shown when loading)
@@ -144,3 +139,32 @@ export const createProjectFormItems = (
     ].filter(Boolean) // Filter out null items
   }
 ];
+
+/**
+ * Returns the client display value based on the project data, clients array, and loading status
+ * @param projectData Current project data
+ * @param clients Array of available clients
+ * @param isLoadingClient Whether client data is currently loading
+ * @returns Client display value
+ */
+const getClientDisplayValue = (projectData: Project, clients: Client[], isLoadingClient: boolean): string => {
+  // If client is loading, show loading message
+  if (isLoadingClient) return 'Loading client details...';
+  
+  // If client object exists and has description, use it
+  if (projectData.client?.description) {
+    return `${projectData.client.number || ''} - ${projectData.client.description}`;
+  }
+  
+  // Find the client in the clients array if available
+  if (projectData.clientGuid && clients.length > 0) {
+    const client = clients.find(c => c.guid === projectData.clientGuid);
+    if (client) {
+      return `${client.number || ''} - ${client.description || ''}`;
+    }
+    return 'Loading client details...';
+  }
+  
+  // Default fallback
+  return 'No client selected';
+};

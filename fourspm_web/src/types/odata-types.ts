@@ -1,8 +1,13 @@
 // Standard OData entity types that mirror backend entity models
 
-// Client interface - mirrors backend ClientEntity.cs
-export interface Client {
+// Type to represent basic entity with ID
+export type Entity = {
   guid: string;
+  [key: string]: any;
+};
+
+// Client interface - mirrors backend ClientEntity.cs
+export interface Client extends Entity {
   number: string;
   description?: string | null;
   clientContactName?: string | null;
@@ -17,8 +22,7 @@ export interface Client {
 }
 
 // Project interface - core project information
-export interface Project {
-  guid: string;
+export interface Project extends Entity {
   projectNumber: string;
   name: string | null;
   purchaseOrderNumber?: string | null;
@@ -35,30 +39,26 @@ export interface Project {
 }
 
 // Area interface - mirrors backend AreaEntity.cs
-export interface Area {
-  guid: string;
+export interface Area extends Entity {
   projectGuid: string;
   number: string;
   description: string;
 }
 
 // Discipline interface - mirrors backend DisciplineEntity.cs
-export interface Discipline {
-  guid: string;
+export interface Discipline extends Entity {
   code: string;
   description: string;
 }
 
 // DocumentType interface - mirrors backend DocumentTypeEntity.cs
-export interface DocumentType {
-  guid: string;
+export interface DocumentType extends Entity {
   code: string;
   description: string;
 }
 
 // Deliverable interface - mirrors backend DeliverableEntity.cs
-export interface Deliverable {
-  guid: string;
+export interface Deliverable extends Entity {
   projectGuid: string;
   areaNumber?: string;
   departmentId: number;
@@ -83,8 +83,7 @@ export interface Deliverable {
 }
 
 // DeliverableGate interface - mirrors backend DeliverableGateEntity.cs
-export interface DeliverableGate {
-  guid: string;
+export interface DeliverableGate extends Entity {
   name: string;
   maxPercentage: number;
   autoPercentage: number | null;

@@ -1,5 +1,6 @@
 import { sharedApiService } from '../api/shared-api.service';
 import { Discipline } from '../types/index';
+import { DISCIPLINES_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Gets all disciplines
@@ -8,24 +9,9 @@ import { Discipline } from '../types/index';
  */
 export const getDisciplines = async (token: string): Promise<Discipline[]> => {
   try {
-    return await sharedApiService.getAll<Discipline>('/odata/v1/Disciplines', token);
+    return await sharedApiService.getAll<Discipline>(DISCIPLINES_ENDPOINT, token);
   } catch (error) {
     console.error('Error fetching disciplines:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets discipline details by GUID
- * @param disciplineId Discipline GUID
- * @param token User authentication token
- * @returns Discipline details
- */
-export const getDisciplineDetails = async (disciplineId: string, token: string): Promise<Discipline> => {
-  try {
-    return await sharedApiService.getById<Discipline>('/odata/v1/Disciplines', disciplineId, token);
-  } catch (error) {
-    console.error('Error fetching discipline details:', error);
     throw error;
   }
 };

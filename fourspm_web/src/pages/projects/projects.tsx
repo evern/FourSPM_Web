@@ -1,79 +1,63 @@
-import React from 'react';
-import { API_CONFIG } from '../../config/api';
-import { v4 as uuidv4 } from 'uuid';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
-import { useProjectController } from '../../hooks/controllers/useProjectController';
+import React, { useEffect } from 'react';
+import { useAuth } from '../../contexts/auth';
+import { useProjectCollectionController } from '../../hooks/controllers/useProjectCollectionController';
 import { projectColumns } from './project-columns';
+import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { LoadPanel } from 'devextreme-react/load-panel';
 import { useNavigation } from '../../contexts/navigation';
+import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import './projects.scss';
 
+/**
+ * Projects Grid Page Component
+ * 
+ * Uses a hybrid approach for data access:
+ * - ODataStore for grid data binding (efficient remote operations)
+ * - Data providers for consistent access pattern
+ */
 const Projects: React.FC = () => {
-  // Use the standard endpoint without $expand parameter
-  const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Projects`;
+  const endpoint = PROJECTS_ENDPOINT;
   const { refreshNavigation } = useNavigation();
-  
-  const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
-    endpoint,
-    field: 'projectNumber',
-    padLength: 2,
-    startFrom: '01'
-  });
 
-  // Get user token from local storage
-  const userToken = localStorage.getItem('user') 
-    ? JSON.parse(localStorage.getItem('user') || '{}').token 
-    : null;
-
-  // Use the project data hook which handles grid operations
+  // Use the collection controller to get the clientsStore
   const { 
+    clientsStore,
+    handleInitNewRow, 
+    handleRowValidating: validateRow, 
     handleRowUpdating, 
     handleRowRemoving, 
-    onRowValidating
-  } = useProjectController(
-    userToken,
+    refreshNextNumber
+  } = useProjectCollectionController(
     {
       endpoint,
-      onDeleteError: (error) => console.error('Failed to delete project:', error),
-      onDeleteSuccess: () => {
-        refreshNextNumber();
-        refreshNavigation();
-      },
-      onUpdateSuccess: () => {
-        refreshNextNumber();
-        refreshNavigation();
-      },
-      onUpdateError: (error) => console.error('Failed to update project:', error),
-      onInsertSuccess: () => {
-        refreshNextNumber();
-        refreshNavigation();
-      },
-      onInsertError: (error) => console.error('Failed to insert project:', error)
+      onInsertSuccess: () => refreshNavigation(),
+      onUpdateSuccess: () => refreshNavigation(),
+      onDeleteSuccess: () => refreshNavigation()
     }
   );
 
-  const handleInitNewRow = (e: any) => {
-    e.data = {
-      guid: uuidv4(),
-      projectNumber: nextProjectNumber,
-      projectStatus: 'TenderInProgress' // Default status
-    };
-  };
+  // Call refresh when component mounts
+  useEffect(() => {
+    refreshNextNumber();
+  }, [refreshNextNumber]);
 
   return (
     <div className="projects-container">
-      <div className="custom-grid-wrapper">
+      <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
         <ODataGrid
-          title=" "
           endpoint={endpoint}
-          columns={projectColumns}
-          keyField="guid"
-          onRowUpdating={handleRowUpdating}
+          columns={projectColumns(clientsStore)} // Only pass the store now
           onInitNewRow={handleInitNewRow}
-          onRowValidating={onRowValidating}
+          onRowValidating={validateRow}
+          onRowUpdating={handleRowUpdating}
           onRowRemoving={handleRowRemoving}
-          expand={['Client']} // Use the expand property we added to ODataGrid
+          allowAdding={true}
+          allowUpdating={true}
+          allowDeleting={true}
+          title=" "
+          keyField="guid"
+          expand={['Client']} 
         />
       </div>
     </div>
@@ -81,3 +65,4 @@ const Projects: React.FC = () => {
 };
 
 export default Projects;
+export { Projects };

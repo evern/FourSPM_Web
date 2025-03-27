@@ -1,12 +1,15 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { API_CONFIG } from '../../config/api';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createDeliverableColumns } from './deliverable-columns';
 import { useAuth } from '../../contexts/auth';
 import ScrollToTop from '../../components/scroll-to-top';
-import { useDeliverableControllerWithProject } from '../../hooks/controllers/useDeliverableController';
 import './deliverables.scss';
+import { DELIVERABLES_ENDPOINT } from '@/config/api-endpoints';
+import { useProjectDeliverableCollectionController } from '@/hooks/controllers/useDeliverableCollectionController';
+import { useAreaDataProvider } from '../../hooks/data-providers/useAreaDataProvider';
+import { useDisciplineDataProvider } from '../../hooks/data-providers/useDisciplineDataProvider';
+import { useDocumentTypeDataProvider } from '../../hooks/data-providers/useDocumentTypeDataProvider';
 
 interface DeliverableParams {
   projectId: string;
@@ -15,19 +18,19 @@ interface DeliverableParams {
 const Deliverables: React.FC = () => {
   const { projectId } = useParams<DeliverableParams>();
   const { user } = useAuth();
-  const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Deliverables`;
+  const endpoint = DELIVERABLES_ENDPOINT;
 
   // Use the enhanced controller with project-specific functionality
   const {
+    handleEditorPreparing,
     handleRowUpdating,
     handleRowRemoving,
     handleRowInserting,
-    onRowValidating,
+    handleRowValidating,
     handleInitNewRow,
-    handleEditorPreparing,
     handleGridInitialized,
     project
-  } = useDeliverableControllerWithProject(
+  } = useProjectDeliverableCollectionController(
     user?.token,
     projectId,
     {
@@ -37,8 +40,17 @@ const Deliverables: React.FC = () => {
     }
   );
 
-  // Create columns with the current projectId to filter areas
-  const columns = createDeliverableColumns(projectId);
+  // Get areas using the new data provider hook
+  const { areasDataSource } = useAreaDataProvider(projectId);
+  
+  // Get disciplines using the standardized hook
+  const { disciplinesStore } = useDisciplineDataProvider();
+  
+  // Get document types using the standardized hook
+  const { documentTypesStore } = useDocumentTypeDataProvider();
+
+  // Create columns with the areas, disciplines, and document types data
+  const columns = createDeliverableColumns(areasDataSource, disciplinesStore, documentTypesStore);
 
   return (
     <div className="deliverables-container">
@@ -51,7 +63,7 @@ const Deliverables: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={onRowValidating}
+          onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
           onRowInserting={handleRowInserting}
           onEditorPreparing={handleEditorPreparing}

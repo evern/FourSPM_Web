@@ -1,6 +1,3 @@
-import { HookCallbacks } from './shared.hook.interfaces';
-import { Form } from 'devextreme-react/form';
-
 /**
  * Entity state interface - represents the state of an entity in an EntityHook
  */
@@ -63,7 +60,7 @@ export interface EntityHookConfig<T> {
   };
   
   /**
-   * Optional callbacks for different CRUD operations
+   * Callbacks for CRUD operations
    */
   callbacks?: {
     /**
@@ -93,7 +90,7 @@ export interface EntityHookConfig<T> {
   };
   
   /**
-   * Optional ID to automatically load when the hook is initialized
+   * ID to automatically load when the hook is initialized
    */
   autoLoadId?: string;
 }
@@ -116,11 +113,6 @@ export interface EntityHook<T> {
    * Load entity by ID
    */
   loadEntity: (id: string) => Promise<T | null>;
-
-  /**
-   * Load entity with enhanced details and error handling
-   */
-  loadEntityWithDetails?: (id: string) => Promise<T | null>;
   
   /**
    * Create a new entity
@@ -137,36 +129,6 @@ export interface EntityHook<T> {
    */
   deleteEntity: (id: string) => Promise<boolean>;
   
-  /**
-   * Save entity changes
-   */
-  saveEntity: (currentData: T) => Promise<T | null>;
-  
-  /**
-   * Set the form reference
-   */
-  onFormRef: (ref: Form) => void;
-  
-  /**
-   * Start editing mode
-   */
-  startUpdate: () => void;
-  
-  /**
-   * Cancel editing mode
-   */
-  cancelUpdate: () => void;
-  
-  /**
-   * Whether the entity is currently being edited
-   */
-  isUpdating: boolean;
-  
-  /**
-   * Whether the entity is currently being saved
-   */
-  isSaving: boolean;
-
   /**
    * Load related entity data and update the main entity
    */

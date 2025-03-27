@@ -1,9 +1,8 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { departmentEnum } from '../../types/enums';
-import { deliverableGatesStore } from '../../stores/odataStores';
 
 // Generic progress tracking columns configuration
-export const createProgressColumns = (): ODataGridColumn[] => {
+export const createDeliverableProgressColumns = (deliverableGatesDataSource: any): ODataGridColumn[] => {
   return [
     {
       dataField: 'bookingCode',
@@ -71,9 +70,9 @@ export const createProgressColumns = (): ODataGridColumn[] => {
       caption: 'Gate',
       hidingPriority: 18, // Third in sequence, after internalDocumentNumber and cumulativeEarntPercentage
       lookup: {
-        dataSource: deliverableGatesStore,
+        dataSource: deliverableGatesDataSource,
         valueExpr: 'guid',
-        displayExpr: (item: any) => item ? `${item.name}` : ''
+        displayExpr: 'name'
       },
     },
     // Progress percentage column - user edits the cumulative percentage earned up to the current period

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
-import './progress.scss';
+import './deliverable-progress.scss';
 
 // Import custom hooks from shared location
-import { useProjectEntityController } from '../../hooks/controllers/useProjectController';
-import { useDeliverableGatesController } from '../../hooks/controllers/useDeliverableGatesController';
-import { useProgressController } from '../../hooks/controllers/useProgressController';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
+import { useDeliverableProgressCollectionController } from '../../hooks/controllers/useDeliverableProgressCollectionController';
+import { useDeliverableGateDataProvider } from '../../hooks/data-providers/useDeliverableGateDataProvider';
+import { usePeriodManager } from '../../hooks/utils/usePeriodManager';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
@@ -14,81 +15,60 @@ import LoadPanel from 'devextreme-react/load-panel';
 import Button from 'devextreme-react/button';
 import NumberBox from 'devextreme-react/number-box';
 
-// Import types from shared location
-import { API_CONFIG } from '../../config/api';
-import { createProgressColumns } from './progress-columns';
+// Import types and constants
+import { createDeliverableProgressColumns } from './deliverable-progress-columns';
+import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 
 // URL params
-interface ProgressParams {
+interface DeliverableProgressParams {
   projectId: string;
 }
 
-const Progress: React.FC = () => {
+const DeliverableProgress: React.FC = () => {
   // Extract project ID from URL params
-  const { projectId } = useParams<ProgressParams>();
+  const { projectId } = useParams<DeliverableProgressParams>();  
   const { user } = useAuth();
-  
+
   // Ref for the container element
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Fetch project information
+  // Use standardized hooks for data access
   const { 
     project, 
     currentPeriod: initialPeriod, 
-    entity: { isLoading: isLoadingProject }
-  } = useProjectEntityController(projectId, user?.token);
+    isLoading: isLoadingProject 
+  } = useProjectInfo(projectId, user?.token);
   
-  // State for user-selected period and calculated progress date
-  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
-  const [progressDate, setProgressDate] = useState<Date>(new Date());
+  // Get deliverable gates using the standardized hook
+  const { gates, gatesDataSource, isLoading: isLoadingGates } = useDeliverableGateDataProvider();
   
-  // Initialize selectedPeriod once initialPeriod is available
-  useEffect(() => {
-    if (initialPeriod !== null && selectedPeriod === null) {
-      setSelectedPeriod(initialPeriod);
-    }
-  }, [initialPeriod, selectedPeriod]);
-  
-  // Calculate progress date whenever period or project start date changes
-  useEffect(() => {
-    if (project?.progressStart && selectedPeriod !== null) {
-      const startDate = new Date(project.progressStart);
-      const newProgressDate = new Date(startDate);
-      newProgressDate.setDate(startDate.getDate() + (selectedPeriod * 7)); // Add weeks
-      setProgressDate(newProgressDate);
-    }
-  }, [selectedPeriod, project?.progressStart]);
-  
-  // Fetch deliverable gates
-  const { 
-    deliverableGates,
-    isLoadingGates
-  } = useDeliverableGatesController(user?.token);
+  // Use the standardized period manager hook for handling periods
+  const {
+    selectedPeriod,
+    progressDate,
+    incrementPeriod,
+    decrementPeriod,
+    setSelectedPeriod
+  } = usePeriodManager(initialPeriod, 
+    project?.progressStart ? String(project.progressStart) : null
+  );
 
-  // Use the progress controller hook for row operations
-  const { 
-    handleRowUpdating, 
-    onRowValidating: handleRowValidating
-  } = useProgressController(
+  // Use the progress controller for grid operations
+  const {
+    handleRowUpdating,
+    handleRowValidating,
+    handleGridInitialized,
+    handleEditorPreparing
+  } = useDeliverableProgressCollectionController(
     user?.token,
     projectId,
-    deliverableGates,
     selectedPeriod ?? initialPeriod ?? 0
   );
   
-  // Handle period increment/decrement
-  const handlePeriodChange = (increment: boolean) => {
-    if (selectedPeriod !== null) {
-      setSelectedPeriod(prevPeriod => {
-        if (!increment && (prevPeriod === null || prevPeriod <= 0)) {
-          // Don't allow decrements below 0
-          return 0;
-        }
-        return prevPeriod !== null ? prevPeriod + (increment ? 1 : -1) : null;
-      });
-    }
-  };
-
+  // Prepare endpoint URL with period parameter using the standardized function
+  const periodToUse = selectedPeriod ?? initialPeriod ?? 0;
+  const endpoint = getDeliverablesWithProgressUrl(projectId, periodToUse);
+  
   // Check if any data is still loading
   const isLoading = isLoadingProject || isLoadingGates;
 
@@ -118,7 +98,8 @@ const Progress: React.FC = () => {
                   <div className="period-stepper">
                     <Button
                       icon="spindown"
-                      onClick={() => handlePeriodChange(false)}
+                      onClick={() => decrementPeriod()}
+                      disabled={selectedPeriod === 0 || isLoading}
                       stylingMode="outlined"
                       className="period-button down-button"
                     />
@@ -129,10 +110,10 @@ const Progress: React.FC = () => {
                       onKeyDown={(e) => {
                         // Allow keyboard navigation (up/down arrows)
                         if (e.event && e.event.key === 'ArrowUp') {
-                          handlePeriodChange(true);
+                          incrementPeriod();
                           e.event.preventDefault();
                         } else if (e.event && e.event.key === 'ArrowDown') {
-                          handlePeriodChange(false);
+                          decrementPeriod();
                           e.event.preventDefault();
                         }
                       }}
@@ -140,7 +121,10 @@ const Progress: React.FC = () => {
                         // Handle direct input
                         if (e.event && e.event.type === 'change') {
                           if (e.value !== null && e.value !== undefined) {
-                            setSelectedPeriod(parseInt(e.value.toString(), 10));
+                            const periodNumber = parseInt(e.value.toString(), 10);
+                            if (periodNumber >= 0) {
+                              setSelectedPeriod(periodNumber);
+                            }
                           }
                         }
                       }}
@@ -150,7 +134,8 @@ const Progress: React.FC = () => {
                     />
                     <Button
                       icon="spinup"
-                      onClick={() => handlePeriodChange(true)}
+                      onClick={() => incrementPeriod()}
+                      disabled={isLoading}
                       stylingMode="outlined"
                       className="period-button up-button"
                     />
@@ -177,20 +162,22 @@ const Progress: React.FC = () => {
           </div>
         )}
         <ODataGrid
-            title=" "
-            endpoint={`${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages?projectGuid=${projectId}&period=${selectedPeriod ?? initialPeriod ?? 0}`}
-            columns={createProgressColumns()}
-            keyField="guid"
-            onRowUpdating={handleRowUpdating}
-            onRowValidating={handleRowValidating}
-            allowUpdating={true}
-            allowAdding={false}
-            allowDeleting={false}
-          />
+          title=" "
+          endpoint={endpoint}
+          columns={createDeliverableProgressColumns(gatesDataSource)}
+          keyField="guid"
+          onRowUpdating={handleRowUpdating}
+          onRowValidating={handleRowValidating}
+          onInitialized={handleGridInitialized}
+          onEditorPreparing={handleEditorPreparing}
+          allowUpdating={true}
+          allowAdding={false}
+          allowDeleting={false}
+        />
       </div>
       )}
     </div>
   );
 };
 
-export default Progress;
+export default DeliverableProgress;

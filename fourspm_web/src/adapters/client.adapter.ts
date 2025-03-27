@@ -1,5 +1,6 @@
 import { sharedApiService } from '../api/shared-api.service';
 import { Client } from '../types/index';
+import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Client data adapter - provides methods for fetching and manipulating client data
@@ -12,7 +13,7 @@ import { Client } from '../types/index';
  */
 export const getClients = async (token: string): Promise<Client[]> => {
   try {
-    return await sharedApiService.getAll<Client>('/odata/v1/Clients', token);
+    return await sharedApiService.getAll<Client>(CLIENTS_ENDPOINT, token);
   } catch (error) {
     console.error('Error fetching clients:', error);
     throw error;
@@ -20,24 +21,16 @@ export const getClients = async (token: string): Promise<Client[]> => {
 };
 
 /**
- * Gets client details by GUID
+ * Gets client details by ID
  * @param clientId Client GUID
  * @param token User authentication token
- * @returns Client details including contact information
+ * @returns Client details
  */
 export const getClientDetails = async (clientId: string, token: string): Promise<Client> => {
   try {
-    const data = await sharedApiService.getById<Client>('/odata/v1/Clients', clientId, token);
-    
-    // Ensure null handling for contact fields
-    return {
-      ...data,
-      clientContactName: data.clientContactName || null,
-      clientContactNumber: data.clientContactNumber || null,
-      clientContactEmail: data.clientContactEmail || null
-    };
+    return await sharedApiService.getById<Client>(CLIENTS_ENDPOINT, clientId, token);
   } catch (error) {
-    console.error('Error fetching client details:', error);
+    console.error(`Error fetching client details for ID ${clientId}:`, error);
     throw error;
   }
 };

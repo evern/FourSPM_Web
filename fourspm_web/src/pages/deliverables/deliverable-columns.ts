@@ -1,11 +1,13 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { departmentEnum, deliverableTypeEnum } from '../../types/enums';
-import { documentTypesStore, createAreaStore, disciplinesStore } from '../../stores/odataStores';
+import { Area, Discipline, DocumentType } from '../../types/odata-types';
 
-// Create columns with projectId parameter to filter areas
-export const createDeliverableColumns = (projectId: string): ODataGridColumn[] => {
-  const areaStore = createAreaStore(projectId);
-  
+// Create columns with DataSource objects passed in for lookups
+export const createDeliverableColumns = (
+  areasDataSource: any,
+  disciplinesDataSource: any,
+  documentTypesDataSource: any
+): ODataGridColumn[] => {
   return [
     {
       dataField: 'clientNumber',
@@ -25,11 +27,11 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
       dataField: 'areaNumber',
       caption: 'Area No.',
       hidingPriority: 5,
-      lookup: areaStore ? {
-        dataSource: areaStore,
+      lookup: {
+        dataSource: areasDataSource, // Use the DataSource with filter
         valueExpr: 'number',
         displayExpr: item => item ? `${item.number} - ${item.description}` : ''
-      } : undefined
+      }
     },
     {
       dataField: 'departmentId',
@@ -46,7 +48,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
       caption: 'Discipline',
       hidingPriority: 6,
       lookup: {
-        dataSource: disciplinesStore,
+        dataSource: disciplinesDataSource, // Use the DataSource
         valueExpr: 'code',
         displayExpr: 'code'
       }
@@ -80,7 +82,7 @@ export const createDeliverableColumns = (projectId: string): ODataGridColumn[] =
       caption: 'Document Type',
       hidingPriority: 7,
       lookup: {
-        dataSource: documentTypesStore,
+        dataSource: documentTypesDataSource, // Use the DataSource
         valueExpr: 'code',
         displayExpr: 'code'
       }

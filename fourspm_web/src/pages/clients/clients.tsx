@@ -1,53 +1,31 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { API_CONFIG } from '../../config/api';
-import { v4 as uuidv4 } from 'uuid';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
-import { useClientController } from '../../hooks/controllers/useClientController';
+import { useClientCollectionController } from '../../hooks/controllers/useClientCollectionController';
 import { clientColumns } from './client-columns';
-import { useNavigation } from '../../contexts/navigation';
 import { useAuth } from '../../contexts/auth';
+import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import './clients.scss';
 
 const Clients: React.FC = () => {
-  const endpoint = `${API_CONFIG.baseUrl}/odata/v1/Clients`;
-  const { refreshNavigation } = useNavigation();
+  const endpoint = CLIENTS_ENDPOINT;
   const { user } = useAuth();
   
-  const { nextNumber, refreshNextNumber } = useAutoIncrement({
-    endpoint,
-    field: 'number',
-    padLength: 3,
-    startFrom: '001'
-  });
-
   const { 
     handleRowUpdating, 
     handleRowRemoving,
     handleRowInserting,
-    handleRowValidating
-  } = useClientController(user?.token, {
+    handleRowValidating,
+    handleInitNewRow,
+    refreshNextNumber
+  } = useClientCollectionController(user?.token, {
     endpoint,
     onDeleteError: (error) => console.error('Failed to delete client:', error),
-    onDeleteSuccess: refreshNavigation,
-    onUpdateSuccess: refreshNavigation,
     onUpdateError: (error) => console.error('Failed to update client:', error),
-    onInsertSuccess: refreshNavigation
+    onDeleteSuccess: () => refreshNextNumber(),
+    onUpdateSuccess: () => refreshNextNumber(),
+    onInsertSuccess: () => refreshNextNumber()
   });
-
-  // Create the validation function by calling handleRowValidating with an empty array
-  // since the validation rules are already provided in useClientData
-  const rowValidatingHandler = useMemo(() => {
-    return handleRowValidating([]);
-  }, [handleRowValidating]);
-
-  const handleInitNewRow = (e: any) => {
-    e.data = {
-      guid: uuidv4(),
-      number: nextNumber
-    };
-    refreshNextNumber();
-  };
 
   return (
     <div className="clients-container">
@@ -60,7 +38,7 @@ const Clients: React.FC = () => {
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
-          onRowValidating={rowValidatingHandler}
+          onRowValidating={handleRowValidating}
           onRowRemoving={handleRowRemoving}
           onRowInserting={handleRowInserting}
         />

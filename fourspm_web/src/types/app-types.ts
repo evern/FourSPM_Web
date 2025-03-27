@@ -24,3 +24,22 @@ export interface LookupItem {
   id: string | number;
   name: string;
 }
+
+/**
+ * Data Transfer Object for deliverable progress information
+ * Combines deliverable data with calculated progress values for UI consumption
+ */
+export interface DeliverableProgressDto {
+  guid: string;
+  name: string;
+  description?: string;
+  totalPercentageEarnt: number;
+  deliverableGateGuid: string;
+  totalHours?: number;
+  projectGuid: string;
+  previousPeriodEarntPercentage?: number; // Percentage earned in previous periods
+  futurePeriodEarntPercentage?: number;   // Percentage earned in future periods
+  cumulativeEarntPercentage?: number;     // Cumulative percentage earned up to and including current period
+  currentPeriodEarntPercentage?: number;  // Percentage earned specifically in the current period
+  currentPeriodEarntHours?: number;       // Hours earned in the current period
+}

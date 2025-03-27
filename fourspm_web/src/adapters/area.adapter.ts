@@ -1,40 +1,11 @@
 import { sharedApiService } from '../api/shared-api.service';
 import { Area } from '../types/index';
+import { createProjectFilter } from '../utils/odata-filters';
+import { AREAS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Area data adapter - provides methods for fetching and manipulating area data
  */
-
-/**
- * Gets all areas
- * @param token User authentication token
- * @param projectId Optional project GUID to filter areas
- * @returns Array of areas
- */
-export const getAreas = async (token: string, projectId?: string): Promise<Area[]> => {
-  try {
-    const query = projectId ? `$filter=projectGuid eq ${projectId}` : '';
-    return await sharedApiService.getAll<Area>('/odata/v1/Areas', token, query);
-  } catch (error) {
-    console.error('Error fetching areas:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets area details by GUID
- * @param areaId Area GUID
- * @param token User authentication token
- * @returns Area details
- */
-export const getAreaDetails = async (areaId: string, token: string): Promise<Area> => {
-  try {
-    return await sharedApiService.getById<Area>('/odata/v1/Areas', areaId, token);
-  } catch (error) {
-    console.error('Error fetching area details:', error);
-    throw error;
-  }
-};
 
 /**
  * Gets all areas for a specific project
@@ -43,14 +14,19 @@ export const getAreaDetails = async (areaId: string, token: string): Promise<Are
  * @returns Array of areas for the specified project
  */
 export const getProjectAreas = async (projectId: string, token: string): Promise<Area[]> => {
-  if (!projectId) {
-    throw new Error('No project ID provided');
+  if (!token) {
+    throw new Error('Token is required');
   }
   
   try {
-    return await getAreas(token, projectId);
+    let query = '';
+    if (projectId) {
+      query = createProjectFilter(projectId);
+    }
+    
+    return await sharedApiService.getAll<Area>(AREAS_ENDPOINT, token, query);
   } catch (error) {
-    console.error(`Error fetching areas for project ${projectId}:`, error);
+    console.error('Error fetching areas:', error);
     throw error;
   }
 };
