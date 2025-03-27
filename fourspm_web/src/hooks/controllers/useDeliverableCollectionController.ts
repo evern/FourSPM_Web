@@ -159,14 +159,20 @@ export function useProjectDeliverableCollectionController(
   const handleInitNewRow = useCallback((e: any) => {
     if (e && e.data) {
       // Set default values for new deliverable
-      e.data.projectId = projectId;
-      e.data.id = uuidv4(); // Generate a new ID
-      e.data.status = 'New';
+      e.data.projectGuid = projectId; // Use projectGuid instead of projectId
+      e.data.guid = uuidv4(); // Use guid instead of id
       
       // Add any other default values needed
-      if (project) {
-        e.data.client = project.client;
+      if (project && project.client) {
+        // Flatten client data instead of using the complex object
+        e.data.clientNumber = project.client.number || '';
+        // Don't include the entire client object
+        // e.data.client = project.client; 
       }
+
+      // Set default departmentId for new deliverables
+      e.data.departmentId = 'Administration';
+      e.data.deliverableTypeId = 'Task';
     }
   }, [projectId, project]);
   
@@ -180,6 +186,31 @@ export function useProjectDeliverableCollectionController(
     documentType: string
   ): Promise<string> => {
     try {
+      // Replace undefined or empty values with placeholders for display
+      const displayAreaNumber = (!areaNumber || areaNumber === 'undefined') ? 'XX' : areaNumber;
+      const displayDiscipline = (!discipline || discipline === 'undefined') ? 'XX' : discipline;
+      const displayDocumentType = (!documentType || documentType === 'undefined') ? 'XXX' : documentType;
+      
+      // Special handling for backend call - don't call backend with placeholders
+      if ((deliverableTypeId === 'Deliverable' && (!areaNumber || areaNumber === 'undefined')) ||
+          (!discipline || discipline === 'undefined') ||
+          (!documentType || documentType === 'undefined')) {
+        // Return a client-side formatted placeholder number instead
+        // Get project info to construct a placeholder
+        if (project) {
+          const clientNum = project.client?.number || '';
+          const projectNum = project.projectNumber || '';
+          
+          // Create a formatted placeholder that follows the pattern but indicates missing fields
+          if (deliverableTypeId === 'Deliverable') {
+            return `${clientNum}-${projectNum}-${displayAreaNumber}-${displayDiscipline}-${displayDocumentType}-???`;
+          } else {
+            return `${clientNum}-${projectNum}-${displayDiscipline}-${displayDocumentType}-???`;
+          }
+        }
+        return ''; // Fallback if project info isn't available
+      }
+      
       // Call the adapter function to get the suggested number from the backend
       const suggestedNumber = await getSuggestedDocumentNumber(
         projectId || '',
@@ -195,7 +226,7 @@ export function useProjectDeliverableCollectionController(
       console.error('Error fetching suggested document number:', error);
       return '';
     }
-  }, [projectId, userToken]);
+  }, [projectId, userToken, project]);
   
   /**
    * Handler for editor preparing event - adds custom behaviors to the form fields
