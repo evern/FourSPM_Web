@@ -82,37 +82,22 @@ const ProjectProfile: React.FC = () => {
       if (result) {
         // Refresh navigation if needed
         if (refreshNavigation) refreshNavigation();
-        
-        // Reload the entity to ensure all data, especially client, is properly displayed
-        loadEntity(projectId);
       }
     } catch (error) {
       notify('Error saving project', 'error', 3000);
     }
-  }, [projectId, saveForm, loadEntity, user?.token, refreshNavigation]);
+  }, [projectId, saveForm, user?.token, refreshNavigation]);
   
   /**
    * Custom cancel handler that ensures proper form reset
    * 
-   * Issue: The standard form reset does not properly handle complex fields with async data:
-   * 1. Form's resetValues() works well for simple fields (text, numbers, dates, static selections)
-   * 2. However, complex data fields with async sources (like client) do not revert to original values
-   * 3. After changing the client and canceling, the form reset keeps the new client instead of reverting
-   * 4. Related client fields (contacts, etc.) also remain in the changed state instead of reverting
-   * 
-   * Solution: Reload the entire entity after canceling to guarantee proper data reversion
-   * This approach has a slight performance cost (brief flickering) but ensures all values truly reset
+   * This uses the enhanced cancelEditing from our form operations hook that properly
+   * handles complex fields with async data sources like client selection
    */
   const handleCancel = useCallback(() => {
-    // First exit edit mode
+    // Call the enhanced cancelEditing function which handles form reset with original data
     cancelEditing();
-    
-    // For client field, reloading the entity ensures proper display
-    if (projectId && user?.token) {
-      // Reload entity data to ensure proper client display
-      loadEntity(projectId);
-    }
-  }, [cancelEditing, loadEntity, projectId, user?.token]);
+  }, [cancelEditing]);
 
   // If project is still loading, show loading indicator
   if (entity.isLoading) {

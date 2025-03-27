@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/auth';
 interface ProjectOperationsConfig extends GridOperationsConfig {
   onCreateSuccess?: (result: Project) => void;
   onUpdateSuccess?: () => void;
+  onCancelEditing?: (originalData?: any) => void;
 }
 
 /**
@@ -129,62 +130,47 @@ export const useProjectEntityController = (
     },
     onSaveError: (error) => {
       // Error handled by entity callbacks
-    }
+    },
+    // Use the standardized lookupFields configuration 
+    lookupFields: [
+      {
+        idField: 'clientGuid', 
+        objectField: 'client',
+        // Define related fields that should be updated when client changes
+        relatedFields: ['clientContactName', 'clientContactNumber', 'clientContactEmail'],
+        // Define the function to load client details when selection changes
+        loadRelatedData: async (clientId: string) => {
+          if (!userToken) return null;
+          try {
+            return await getClientDetails(clientId, userToken);
+          } catch (error) {
+            notify('Error loading client details', 'error', 3000);
+            return null;
+          }
+        }
+      }
+      // Add other lookup fields as needed (e.g., discipline, area, etc.)
+    ],
+    // Provide the entity data reference for direct updates
+    entityData: entityHook.entity.data as Project
   });
   
   /**
    * Update project client by ID - load client details and update fields directly
+   * This is now a wrapper around the standardized handleLookupChange
    */
   const updateProjectClient = useCallback(async (clientId: string): Promise<Project | null> => {
-    if (!entityHook.entity.data || !userToken) return null;
+    if (!entityHook.entity.data) return null;
     
-    try {
-      // Get client details from API
-      const clientDetails = await getClientDetails(clientId, userToken);
-      
-      if (!clientDetails) {
-        throw new Error('Could not load client details');
-      }
-      
-      // Update the form fields directly (this prevents flickering)
-      if (formHook.formRef?.instance) {
-        // Update client contact fields directly in the form
-        if (clientDetails.clientContactName !== undefined) {
-          formHook.updateField('client.clientContactName', clientDetails.clientContactName);
-        }
-        
-        if (clientDetails.clientContactNumber !== undefined) {
-          formHook.updateField('client.clientContactNumber', clientDetails.clientContactNumber);
-        }
-        
-        if (clientDetails.clientContactEmail !== undefined) {
-          formHook.updateField('client.clientContactEmail', clientDetails.clientContactEmail);
-        }
-        
-        // Also update the clientGuid field in the form
-        formHook.updateField('clientGuid', clientId);
-      }
-      
-      // Update entity data with new client ID and client data
-      // This ensures the data is available in read-only mode
-      const updatedProject = {
-        ...entityHook.entity.data,
-        clientGuid: clientId,
-        client: clientDetails  // Store the full client object
-      };
-      
-      // Update the entity data directly (reference update)
-      if (entityHook.entity.data) {
-        entityHook.entity.data.clientGuid = clientId;
-        entityHook.entity.data.client = clientDetails;
-      }
-      
-      return updatedProject;
-    } catch (error) {
-      notify(`Error updating client: ${error}`, 'error', 3000);
-      return null;
+    // Use the standardized lookup change handler
+    const success = await formHook.handleLookupChange('clientGuid', clientId);
+    
+    if (success) {
+      return entityHook.entity.data;
     }
-  }, [entityHook, userToken, formHook]);
+    
+    return null;
+  }, [entityHook.entity.data, formHook]);
   
   /**
    * Update client fields directly in the form to prevent flickering
@@ -202,13 +188,11 @@ export const useProjectEntityController = (
     // Get selected clientId from the event value
     const clientId = e.value;
     
-    if (clientId && entityHook.entity.data) {
-      // Update the client info and form directly
-      updateProjectClient(clientId).catch(() => {
-        notify('Error loading client details', 'error', 3000);
-      });
-    }
-  }, [entityHook.entity.data, updateProjectClient]);
+    // Use the standardized lookup change handler
+    formHook.handleLookupChange('clientGuid', clientId).catch(error => {
+      console.error('Error handling client selection change:', error);
+    });
+  }, [formHook]);
   
   return {
     ...entityHook,
