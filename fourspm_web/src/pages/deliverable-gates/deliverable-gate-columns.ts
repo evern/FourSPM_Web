@@ -35,6 +35,8 @@ export const deliverableGateColumns: ODataGridColumn[] = [
     hidingPriority: 1,
     allowEditing: true,
     dataType: 'number', // Explicitly define the data type
+    sortOrder: 'asc', // Set default sort order to ascending
+    sortIndex: 0,     // Make this the primary sort column
     editorOptions: {
       format: '#0%',  // Format as percentage
       showSpinButtons: true,

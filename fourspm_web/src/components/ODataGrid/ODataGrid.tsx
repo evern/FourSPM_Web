@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { EventInfo } from 'devextreme/events';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
   Column,
@@ -7,7 +6,8 @@ import DataGrid, {
   Pager,
   FilterRow,
   Editing,
-  Lookup
+  Lookup,
+  Sorting
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -16,9 +16,13 @@ import { useAuth } from '../../contexts/auth';
 export interface ODataGridColumn extends Partial<Column> {
   dataField: string;
   caption: string;
+  width?: number;
+  minWidth?: number;
   hidingPriority?: number;
   allowEditing?: boolean;
   dataType?: string;
+  sortOrder?: 'asc' | 'desc';
+  sortIndex?: number;
   editorOptions?: {
     mask?: string;
     maskRules?: Record<string, RegExp>;
@@ -36,6 +40,7 @@ export interface ODataGridColumn extends Partial<Column> {
   };
   tooltip?: string;
   hint?: string;
+  visible?: boolean;
 }
 
 interface ODataGridProps {
@@ -56,6 +61,7 @@ interface ODataGridProps {
   onInitialized?: (e: any) => void;
   onSaving?: (e: any) => void;
   defaultFilter?: [string, string, any][];
+  defaultSort?: { selector: string; desc: boolean }[];
   expand?: string[];
 }
 
@@ -77,6 +83,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onInitialized,
   onSaving: onSavingProp,
   defaultFilter = [],
+  defaultSort,
   expand,
 }) => {
   const { user } = useAuth();
@@ -97,7 +104,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       window.removeEventListener('resize', checkMobile);
     };
   }, []);
-
+  
   let store;
   let dataSourceOptions: Options;
 
@@ -178,7 +185,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   });
 
   dataSourceOptions = {
-    store
+    store,
+    sort: defaultSort || [{ selector: 'created', desc: true }]
   };
 
   if (defaultFilter.length > 0) {
@@ -216,44 +224,27 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
-      <div style={{ width: '100%', overflowX: 'auto', height: '600px' }}>
+      <div className="grid-container" style={{ 
+        width: '100%', 
+        overflowX: 'auto', 
+        height: isMobile ? '600px' : 'calc(100vh - 170px)' 
+      }}>
         <DataGrid
           ref={dataGridRef}
           className={'dx-card wide-card'}
           dataSource={dataSourceInstance}
           showBorders={false}
-          focusedRowEnabled={true}
-          defaultFocusedRowIndex={0}
-          columnAutoWidth={true}
-          columnHidingEnabled={true}
+          columnAutoWidth={false}
+          columnHidingEnabled={false}
+          height={isMobile ? 550 : 'calc(100vh - 185px)'}
           remoteOperations={true}
-          height={550}
-          scrolling={{ mode: 'standard', showScrollbar: 'always' }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
             mode: isMobile ? 'popup' : 'cell',
             allowAdding,
             allowUpdating,
             allowDeleting,
-            useIcons: true,
-            popup: isMobile ? {
-              title: `Edit ${title}`,
-              showTitle: true,
-              width: 'auto',
-              height: 'auto',
-              position: { my: 'center', at: 'center', of: window }
-            } : undefined,
-            form: isMobile ? {
-              labelLocation: 'top'
-            } : undefined,
-            texts: {
-              saveAllChanges: 'Save Changes',
-              cancelAllChanges: 'Discard Changes',
-              saveRowChanges: 'Save',
-              cancelRowChanges: 'Cancel',
-              editRow: 'Edit',
-              deleteRow: 'Delete'
-            }
+            useIcons: true
           }}
           onCellPrepared={onCellPrepared}
           onRowUpdating={onRowUpdating}
@@ -265,8 +256,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onInitialized={onInitialized}
           onSaving={onSaving}
         >
-          <Paging defaultPageSize={defaultPageSize} />
-          <Pager showPageSizeSelector={true} showInfo={true} />
+          <Sorting mode="multiple" />
+          {isMobile ? (
+            <>
+              <Paging defaultPageSize={defaultPageSize} />
+              <Pager showPageSizeSelector={true} showInfo={true} />
+            </>
+          ) : (
+            <Paging enabled={false} />
+          )}
           <FilterRow visible={true} />
 
           {columns.map((column) => (
@@ -275,15 +273,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               dataField={column.dataField}
               caption={column.caption}
               dataType={column.dataType}
-              hidingPriority={column.hidingPriority}
-              minWidth={'150'}
-              allowResizing={true}
+              minWidth={150}
               allowEditing={column.allowEditing}
               editorOptions={column.editorOptions}
               customizeText={column.customizeText}
               cellRender={column.cellRender}
               calculateDisplayValue={column.calculateDisplayValue}
               cssClass={column.cellClass}
+              sortOrder={column.sortOrder}
+              sortIndex={column.sortIndex}
             >
               {column.lookup && (
                 <Lookup

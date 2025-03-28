@@ -30,6 +30,7 @@ const DeliverableGates: React.FC = () => {
           endpoint={endpoint}
           columns={deliverableGateColumns}
           keyField="guid"
+          defaultSort={[{ selector: 'maxPercentage', desc: false }]}
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}
           onRowValidating={handleRowValidating}
