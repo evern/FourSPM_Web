@@ -1,12 +1,11 @@
 import { compareGuids } from '../../utils/guid-utils';
 import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
-import { DeliverableGate } from '../../types/odata-types';
 import { DeliverableProgressDto } from '../../types/app-types';
 import { createGridOperationHook } from '../factories/createGridOperationHook';
 import { GridOperationsHook, ValidationRule, GridOperationsConfig, ProjectScopedGridController } from '../interfaces/grid-operation-hook.interfaces';
 import { GridUtils } from '../interfaces/grid-utils.interface';
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useDeliverableGateDataProvider } from '../data-providers/useDeliverableGateDataProvider';
 import { useGridUtils } from '../utils/useGridUtils';
 import { useProjectInfo } from '../utils/useProjectInfo';
@@ -56,7 +55,7 @@ export const useDeliverableProgressCollectionController = (
   const { project, isLoading: isProjectLoading } = useProjectInfo(projectId, userToken);
   
   // Use the standardized hook for deliverable gates
-  const { gates: deliverableGates, isLoading: isLoadingGates, error: gatesError } = useDeliverableGateDataProvider();
+  const { gates: deliverableGates, error: gatesError } = useDeliverableGateDataProvider();
   
   // Log any errors from gates loading
   useEffect(() => {

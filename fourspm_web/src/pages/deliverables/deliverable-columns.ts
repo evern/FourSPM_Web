@@ -126,6 +126,13 @@ export const createDeliverableColumns = (
       caption: 'Total Cost',
       hidingPriority: 2,
       dataType: 'number',
+      editorOptions: {
+        type: 'number',
+        min: 0,
+        showSpinButtons: true,
+        showClearButton: false,
+        step: 1
+      },
       customizeText: (cellInfo: any) => {
         return cellInfo.value ? `$${cellInfo.value.toFixed(2)}` : '$0.00';
       }

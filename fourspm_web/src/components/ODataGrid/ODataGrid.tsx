@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
   Column,
   Paging,
   Pager,
   FilterRow,
-  Editing,
   Lookup,
   Sorting
 } from 'devextreme-react/data-grid';
