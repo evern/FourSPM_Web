@@ -73,13 +73,15 @@ export interface ProjectDeliverableCollectionControllerHook extends DeliverableC
    * @param areaNumber The area number
    * @param discipline The discipline
    * @param documentType The document type
+   * @param currentDeliverableGuid Optional GUID of the current deliverable to exclude from the calculation
    * @returns A promise resolving to the suggested document number
    */
   fetchSuggestedDocumentNumber: (
     deliverableTypeId: string,
     areaNumber: string, 
     discipline: string, 
-    documentType: string
+    documentType: string,
+    currentDeliverableGuid?: string
   ) => Promise<string>;
   // Grid utility method
   setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
@@ -183,7 +185,8 @@ export function useProjectDeliverableCollectionController(
     deliverableTypeId: string,
     areaNumber: string,
     discipline: string,
-    documentType: string
+    documentType: string,
+    currentDeliverableGuid?: string
   ): Promise<string> => {
     try {
       // Replace undefined or empty values with placeholders for display
@@ -218,7 +221,8 @@ export function useProjectDeliverableCollectionController(
         areaNumber,
         discipline,
         documentType,
-        userToken || ''
+        userToken || '',
+        currentDeliverableGuid // Pass the current deliverable GUID to exclude it from calculations
       );
       
       return suggestedNumber || '';
@@ -281,7 +285,8 @@ export function useProjectDeliverableCollectionController(
             deliverableTypeId.toString(), 
             areaNumber, 
             discipline, 
-            documentType
+            documentType,
+            rowData.guid // Pass the current deliverable GUID to exclude it from calculation
           );
           
           if (suggestedNumber) {
@@ -331,7 +336,8 @@ export function useProjectDeliverableCollectionController(
                         deliverableTypeId.toString(),
                         areaNumber,
                         discipline,
-                        documentType
+                        documentType,
+                        row.data.guid // Pass the current deliverable GUID to exclude it from calculation
                       );
                       
                       if (suggestedNumber) {

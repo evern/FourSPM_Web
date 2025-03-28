@@ -64,6 +64,16 @@ export const createDeliverableColumns = (
       }
     },
     {
+      dataField: 'documentType',
+      caption: 'Document Type',
+      hidingPriority: 6, // Will be hidden earlier
+      lookup: {
+        dataSource: documentTypesDataSource, // Use the DataSource
+        valueExpr: 'code',
+        displayExpr: 'code'
+      }
+    },
+    {
       dataField: 'internalDocumentNumber',
       caption: 'Internal Doc. No.',
       hidingPriority: 14 // Will be hidden last (highest number = shown longest)
@@ -117,16 +127,6 @@ export const createDeliverableColumns = (
       hidingPriority: 1, // Change from 14 to ensure it's hidden earlier
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
-    },
-    {
-      dataField: 'documentType',
-      caption: 'Document Type',
-      hidingPriority: 6, // Will be hidden earlier
-      lookup: {
-        dataSource: documentTypesDataSource, // Use the DataSource
-        valueExpr: 'code',
-        displayExpr: 'code'
-      }
     }
   ];
 };

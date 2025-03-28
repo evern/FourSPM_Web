@@ -67,6 +67,7 @@ export const getDeliverables = async (token: string, projectId?: string): Promis
  * @param discipline Discipline code
  * @param documentType Document type
  * @param token User authentication token
+ * @param excludeDeliverableGuid Optional GUID of deliverable to exclude from suggestion
  * @returns Suggested document number
  */
 export const getSuggestedDocumentNumber = async (
@@ -75,7 +76,8 @@ export const getSuggestedDocumentNumber = async (
   areaNumber: string, 
   discipline: string, 
   documentType: string,
-  token: string
+  token: string,
+  excludeDeliverableGuid?: string
 ): Promise<string> => {
   try {
     const url = `${DELIVERABLES_ENDPOINT}/SuggestInternalDocumentNumber` +
@@ -83,7 +85,8 @@ export const getSuggestedDocumentNumber = async (
                `&deliverableTypeId=${encodeURIComponent(deliverableTypeId)}` +
                `&areaNumber=${encodeURIComponent(areaNumber)}` +
                `&discipline=${encodeURIComponent(discipline)}` +
-               `&documentType=${encodeURIComponent(documentType)}`;
+               `&documentType=${encodeURIComponent(documentType)}` +
+               `${excludeDeliverableGuid ? `&excludeDeliverableGuid=${encodeURIComponent(excludeDeliverableGuid)}` : ''}`;
     
     // Use the baseApiService which already handles token management
     const response = await baseApiService.request(url, {
