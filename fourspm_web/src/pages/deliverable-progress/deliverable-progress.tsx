@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
 import './deliverable-progress.scss';
@@ -68,9 +68,44 @@ const DeliverableProgress: React.FC = () => {
   // Prepare endpoint URL with period parameter using the standardized function
   const periodToUse = selectedPeriod ?? initialPeriod ?? 0;
   const endpoint = getDeliverablesWithProgressUrl(projectId, periodToUse);
-  
+
   // Check if any data is still loading
   const isLoading = isLoadingProject || isLoadingGates;
+
+  // Reference to the DataGrid component
+  const dataGridRef = useRef<any>(null);
+
+  // Enhanced grid initialization that ensures record count is displayed
+  const onGridInitialized = (e: any) => {
+    // Call the original handler from the controller
+    handleGridInitialized(e);
+    
+    // Store the grid reference
+    dataGridRef.current = e.component;
+    
+    // Enhance the DataSource to properly show record count
+    const dataSource = e.component.getDataSource();
+    
+    // Override the totalCount method to ensure it returns the actual count
+    const originalLoad = dataSource.load;
+    dataSource.load = function() {
+      return originalLoad.apply(this, arguments).then((result: any[]) => {
+        if (Array.isArray(result) && result.length > 0) {
+          // Set the total count properly
+          Object.defineProperty(result, 'totalCount', {
+            get: function() { return result.length; }
+          });
+          
+          // Also set internal properties used by DevExtreme
+          dataSource._totalCount = result.length;
+        }
+        return result;
+      });
+    };
+    
+    // Force a reload to apply our changes
+    dataSource.reload();
+  };
 
   return (
     <div className="progress-container" ref={containerRef}>
@@ -162,15 +197,17 @@ const DeliverableProgress: React.FC = () => {
           </div>
         )}
         <ODataGrid
-          title=" "
+          title=""
           endpoint={endpoint}
           columns={createDeliverableProgressColumns(gatesDataSource)}
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onRowValidating={handleRowValidating}
-          onInitialized={handleGridInitialized}
+          onInitialized={onGridInitialized}
           onEditorPreparing={handleEditorPreparing}
           allowDeleting={false}
+          showRecordCount={true}
+          customGridHeight={1000}
         />
       </div>
       )}

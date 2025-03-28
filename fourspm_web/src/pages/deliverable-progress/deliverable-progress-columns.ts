@@ -93,7 +93,7 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
         format: 'percent',
         valueChangeEvent: 'keyup change'
       },
-      hidingPriority: 19,
+      hidingPriority: 19
     },
     // Current period percentage
     {
@@ -124,6 +124,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       allowEditing: false,
       cellClass: 'faded-placeholder',
       hidingPriority: 17, // Fourth in sequence
+      showSummary: true,
+      summaryType: 'sum',
+      summaryFormat: {
+        precision: 2
+      }
     },
     {
       dataField: 'totalPercentageEarnt',
@@ -151,6 +156,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);
+      },
+      showSummary: true,
+      summaryType: 'sum',
+      summaryFormat: {
+        precision: 2
       }
     },
     {
@@ -163,6 +173,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       customizeText: (cellInfo: any) => {
         if (cellInfo.value === null || cellInfo.value === undefined) return '0.00';
         return cellInfo.value.toFixed(2);
+      },
+      showSummary: true,
+      summaryType: 'sum',
+      summaryFormat: {
+        precision: 2
       }
     },
   ];

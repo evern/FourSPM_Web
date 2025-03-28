@@ -16,7 +16,6 @@ export const useAutoIncrement = ({
   startFrom = '01',
   filter
 }: UseAutoIncrementProps) => {
-  console.log('useAutoIncrement - Hook initialized with:', { endpoint, field, padLength, startFrom, filter });
   const [nextNumber, setNextNumber] = useState<string>(startFrom);
   const { user } = useAuth();
 

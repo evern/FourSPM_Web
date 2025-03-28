@@ -99,7 +99,9 @@ export const createDeliverableColumns = (
         showSpinButtons: true,
         showClearButton: false,
         step: 1
-      }
+      },
+      showSummary: true,
+      summaryType: 'sum'
     },
     {
       dataField: 'variationHours',
@@ -112,14 +114,19 @@ export const createDeliverableColumns = (
         showSpinButtons: true,
         showClearButton: false,
         step: 1
-      }
+      },
+      showSummary: true,
+      summaryType: 'sum'
     },
     {
       dataField: 'totalHours',
       caption: 'Total Hours',
       hidingPriority: 2, // Change from 13 to ensure it's hidden earlier
       allowEditing: false, // Read-only calculated field
-      cellClass: 'faded-placeholder'
+      cellClass: 'faded-placeholder',
+      dataType: 'number',
+      showSummary: true,
+      summaryType: 'sum'
     },
     {
       dataField: 'totalCost',
@@ -135,6 +142,13 @@ export const createDeliverableColumns = (
       },
       customizeText: (cellInfo: any) => {
         return cellInfo.value ? `$${cellInfo.value.toFixed(2)}` : '$0.00';
+      },
+      showSummary: true,
+      summaryType: 'sum',
+      summaryFormat: {
+        type: 'currency',
+        precision: 2,
+        currency: 'AUD'
       }
     },
     {

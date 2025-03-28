@@ -6,7 +6,9 @@ import DataGrid, {
   Pager,
   FilterRow,
   Lookup,
-  Sorting
+  Sorting,
+  Summary,
+  TotalItem
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -42,6 +44,9 @@ export interface ODataGridColumn extends Partial<Column> {
   tooltip?: string;
   hint?: string;
   visible?: boolean;
+  showSummary?: boolean;
+  summaryType?: 'sum' | 'avg' | 'min' | 'max' | 'count';
+  summaryFormat?: string | object;
 }
 
 interface ODataGridProps {
@@ -64,6 +69,8 @@ interface ODataGridProps {
   defaultFilter?: [string, string, any][];
   defaultSort?: { selector: string; desc: boolean }[];
   expand?: string[];
+  showRecordCount?: boolean;
+  customGridHeight?: string | number;
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -86,6 +93,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   defaultFilter = [],
   defaultSort,
   expand,
+  showRecordCount = true,
+  customGridHeight,
 }) => {
   const { user } = useAuth();
   const token = user?.token;
@@ -182,6 +191,24 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
 
   const dataSourceInstance = new DataSource(dataSourceOptions);
 
+  // Generate summary items for numeric fields
+  const numericColumnSummaries = columns
+    .filter(column => 
+      column.showSummary && 
+      (column.dataType === 'number' || 
+       column.summaryType === 'count')
+    )
+    .map(column => ({
+      column: column.dataField,
+      summaryType: column.summaryType || 'sum',
+      valueFormat: column.summaryFormat,
+      displayFormat: column.summaryType === 'count' 
+        ? '{0} records' 
+        : (column.summaryType === 'sum' 
+            ? 'Total: {0}' 
+            : `${column.summaryType}: {0}`)
+    }));
+
   const onCellPrepared = (e: any) => {
     if (e.rowType === 'data') {
       const column = columns.find(col => col.dataField === e.column.dataField);
@@ -252,8 +279,18 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           columnAutoWidth={true}
           allowColumnResizing={true}
           columnResizingMode="widget"
-          height={screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 550 : 'calc(100vh - 185px)'}
-          remoteOperations={true}
+          height={screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 550 : customGridHeight || 'calc(100vh - 185px)'}
+          scrolling={{ 
+            useNative: false,  
+            showScrollbar: 'onHover', 
+            scrollByThumb: true       
+          }}
+          remoteOperations={{
+            filtering: true,
+            paging: true,
+            sorting: true,
+            summary: false // Always calculate summaries locally
+          }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
             mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',
@@ -271,11 +308,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
           onSaving={onSaving}
-          scrolling={{ 
-            useNative: false,  
-            showScrollbar: 'onHover', 
-            scrollByThumb: true       
-          }}
         >
           <Sorting mode="multiple" />
           {screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? (
@@ -312,6 +344,23 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               )}
             </Column>
           ))}
+          <Summary>
+            {showRecordCount && (
+              <TotalItem
+                summaryType="count"
+                displayFormat="Total deliverables: {0}"
+              />
+            )}
+            {numericColumnSummaries.map((summary, index) => (
+              <TotalItem
+                key={index}
+                column={summary.column}
+                summaryType={summary.summaryType}
+                valueFormat={summary.valueFormat}
+                displayFormat={summary.displayFormat}
+              />
+            ))}
+          </Summary>
         </DataGrid>
       </div>
     </React.Fragment>
