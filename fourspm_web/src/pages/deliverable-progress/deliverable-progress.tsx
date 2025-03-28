@@ -190,7 +190,7 @@ const DeliverableProgress: React.FC = () => {
           allowDeleting={false}
           showRecordCount={true}
           countColumn="bookingCode"
-          customGridHeight={1000}
+          customGridHeight={990}
         />
       </div>
       )}
