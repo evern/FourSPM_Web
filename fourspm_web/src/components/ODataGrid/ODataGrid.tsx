@@ -233,9 +233,10 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           ref={dataGridRef}
           className={'dx-card wide-card'}
           dataSource={dataSourceInstance}
-          showBorders={false}
-          columnAutoWidth={false}
-          columnHidingEnabled={false}
+          showBorders={true}
+          columnAutoWidth={true}
+          allowColumnResizing={true}
+          columnResizingMode="widget"
           height={isMobile ? 550 : 'calc(100vh - 185px)'}
           remoteOperations={true}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
@@ -266,7 +267,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             <Paging enabled={false} />
           )}
           <FilterRow visible={true} />
-
           {columns.map((column) => (
             <Column
               key={column.dataField}
