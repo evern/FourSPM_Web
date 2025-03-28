@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Properties } from 'devextreme/ui/data_grid';
 import DataGrid, {
   Column,
@@ -13,6 +13,7 @@ import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import { useAuth } from '../../contexts/auth';
 import notify from 'devextreme/ui/notify';
+import { useScreenSizeClass } from '../../utils/media-query';
 
 export interface ODataGridColumn extends Partial<Column> {
   dataField: string;
@@ -90,22 +91,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   const { user } = useAuth();
   const token = user?.token;
   const dataGridRef = useRef<DataGrid>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const screenSizeClass = useScreenSizeClass();
 
-  // Check if the device is mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
-    };
-    
-    checkMobile(); // Check on initial render
-    window.addEventListener('resize', checkMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
-  
   let store;
   let dataSourceOptions: Options;
 
@@ -230,7 +217,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
     
     // If validation failed and we're in popup/form mode, show error as popup
-    if (!e.isValid && isMobile) {
+    if (!e.isValid && (screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small')) {
       // Use setTimeout to ensure this runs after the original handler finishes
       setTimeout(() => {
         notify({
@@ -250,11 +237,14 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
-      <div className="grid-container" style={{ 
-        width: '100%', 
-        overflowX: 'auto', 
-        height: isMobile ? '600px' : 'calc(100vh - 170px)' 
-      }}>
+      <div 
+        className="grid-container" 
+        style={{ 
+          width: '100%', 
+          overflowX: 'auto', 
+          height: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? '600px' : 'calc(100vh - 170px)' 
+        }}
+      >
         <DataGrid
           ref={dataGridRef}
           className={'dx-card wide-card'}
@@ -263,11 +253,11 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           columnAutoWidth={true}
           allowColumnResizing={true}
           columnResizingMode="widget"
-          height={isMobile ? 550 : 'calc(100vh - 185px)'}
+          height={screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 550 : 'calc(100vh - 185px)'}
           remoteOperations={true}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
-            mode: isMobile ? 'popup' : 'cell',
+            mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',
             allowAdding,
             allowUpdating,
             allowDeleting,
@@ -282,9 +272,14 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
           onSaving={onSaving}
+          scrolling={{ 
+            useNative: false,  
+            showScrollbar: 'onHover', 
+            scrollByThumb: true       
+          }}
         >
           <Sorting mode="multiple" />
-          {isMobile ? (
+          {screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? (
             <>
               <Paging defaultPageSize={defaultPageSize} />
               <Pager showPageSizeSelector={true} showInfo={true} />
