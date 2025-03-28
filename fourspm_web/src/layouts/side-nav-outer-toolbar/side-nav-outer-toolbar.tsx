@@ -1,11 +1,10 @@
 import Drawer from 'devextreme-react/drawer';
-import ScrollView from 'devextreme-react/scroll-view';
 import React, { useState, useCallback, useRef, ReactElement, useEffect } from 'react';
 import { useHistory } from 'react-router';
 import { Header, SideNavigationMenu, Footer } from '../../components';
 import './side-nav-outer-toolbar.scss';
 import { useScreenSize } from '../../utils/media-query';
-import { Template } from 'devextreme-react/core/template';
+import { Template } from 'devextreme-react/core/template'; 
 import { useMenuPatch } from '../../utils/patches';
 
 enum MenuStatus {
@@ -34,7 +33,6 @@ interface ToggleMenuEvent {
 }
 
 export default function SideNavOuterToolbar({ title, children }: SideNavOuterToolbarProps): ReactElement {
-  const scrollViewRef = useRef<ScrollView>(null);
   const history = useHistory();
   const { isXSmall, isLarge } = useScreenSize();
   const [patchCssClass, onMenuReady] = useMenuPatch();
@@ -98,7 +96,6 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
     }
 
     history.push(path);
-    scrollViewRef.current?.instance?.scrollTo(0);
 
     if (!isLarge || menuStatus === MenuStatus.TemporaryOpened) {
       setMenuStatus(MenuStatus.Closed);
@@ -129,20 +126,12 @@ export default function SideNavOuterToolbar({ title, children }: SideNavOuterToo
       >
         <div className={'container'}>
           <div className={'scroll-wrapper'}>
-            <ScrollView 
-              ref={scrollViewRef} 
-              className={'layout-body'}
-              direction="vertical"
-              scrollByContent={true}
-              scrollByThumb={true}
-              showScrollbar="always"
-            >
-              <div className={'content'}>
-                {React.Children.map(children, (item) => {
-                  return item && React.isValidElement(item) && item.type !== Footer && item;
-                })}
-              </div>
-            </ScrollView>
+            {/* ScrollView removed from here - will be added at page level when needed */}
+            <div className={'content'}>
+              {React.Children.map(children, (item) => {
+                return item && React.isValidElement(item) && item.type !== Footer && item;
+              })}
+            </div>
           </div>
           <div className={'footer-container'}>
             {React.Children.map(children, (item) => {
