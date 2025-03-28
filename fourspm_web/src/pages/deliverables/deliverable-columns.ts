@@ -122,6 +122,15 @@ export const createDeliverableColumns = (
       cellClass: 'faded-placeholder'
     },
     {
+      dataField: 'totalCost',
+      caption: 'Total Cost',
+      hidingPriority: 2,
+      dataType: 'number',
+      customizeText: (cellInfo: any) => {
+        return cellInfo.value ? `$${cellInfo.value.toFixed(2)}` : '$0.00';
+      }
+    },
+    {
       dataField: 'bookingCode',
       caption: 'Booking Code',
       hidingPriority: 1, // Change from 14 to ensure it's hidden earlier
