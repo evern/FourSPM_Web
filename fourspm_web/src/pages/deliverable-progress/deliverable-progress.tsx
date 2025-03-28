@@ -200,6 +200,7 @@ const DeliverableProgress: React.FC = () => {
             onRowValidating={handleRowValidating}
             onInitialized={onGridInitialized}
             onEditorPreparing={handleEditorPreparing}
+            allowAdding={false}
             allowDeleting={false}
             showRecordCount={true}
             countColumn="bookingCode"
