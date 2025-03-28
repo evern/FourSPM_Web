@@ -12,6 +12,7 @@ import DataGrid, {
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import { useAuth } from '../../contexts/auth';
+import notify from 'devextreme/ui/notify';
 
 export interface ODataGridColumn extends Partial<Column> {
   dataField: string;
@@ -220,6 +221,31 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
 
     onSavingProp?.(e);
   };
+  
+  // Handle validation errors by showing them as popups when in form/popup editing mode
+  const handleRowValidating = (e: any) => {
+    // Call the original validation handler if provided
+    if (onRowValidating) {
+      onRowValidating(e);
+    }
+    
+    // If validation failed and we're in popup/form mode, show error as popup
+    if (!e.isValid && isMobile) {
+      // Use setTimeout to ensure this runs after the original handler finishes
+      setTimeout(() => {
+        notify({
+          message: e.errorText || 'Validation error',
+          type: 'error',
+          displayTime: 3000,
+          position: {
+            at: 'top center',
+            my: 'top center',
+            offset: '0 10'
+          }
+        });
+      }, 0);
+    }
+  };
 
   return (
     <React.Fragment>
@@ -252,7 +278,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onRowInserting={onRowInserting}
           onRowRemoving={onRowRemoving}
           onInitNewRow={onInitNewRow}
-          onRowValidating={onRowValidating}
+          onRowValidating={handleRowValidating}
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
           onSaving={onSaving}
