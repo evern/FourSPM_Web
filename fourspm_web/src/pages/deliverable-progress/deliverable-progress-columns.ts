@@ -9,7 +9,8 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       caption: 'Booking Code',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 0 // Hide first
+      hidingPriority: 0, // Hide first
+      showSummary: true
     },
     {
       dataField: 'areaNumber',

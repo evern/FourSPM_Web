@@ -70,6 +70,7 @@ interface ODataGridProps {
   defaultSort?: { selector: string; desc: boolean }[];
   expand?: string[];
   showRecordCount?: boolean;
+  countColumn?: string;
   customGridHeight?: string | number;
 }
 
@@ -94,6 +95,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   defaultSort,
   expand,
   showRecordCount = true,
+  countColumn,
   customGridHeight,
 }) => {
   const { user } = useAuth();
@@ -130,6 +132,11 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         url.searchParams.set('$expand', expand.join(','));
       } else {
         url.searchParams.delete('$expand');
+      }
+      
+      // Always ensure count is included for GET requests
+      if (method === 'get') {
+        url.searchParams.set('$count', 'true');
       }
       
       if ((method === 'patch' || method === 'put' || method === 'post') && expand && options.payload) {
@@ -348,7 +355,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             {showRecordCount && (
               <TotalItem
                 summaryType="count"
-                displayFormat="Total deliverables: {0}"
+                displayFormat="Total records: {0}"
+                showInColumn={countColumn || "bookingCode"}
               />
             )}
             {numericColumnSummaries.map((summary, index) => (

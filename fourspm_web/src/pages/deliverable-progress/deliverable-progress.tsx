@@ -82,29 +82,6 @@ const DeliverableProgress: React.FC = () => {
     
     // Store the grid reference
     dataGridRef.current = e.component;
-    
-    // Enhance the DataSource to properly show record count
-    const dataSource = e.component.getDataSource();
-    
-    // Override the totalCount method to ensure it returns the actual count
-    const originalLoad = dataSource.load;
-    dataSource.load = function() {
-      return originalLoad.apply(this, arguments).then((result: any[]) => {
-        if (Array.isArray(result) && result.length > 0) {
-          // Set the total count properly
-          Object.defineProperty(result, 'totalCount', {
-            get: function() { return result.length; }
-          });
-          
-          // Also set internal properties used by DevExtreme
-          dataSource._totalCount = result.length;
-        }
-        return result;
-      });
-    };
-    
-    // Force a reload to apply our changes
-    dataSource.reload();
   };
 
   return (
@@ -207,6 +184,7 @@ const DeliverableProgress: React.FC = () => {
           onEditorPreparing={handleEditorPreparing}
           allowDeleting={false}
           showRecordCount={true}
+          countColumn="bookingCode"
           customGridHeight={1000}
         />
       </div>

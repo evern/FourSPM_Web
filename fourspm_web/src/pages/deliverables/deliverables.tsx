@@ -90,6 +90,7 @@ const Deliverables: React.FC = () => {
           onEditorPreparing={handleEditorPreparing}
           onInitialized={handleGridInitialized}
           defaultFilter={[['projectGuid', '=', projectId]]}
+          countColumn="clientNumber"
         />
       </div>
       <ScrollToTop />
