@@ -26,6 +26,8 @@ export interface ODataGridColumn extends Partial<Column> {
   dataType?: string;
   sortOrder?: 'asc' | 'desc';
   sortIndex?: number;
+  fixed?: boolean;
+  fixedPosition?: 'left' | 'right';
   editorOptions?: {
     mask?: string;
     maskRules?: Record<string, RegExp>;
@@ -342,6 +344,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               cssClass={column.cellClass}
               sortOrder={column.sortOrder}
               sortIndex={column.sortIndex}
+              fixed={column.fixed}
+              fixedPosition={column.fixedPosition}
             >
               {column.lookup && (
                 <Lookup

@@ -8,6 +8,7 @@ import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useDeliverableProgressCollectionController } from '../../hooks/controllers/useDeliverableProgressCollectionController';
 import { useDeliverableGateDataProvider } from '../../hooks/data-providers/useDeliverableGateDataProvider';
 import { usePeriodManager } from '../../hooks/utils/usePeriodManager';
+import { useScreenSizeClass } from '../../utils/media-query';
 
 // Import components from shared location
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
@@ -52,6 +53,10 @@ const DeliverableProgress: React.FC = () => {
   } = usePeriodManager(initialPeriod, 
     project?.progressStart ? String(project.progressStart) : null
   );
+
+  // Get screen size using the standardized hook
+  const screenClass = useScreenSizeClass();
+  const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
 
   // Use the progress controller for grid operations
   const {
@@ -176,7 +181,7 @@ const DeliverableProgress: React.FC = () => {
         <ODataGrid
           title=""
           endpoint={endpoint}
-          columns={createDeliverableProgressColumns(gatesDataSource)}
+          columns={createDeliverableProgressColumns(gatesDataSource, isMobile)}
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onRowValidating={handleRowValidating}

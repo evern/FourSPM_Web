@@ -2,7 +2,7 @@ import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { departmentEnum } from '../../types/enums';
 
 // Generic progress tracking columns configuration
-export const createDeliverableProgressColumns = (deliverableGatesDataSource: any): ODataGridColumn[] => {
+export const createDeliverableProgressColumns = (deliverableGatesDataSource: any, isMobile: boolean = false): ODataGridColumn[] => {
   return [
     {
       dataField: 'bookingCode',
@@ -50,7 +50,9 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       caption: 'Internal Number',
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      hidingPriority: 20 // Hidden last - most important
+      hidingPriority: 20, // Hidden last - most important
+      fixed: isMobile,
+      fixedPosition: 'left'
     },
     {
       dataField: 'clientDocumentNumber',

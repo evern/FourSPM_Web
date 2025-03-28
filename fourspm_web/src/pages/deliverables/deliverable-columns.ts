@@ -6,7 +6,8 @@ import { Area, Discipline, DocumentType } from '../../types/odata-types';
 export const createDeliverableColumns = (
   areasDataSource: any,
   disciplinesDataSource: any,
-  documentTypesDataSource: any
+  documentTypesDataSource: any,
+  isMobile: boolean = false // Add screen size parameter with default
 ): ODataGridColumn[] => {
   return [
     {
@@ -76,7 +77,9 @@ export const createDeliverableColumns = (
     {
       dataField: 'internalDocumentNumber',
       caption: 'Internal Doc. No.',
-      hidingPriority: 14 // Will be hidden last (highest number = shown longest)
+      hidingPriority: 14, // Will be hidden last (highest number = shown longest)
+      fixed: isMobile, // Conditionally apply fixed positioning on mobile only
+      fixedPosition: 'left'
     },
     {
       dataField: 'clientDocumentNumber',

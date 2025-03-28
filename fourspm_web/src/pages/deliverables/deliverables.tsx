@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createDeliverableColumns } from './deliverable-columns';
@@ -10,6 +10,7 @@ import { useProjectDeliverableCollectionController } from '@/hooks/controllers/u
 import { useAreaDataProvider } from '../../hooks/data-providers/useAreaDataProvider';
 import { useDisciplineDataProvider } from '../../hooks/data-providers/useDisciplineDataProvider';
 import { useDocumentTypeDataProvider } from '../../hooks/data-providers/useDocumentTypeDataProvider';
+import { useScreenSizeClass } from '../../utils/media-query';
 
 interface DeliverableParams {
   projectId: string;
@@ -19,21 +20,7 @@ const Deliverables: React.FC = () => {
   const { projectId } = useParams<DeliverableParams>();
   const { user } = useAuth();
   const endpoint = DELIVERABLES_ENDPOINT;
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if the device is mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
-    };
-    
-    checkMobile(); // Check on initial render
-    window.addEventListener('resize', checkMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
+  const screenClass = useScreenSizeClass();
 
   // Use the enhanced controller with project-specific functionality
   const {
@@ -65,11 +52,11 @@ const Deliverables: React.FC = () => {
   const { documentTypesStore } = useDocumentTypeDataProvider();
 
   // Create columns with the areas, disciplines, and document types data
-  const columns = createDeliverableColumns(areasDataSource, disciplinesStore, documentTypesStore);
+  const columns = createDeliverableColumns(areasDataSource, disciplinesStore, documentTypesStore, screenClass === 'screen-x-small' || screenClass === 'screen-small');
   
   // WORKAROUND: Filter out the deliverableTypeId column entirely on mobile
   // This is needed because setting 'visible: false' doesn't work as expected
-  const mobileAdjustedColumns = isMobile 
+  const mobileAdjustedColumns = (screenClass === 'screen-x-small' || screenClass === 'screen-small') 
     ? columns.filter(column => column.dataField !== 'deliverableTypeId')
     : columns;
 
