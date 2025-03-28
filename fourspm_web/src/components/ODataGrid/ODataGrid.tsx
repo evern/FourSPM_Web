@@ -136,11 +136,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         url.searchParams.delete('$expand');
       }
       
-      // Always ensure count is included for GET requests
-      if (method === 'get') {
-        url.searchParams.set('$count', 'true');
-      }
-      
       if ((method === 'patch' || method === 'put' || method === 'post') && expand && options.payload) {
         try {
           if (typeof options.payload === 'object' && options.payload !== null) {
