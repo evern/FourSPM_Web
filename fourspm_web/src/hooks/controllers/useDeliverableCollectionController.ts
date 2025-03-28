@@ -164,12 +164,20 @@ export function useProjectDeliverableCollectionController(
       e.data.projectGuid = projectId; // Use projectGuid instead of projectId
       e.data.guid = uuidv4(); // Use guid instead of id
       
-      // Add any other default values needed
-      if (project && project.client) {
-        // Flatten client data instead of using the complex object
-        e.data.clientNumber = project.client.number || '';
-        // Don't include the entire client object
-        // e.data.client = project.client; 
+      // Wait for project data before setting related fields
+      if (project) {
+        // Populate from project data
+        if (project.client) {
+          e.data.clientNumber = project.client.number || '';
+        }
+        
+        // Use projectNumber from project if available, otherwise extract from the URL
+        if (project.projectNumber) {
+          e.data.projectNumber = project.projectNumber || '';
+        }
+      } else {
+        // If project isn't loaded yet, log warning
+        console.warn('Project data not available when initializing new deliverable');
       }
 
       // Set default departmentId for new deliverables
