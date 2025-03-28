@@ -120,20 +120,21 @@ const DeliverableProgress: React.FC = () => {
             <div className="period-selector">
               <div className="period-details">
                 <div className="period-info">
-                  <div className="info-item">
-                    <span>Reporting Period:</span>
+                  <div className="info-item info-item-period">
+                    <span className="info-label">Reporting Period:</span>
                     <div className="period-stepper">
                       <Button
                         icon="spindown"
                         onClick={() => decrementPeriod()}
                         disabled={selectedPeriod === 0 || isLoading}
-                        stylingMode="outlined"
+                        stylingMode="text"
                         className="period-button down-button"
                       />
                       <NumberBox
                         value={selectedPeriod || 0}
                         min={0}
                         showSpinButtons={false}
+                        inputAttr={{ 'aria-label': 'Period Number' }}
                         onKeyDown={(e) => {
                           // Allow keyboard navigation (up/down arrows)
                           if (e.event && e.event.key === 'ArrowUp') {
@@ -157,25 +158,27 @@ const DeliverableProgress: React.FC = () => {
                         }}
                         className="period-number-box"
                         width={60}
-                        stylingMode="filled"
+                        stylingMode="outlined"
                       />
                       <Button
                         icon="spinup"
                         onClick={() => incrementPeriod()}
                         disabled={isLoading}
-                        stylingMode="outlined"
+                        stylingMode="text"
                         className="period-button up-button"
                       />
                     </div>
                     <span className="secondary-info">(weeks from project start)</span>
                   </div>
+                  <div className="info-divider"></div>
                   <div className="info-item">
-                    <span>Progress Date:</span>
-                    <strong>{progressDate.toLocaleDateString()}</strong>
+                    <span className="info-label">Progress Date:</span>
+                    <strong className="info-value">{progressDate.toLocaleDateString()}</strong>
                   </div>
+                  <div className="info-divider"></div>
                   <div className="info-item">
-                    <span>Project Start Date:</span>
-                    <strong>
+                    <span className="info-label">Project Start Date:</span>
+                    <strong className="info-value">
                       {project.progressStart
                         ? new Date(project.progressStart).toLocaleDateString()
                         : 'Not set'}
@@ -200,7 +203,7 @@ const DeliverableProgress: React.FC = () => {
             allowDeleting={false}
             showRecordCount={true}
             countColumn="bookingCode"
-            customGridHeight={isMobile ? 500 : 990}
+            customGridHeight={isMobile ? 500 : 970}
           />
         </ScrollView>
       </div>

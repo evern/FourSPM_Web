@@ -42,11 +42,12 @@
   display: flex;
   flex-direction: column;
   margin-bottom: 1.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 1rem 1.5rem;
   background-color: var(--base-bg);
-  border-radius: var(--border-radius-lg);
-  border: 1px solid var(--base-border-color);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
 .period-info, .period-date {
@@ -114,11 +115,12 @@
     display: flex;
     flex-direction: column;
     margin-bottom: 1.5rem;
-    padding: 0.75rem 1.25rem;
+    padding: 1rem 1.5rem;
     background-color: var(--base-bg);
-    border-radius: var(--border-radius-lg);
-    border: 1px solid var(--base-border-color);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
     
     .period-details {
       display: flex;
@@ -136,45 +138,53 @@
       @media (max-width: 992px) {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.75rem;
+        gap: 1rem;
       }
       
       .info-item {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 0.75rem;
+        gap: 0.5rem;
+        position: relative;
         
         @media (max-width: 992px) {
           width: 100%;
           margin-right: 0;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.5rem;
         }
         
-        @include breakpoints.respond-to("mobile") {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: wrap;
-          
-          span:first-child {
-            display: block;
-            width: 100%;
-            margin-bottom: 0.25rem;
-          }
+        .info-label {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--base-text-color);
+          opacity: 0.7;
+          margin-right: 0.25rem;
         }
         
-        @media (max-width: 480px) {
-          .number-box-container {
-            margin-bottom: 0.25rem;
-          }
+        .info-value {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--base-text-color);
         }
         
+        .secondary-info {
+          font-size: 12px;
+          color: var(--base-text-color);
+          opacity: 0.6;
+          margin-left: 0.25rem;
+        }
+      }
+      
+      .info-item-period {
         .period-stepper {
           display: flex;
           align-items: center;
           margin: 0;
           min-width: 120px !important;
           flex-shrink: 0;
+          margin-left: 0.25rem;
+          margin-right: 0.25rem;
 
           @include breakpoints.respond-to("mobile") {
             min-width: 120px !important;
@@ -183,22 +193,58 @@
           }
           
           .period-button {
-            border-radius: var(--border-radius-base);
             height: 36px;
             width: 36px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: transparent;
-            transition: background-color 0.2s;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            z-index: 1;
+
+            &:hover:not(.dx-state-disabled) {
+              background-color: rgba(var(--base-accent-rgb), 0.1);
+              
+              .dx-icon {
+                color: var(--base-accent);
+              }
+            }
             
-            &:hover {
-              background-color: var(--base-accent);
-              color: var(--base-text-on-accent);
+            &:active:not(.dx-state-disabled) {
+              background-color: rgba(var(--base-accent-rgb), 0.2);
+            }
+            
+            &.dx-state-focused {
+              box-shadow: 0 0 0 2px rgba(var(--base-accent-rgb), 0.3);
+            }
+            
+            &.dx-state-disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+              
+              .dx-icon {
+                color: var(--base-text-color);
+                opacity: 0.5;
+              }
             }
             
             .dx-button-content {
               padding: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              height: 100%;
+            }
+            
+            .dx-icon {
+              font-size: 18px;
+              color: var(--base-text-color);
+              transition: color 0.2s ease-in-out;
             }
           }
           
@@ -208,112 +254,42 @@
           
           .period-number-box {
             order: 2;
+            margin: 0 4px;
+            
+            &.dx-numberbox.dx-widget {
+              width: 60px !important;
+              height: 36px !important;
+              border-radius: 4px;
+            }
+
+            .dx-texteditor-input {
+              font-size: 0.9rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--base-text-color);
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+              height: 36px !important;
+            }
           }
           
           .up-button {
             order: 3;
           }
         }
+      }
+      
+      .info-divider {
+        width: 1px;
+        height: 24px;
+        background-color: var(--base-text-color);
+        opacity: 0.12;
+        margin: 0 1.5rem;
         
-        .period-number-box {
-          margin: 0 0.25rem;
-
-          &.dx-numberbox.dx-widget {
-            width: 100px !important;
-            height: 36px !important;
-          }
-
-          .dx-texteditor-input {
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-align: center;
-            color: var(--primary);
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-            height: 36px !important;
-          }
-
-          .dx-numberbox-spin-container {
-            border: none;
-            margin: 0;
-            width: 100% !important;
-            position: relative;
-            height: 36px;
-          }
-
-          .dx-numberbox-spin-up, .dx-numberbox-spin-down {
-            width: 24px !important;
-            height: 16px !important;
-            border-radius: 3px;
-            right: 3px;
-
-            .dx-icon {
-              width: 16px;
-              height: 16px;
-              font-size: 16px;
-              line-height: 16px;
-            }
-          }
-
-          .dx-numberbox-spin-up {
-            top: 2px;
-          }
-
-          .dx-numberbox-spin-down {
-            bottom: 2px;
-          }
-
-          /* Mobile styles */
-          @media (max-width: 576px) {
-            margin: 0 0.25rem;
-          }
-        }
-      }
-      
-      span {
-        font-weight: normal;
-        color: var(--base-text-color);
-        white-space: nowrap;
-      }
-      
-      strong {
-        font-weight: 500;
-        color: var(--primary);
-        font-size: 1rem;
-      }
-      
-      .secondary-info {
-        font-weight: normal;
-        font-size: 0.9rem;
-        color: var(--base-text-color);
-        opacity: 0.7;
-        white-space: nowrap;
-        
-        @include breakpoints.respond-to("mobile") {
-          margin-left: 0;
+        @media (max-width: 992px) {
           width: 100%;
-          margin-top: 0.25rem;
-        }
-      }
-      
-      .period-controls {
-        display: flex;
-        align-items: center;
-        margin: 0 0.5rem;
-        
-        .dx-button {
-          padding: 0;
-          min-width: 28px;
-          height: 28px;
-          border-radius: 4px;
-          
-          .dx-button-content {
-            padding: 0;
-          }
-          
-          &.dx-state-disabled {
-            opacity: 0.5;
-          }
+          height: 1px;
+          margin: 0.25rem 0;
         }
       }
     }
@@ -435,5 +411,82 @@
     right: 15px !important;
     width: 40px !important;
     height: 40px !important;
+  }
+}
+
+.period-number-box {
+  margin: 0 0.25rem;
+
+  &.dx-numberbox.dx-widget {
+    width: 60px !important;
+    height: 36px !important;
+    border-radius: 4px;
+  }
+
+  .dx-texteditor-input {
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--base-text-color);
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    height: 36px !important;
+  }
+
+  // Clear the auto-generated number box styles
+  .dx-numberbox-spin-container {
+    display: none;
+  }
+
+  .dx-numberbox-spin-up, .dx-numberbox-spin-down {
+    display: none;
+  }
+}
+
+.period-button {
+  border-radius: 50%;
+  height: 36px;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  margin: 0 4px;
+  
+  &:hover:not(.dx-state-disabled) {
+    background-color: rgba(var(--base-accent-rgb), 0.1);
+    
+    .dx-icon {
+      color: var(--base-accent);
+    }
+  }
+  
+  &:active:not(.dx-state-disabled) {
+    background-color: rgba(var(--base-accent-rgb), 0.2);
+  }
+  
+  &.dx-state-focused {
+    box-shadow: 0 0 0 2px rgba(var(--base-accent-rgb), 0.3);
+  }
+  
+  &.dx-state-disabled {
+    opacity: 0.5;
+    
+    .dx-icon {
+      color: var(--base-text-color);
+      opacity: 0.5;
+    }
+  }
+  
+  .dx-button-content {
+    padding: 0;
+  }
+  
+  .dx-icon {
+    font-size: 18px;
+    color: var(--base-text-color);
+    transition: color 0.2s ease-in-out;
   }
 }
