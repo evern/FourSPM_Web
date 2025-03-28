@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createDeliverableColumns } from './deliverable-columns';
@@ -19,6 +19,21 @@ const Deliverables: React.FC = () => {
   const { projectId } = useParams<DeliverableParams>();
   const { user } = useAuth();
   const endpoint = DELIVERABLES_ENDPOINT;
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if the device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // Common breakpoint for mobile
+    };
+    
+    checkMobile(); // Check on initial render
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   // Use the enhanced controller with project-specific functionality
   const {
@@ -51,6 +66,18 @@ const Deliverables: React.FC = () => {
 
   // Create columns with the areas, disciplines, and document types data
   const columns = createDeliverableColumns(areasDataSource, disciplinesStore, documentTypesStore);
+  
+  // WORKAROUND: Filter out the deliverableTypeId column entirely on mobile
+  // This is needed because setting 'visible: false' doesn't work as expected
+  const mobileAdjustedColumns = isMobile 
+    ? columns.filter(column => column.dataField !== 'deliverableTypeId')
+    : columns;
+
+  // Log mobile status for debugging
+  useEffect(() => {
+    console.log('Is mobile view:', isMobile);
+    console.log('Columns after adjustment:', mobileAdjustedColumns);
+  }, [isMobile, mobileAdjustedColumns]);
 
   return (
     <div className="deliverables-container">
@@ -59,7 +86,7 @@ const Deliverables: React.FC = () => {
         <ODataGrid
           title=" "
           endpoint={endpoint}
-          columns={columns}
+          columns={mobileAdjustedColumns}
           keyField="guid"
           onRowUpdating={handleRowUpdating}
           onInitNewRow={handleInitNewRow}

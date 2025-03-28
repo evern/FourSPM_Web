@@ -61,38 +61,12 @@ export const createDeliverableColumns = (
         dataSource: deliverableTypeEnum,
         valueExpr: 'id',
         displayExpr: 'name'
-      },
-      editorOptions: {
-        placeholder: 'Select type...',
-        showClearButton: false,
-        onInitialized: (e: any) => {
-          // Make sure the editor always displays a value
-          if (e.component && e.component.option) {
-            const value = e.component.option('value');
-            if (value === null || value === undefined) {
-              // Set the default value to 'Task'
-              e.component.option('value', 'Task');
-            }
-          }
-        }
-      }
-    },
-    {
-      dataField: 'documentType',
-      caption: 'Document Type',
-      hidingPriority: 6, // Will be hidden earlier
-      lookup: {
-        dataSource: documentTypesDataSource, // Use the DataSource
-        valueExpr: 'code',
-        displayExpr: 'code'
       }
     },
     {
       dataField: 'internalDocumentNumber',
       caption: 'Internal Doc. No.',
-      hidingPriority: 14, // Will be hidden last (highest number = shown longest)
-      allowEditing: false, // Read-only calculated field
-      cellClass: 'faded-placeholder'
+      hidingPriority: 14 // Will be hidden last (highest number = shown longest)
     },
     {
       dataField: 'clientDocumentNumber',
@@ -143,6 +117,16 @@ export const createDeliverableColumns = (
       hidingPriority: 1, // Change from 14 to ensure it's hidden earlier
       allowEditing: false, // Read-only calculated field
       cellClass: 'faded-placeholder'
+    },
+    {
+      dataField: 'documentType',
+      caption: 'Document Type',
+      hidingPriority: 6, // Will be hidden earlier
+      lookup: {
+        dataSource: documentTypesDataSource, // Use the DataSource
+        valueExpr: 'code',
+        displayExpr: 'code'
+      }
     }
   ];
 };
