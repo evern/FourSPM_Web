@@ -170,8 +170,6 @@ const DeliverableProgress: React.FC = () => {
           onRowValidating={handleRowValidating}
           onInitialized={handleGridInitialized}
           onEditorPreparing={handleEditorPreparing}
-          allowUpdating={true}
-          allowAdding={false}
           allowDeleting={false}
         />
       </div>

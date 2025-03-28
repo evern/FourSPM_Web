@@ -73,12 +73,6 @@ const Deliverables: React.FC = () => {
     ? columns.filter(column => column.dataField !== 'deliverableTypeId')
     : columns;
 
-  // Log mobile status for debugging
-  useEffect(() => {
-    console.log('Is mobile view:', isMobile);
-    console.log('Columns after adjustment:', mobileAdjustedColumns);
-  }, [isMobile, mobileAdjustedColumns]);
-
   return (
     <div className="deliverables-container">
       <div className="custom-grid-wrapper">

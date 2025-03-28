@@ -2,7 +2,7 @@ import { sharedApiService } from '../api/shared-api.service';
 import { baseApiService } from '../api/base-api.service';
 import { API_CONFIG } from '../config/api';
 import { createProjectFilter } from '../utils/odata-filters';
-import { DELIVERABLES_ENDPOINT, getDeliverablesWithProgressQuery } from '../config/api-endpoints';
+import { DELIVERABLES_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -101,62 +101,6 @@ export const getSuggestedDocumentNumber = async (
   } catch (error) {
     console.error('Error fetching document number:', error);
     return '';
-  }
-};
-
-/**
- * Fetch deliverables with progress percentages for a specific project and period
- * @param projectId The project GUID
- * @param period The reporting period
- * @param userToken User authentication token
- * @returns Promise with deliverables including progress percentages
- */
-export const getDeliverablesWithProgressPercentages = async (
-  projectId: string,
-  period: number,
-  userToken: string
-) => {
-  try {
-    // Use the standardized query function from api-endpoints.ts
-    const query = getDeliverablesWithProgressQuery(projectId, period);
-    
-    const result = await sharedApiService.getAll<any>(
-      DELIVERABLES_ENDPOINT,
-      userToken,
-      query
-    );
-    
-    // Process the result to calculate percentages similar to what the backend was doing
-    const processedResults = result.map(deliverable => {
-      // Calculate progress percentages based on deliverable gate and progress items
-      const gate = deliverable.deliverableGate || {};
-      const maxPercentage = gate.maxPercentage || 100;
-      const progressItems = deliverable.progressItems || [];
-      
-      // Sum up units from progress items for this period
-      const periodUnits = progressItems.reduce((sum: number, item: any) => {
-        return sum + (item.period === period ? Number(item.units) || 0 : 0);
-      }, 0);
-      
-      // Calculate percentage based on total hours
-      const totalHours = Number(deliverable.totalHours) || 0;
-      const earnedPercentage = totalHours > 0 ? (periodUnits / totalHours) * 100 : 0;
-      
-      // Apply max percentage limit from gate if available
-      const cappedPercentage = Math.min(earnedPercentage, maxPercentage);
-      
-      return {
-        ...deliverable,
-        periodEarntPercentage: earnedPercentage,
-        cumulativeEarntPercentage: cappedPercentage,
-        totalUnits: periodUnits
-      };
-    });
-    
-    return processedResults;
-  } catch (error) {
-    console.error('Error fetching deliverables with progress percentages:', error);
-    throw error;
   }
 };
 

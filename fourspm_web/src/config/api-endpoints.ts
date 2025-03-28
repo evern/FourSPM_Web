@@ -2,7 +2,6 @@
  * API endpoint path constants
  */
 import { API_CONFIG } from './api';
-import { createProjectFilter } from '../utils/odata-filters';
 
 // Authentication endpoints
 export const LOGIN_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.login}`;
@@ -21,25 +20,25 @@ export const DISCIPLINES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Disciplines`
 export const DOCUMENT_TYPES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DocumentTypes`;
 export const DELIVERABLE_GATES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`;
 export const PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Progress`;
-export const DELIVERABLES_WITH_PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Deliverables/GetWithProgressPercentages`;
 
 /**
- * Generate the OData query for deliverables with progress data for a specific project and period
- * @param projectId The project GUID
- * @param period The reporting period
- * @returns OData query string for filtering and expanding progress items
+ * Note on OData Custom Function Endpoints:
+ * 
+ * Example code for custom OData function endpoints is commented out below.
+ * This demonstrates how to define and use OData function endpoints with query parameters.
+ * 
+ * For reference, standard OData function calls require empty parentheses when no parameters are used:
+ * - Function without params: `/odata/v1/Deliverables/GetWithProgressPercentages()?$filter=...`
+ * - Function with params: `/odata/v1/Deliverables/GetWithProgressPercentages(projectGuid=guid,period=0)?$filter=...`
  */
-export const getDeliverablesWithProgressQuery = (projectId: string, period: number): string => {
-  const baseFilter = createProjectFilter(projectId) + " and deleted eq null";
-  return `$filter=${baseFilter}&$expand=progressItems($filter=period eq ${period} and deleted eq null)`;
-};
 
 /**
  * Generate the full URL for the deliverables with progress endpoint for a specific project and period
  * @param projectId The project GUID
  * @param period The reporting period
- * @returns Full URL with query parameters
+ * @returns Full URL with OData function call format for the GetWithProgressPercentages endpoint
  */
 export const getDeliverablesWithProgressUrl = (projectId: string, period: number): string => {
-  return `${DELIVERABLES_WITH_PROGRESS_ENDPOINT}?projectGuid=${projectId}&period=${period}`;
+  // Using OData function call format with parameters  
+  return `${DELIVERABLES_ENDPOINT}/GetWithProgressPercentages(projectGuid=${projectId},period=${period})`;
 };
