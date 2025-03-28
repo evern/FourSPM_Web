@@ -15,6 +15,7 @@ import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import LoadPanel from 'devextreme-react/load-panel';
 import Button from 'devextreme-react/button';
 import NumberBox from 'devextreme-react/number-box';
+import { ScrollView } from 'devextreme-react/scroll-view';
 
 // Import types and constants
 import { createDeliverableProgressColumns } from './deliverable-progress-columns';
@@ -80,6 +81,9 @@ const DeliverableProgress: React.FC = () => {
   // Reference to the DataGrid component
   const dataGridRef = useRef<any>(null);
 
+  // Reference to the ScrollView component
+  const scrollViewRef = useRef<ScrollView>(null);
+
   // Enhanced grid initialization that ensures record count is displayed
   const onGridInitialized = (e: any) => {
     // Call the original handler from the controller
@@ -105,93 +109,100 @@ const DeliverableProgress: React.FC = () => {
         <div className="grid-custom-title">
           {project ? `${project.projectNumber} - ${project.name} Progress Tracking` : 'Progress Tracking'}
         </div>
-        {/* Project header with period info */}
-        {project && (
-          <div className="period-selector">
-            <div className="period-details">
-              <div className="period-info">
-                <div className="info-item">
-                  <span>Reporting Period:</span>
-                  <div className="period-stepper">
-                    <Button
-                      icon="spindown"
-                      onClick={() => decrementPeriod()}
-                      disabled={selectedPeriod === 0 || isLoading}
-                      stylingMode="outlined"
-                      className="period-button down-button"
-                    />
-                    <NumberBox
-                      value={selectedPeriod || 0}
-                      min={0}
-                      showSpinButtons={false}
-                      onKeyDown={(e) => {
-                        // Allow keyboard navigation (up/down arrows)
-                        if (e.event && e.event.key === 'ArrowUp') {
-                          incrementPeriod();
-                          e.event.preventDefault();
-                        } else if (e.event && e.event.key === 'ArrowDown') {
-                          decrementPeriod();
-                          e.event.preventDefault();
-                        }
-                      }}
-                      onValueChanged={(e) => {
-                        // Handle direct input
-                        if (e.event && e.event.type === 'change') {
-                          if (e.value !== null && e.value !== undefined) {
-                            const periodNumber = parseInt(e.value.toString(), 10);
-                            if (periodNumber >= 0) {
-                              setSelectedPeriod(periodNumber);
+        
+        <ScrollView
+          ref={scrollViewRef}
+          className="progress-scrollview"
+          height={isMobile ? 'calc(100vh - 130px)' : 'auto'}
+        >
+          {/* Project header with period info */}
+          {project && (
+            <div className="period-selector">
+              <div className="period-details">
+                <div className="period-info">
+                  <div className="info-item">
+                    <span>Reporting Period:</span>
+                    <div className="period-stepper">
+                      <Button
+                        icon="spindown"
+                        onClick={() => decrementPeriod()}
+                        disabled={selectedPeriod === 0 || isLoading}
+                        stylingMode="outlined"
+                        className="period-button down-button"
+                      />
+                      <NumberBox
+                        value={selectedPeriod || 0}
+                        min={0}
+                        showSpinButtons={false}
+                        onKeyDown={(e) => {
+                          // Allow keyboard navigation (up/down arrows)
+                          if (e.event && e.event.key === 'ArrowUp') {
+                            incrementPeriod();
+                            e.event.preventDefault();
+                          } else if (e.event && e.event.key === 'ArrowDown') {
+                            decrementPeriod();
+                            e.event.preventDefault();
+                          }
+                        }}
+                        onValueChanged={(e) => {
+                          // Handle direct input
+                          if (e.event && e.event.type === 'change') {
+                            if (e.value !== null && e.value !== undefined) {
+                              const periodNumber = parseInt(e.value.toString(), 10);
+                              if (periodNumber >= 0) {
+                                setSelectedPeriod(periodNumber);
+                              }
                             }
                           }
-                        }
-                      }}
-                      className="period-number-box"
-                      width={60}
-                      stylingMode="filled"
-                    />
-                    <Button
-                      icon="spinup"
-                      onClick={() => incrementPeriod()}
-                      disabled={isLoading}
-                      stylingMode="outlined"
-                      className="period-button up-button"
-                    />
+                        }}
+                        className="period-number-box"
+                        width={60}
+                        stylingMode="filled"
+                      />
+                      <Button
+                        icon="spinup"
+                        onClick={() => incrementPeriod()}
+                        disabled={isLoading}
+                        stylingMode="outlined"
+                        className="period-button up-button"
+                      />
+                    </div>
+                    <span className="secondary-info">(weeks from project start)</span>
                   </div>
-                  <span className="secondary-info">(weeks from project start)</span>
-                </div>
-                <div className="info-item">
-                  <span>Progress Date:</span>
-                  <strong>{progressDate.toLocaleDateString()}</strong>
-                </div>
-                <div className="info-item">
-                  <span>Project Start Date:</span>
-                  <strong>
-                    {project.progressStart
-                      ? new Date(project.progressStart).toLocaleDateString()
-                      : 'Not set'}
-                  </strong>
-                  {project.progressStart && (
-                    <span className="secondary-info">({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
-                  )}
+                  <div className="info-item">
+                    <span>Progress Date:</span>
+                    <strong>{progressDate.toLocaleDateString()}</strong>
+                  </div>
+                  <div className="info-item">
+                    <span>Project Start Date:</span>
+                    <strong>
+                      {project.progressStart
+                        ? new Date(project.progressStart).toLocaleDateString()
+                        : 'Not set'}
+                    </strong>
+                    {project.progressStart && (
+                      <span className="secondary-info">({new Date(project.progressStart).toLocaleString('en-US', {weekday: 'long'})})</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-        <ODataGrid
-          title=""
-          endpoint={endpoint}
-          columns={createDeliverableProgressColumns(gatesDataSource, isMobile)}
-          keyField="guid"
-          onRowUpdating={handleRowUpdating}
-          onRowValidating={handleRowValidating}
-          onInitialized={onGridInitialized}
-          onEditorPreparing={handleEditorPreparing}
-          allowDeleting={false}
-          showRecordCount={true}
-          countColumn="bookingCode"
-          customGridHeight={990}
-        />
+          )}
+          <ODataGrid
+            title=""
+            endpoint={endpoint}
+            columns={createDeliverableProgressColumns(gatesDataSource, isMobile)}
+            keyField="guid"
+            onRowUpdating={handleRowUpdating}
+            onRowValidating={handleRowValidating}
+            onInitialized={onGridInitialized}
+            onEditorPreparing={handleEditorPreparing}
+            allowDeleting={false}
+            showRecordCount={true}
+            countColumn="bookingCode"
+            customGridHeight={isMobile ? 500 : 990}
+          />
+        </ScrollView>
       </div>
       )}
     </div>
