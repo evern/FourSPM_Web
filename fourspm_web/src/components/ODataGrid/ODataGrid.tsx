@@ -288,6 +288,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           columnResizingMode="widget"
           height={screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 550 : customGridHeight || 'calc(100vh - 185px)'}
           scrolling={{ 
+            mode: "virtual",  
             useNative: false,  
             showScrollbar: 'onHover', 
             scrollByThumb: true       
