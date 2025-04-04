@@ -3,6 +3,7 @@ import { createGridOperationHook } from '../factories/createGridOperationHook';
 import { GridOperationsHook, ValidationRule, GridOperationsConfig } from '../interfaces/grid-operation-hook.interfaces';
 import { Variation } from '../../types/odata-types';
 import { useProjectInfo } from '../utils/useProjectInfo';
+import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { v4 as uuidv4 } from 'uuid';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 
@@ -25,14 +26,13 @@ const DEFAULT_VARIATION_VALIDATION_RULES: ValidationRule[] = [
 ];
 
 /**
- * Project-specific variation controller interface with grid handlers and project data
+ * Project-specific variation controller interface with grid handlers
  */
 export interface ProjectVariationCollectionControllerHook extends GridOperationsHook<Variation> {
   handleInitNewRow: (e: any) => void;
   handleEditorPreparing: (e: any) => void;
-  project: any;
-  isLoadingProject: boolean;
-  projectError: Error | null;
+  nextVariationNumber?: string;
+  refreshNextNumber: () => void;
 }
 
 /**
@@ -49,15 +49,22 @@ export const useVariationCollectionController = (
   gridConfig: GridOperationsConfig = {},
   validationRules: ValidationRule[] = DEFAULT_VARIATION_VALIDATION_RULES
 ): ProjectVariationCollectionControllerHook => {
-  // Get project information from the context
-  const { project, isLoading: isLoadingProject, error: projectError } = useProjectInfo(projectId, userToken);
-  
+
   // Create collection hook for variations with integrated grid operations
   const collectionHook = createGridOperationHook<Variation>({
     ...gridConfig,
     validationRules,
     endpoint: VARIATIONS_ENDPOINT
   }, userToken) as GridOperationsHook<Variation>;
+  
+  // Add auto-increment hook to get the next variation number
+  const { nextNumber: nextVariationNumber, refreshNextNumber } = useAutoIncrement({
+    endpoint: VARIATIONS_ENDPOINT,
+    field: 'name',
+    padLength: 3,
+    startFrom: '001',
+    filter: projectId ? `projectGuid eq ${projectId}` : undefined
+  });
   
   /**
    * Handler for initializing a new row with default values for variation
@@ -69,11 +76,14 @@ export const useVariationCollectionController = (
         ...e.data,
         guid: uuidv4(),
         projectGuid: projectId,
-        name: '',
+        name: nextVariationNumber,
         comments: ''
       };
+      
+      // Refresh the next number for subsequent additions
+      refreshNextNumber();
     }
-  }, [projectId]);
+  }, [projectId, nextVariationNumber, refreshNextNumber]);
 
   /**
    * Handler for customizing editors based on field type
@@ -92,8 +102,7 @@ export const useVariationCollectionController = (
     ...collectionHook,
     handleInitNewRow,
     handleEditorPreparing,
-    project,
-    isLoadingProject,
-    projectError
+    nextVariationNumber,
+    refreshNextNumber
   };
 };

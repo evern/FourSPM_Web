@@ -16,6 +16,10 @@ interface VariationParams {
 const Variations: React.FC = () => {
   const { projectId } = useParams<VariationParams>();
   const { user } = useAuth();
+
+  // Fetch project info directly
+  const { project } = useProjectInfo(projectId, user?.token);
+
   // Create project filter for grid
   const projectFilter: [string, string, any][] = [['projectGuid', '=', projectId]];
   
@@ -26,9 +30,7 @@ const Variations: React.FC = () => {
     handleRowInserting,
     handleRowValidating,
     handleInitNewRow,
-    handleEditorPreparing,
-    project,
-    isLoadingProject
+    handleEditorPreparing
   } = useVariationCollectionController(
     user?.token,
     projectId,
@@ -45,8 +47,7 @@ const Variations: React.FC = () => {
     <div className="variations-container">
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {isLoadingProject ? 'Loading...' : 
-            project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
+          {project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
         </div>
         <ODataGrid
           title=" "
