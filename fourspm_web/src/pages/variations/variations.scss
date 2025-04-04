@@ -1,0 +1,12 @@
+@use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/shared-styles.scss";
+
+.variations-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.custom-grid-wrapper {
+  width: 100%;
+}

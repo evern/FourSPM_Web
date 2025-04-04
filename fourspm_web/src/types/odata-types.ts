@@ -94,3 +94,20 @@ export interface DeliverableGate extends Entity {
   deleted?: Date | null;
   deletedBy?: string | null;
 }
+
+// Variation interface - mirrors backend VariationEntity.cs
+export interface Variation extends Entity {
+  projectGuid: string;
+  name: string;
+  comments?: string;
+  submitted?: Date;
+  submittedBy?: string;
+  clientApproved?: Date;
+  clientApprovedBy?: string;
+  created: Date;
+  createdBy: string;
+  updated?: Date;
+  updatedBy?: string;
+  deleted?: Date;
+  deletedBy?: string;
+}

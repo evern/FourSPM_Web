@@ -10,6 +10,7 @@ import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
 import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
+import Variations from './pages/variations/variations';
 
 interface RouteConfig {
   path: string;
@@ -32,6 +33,10 @@ const routes: RouteConfig[] = [
   {
     path: '/projects/:projectId/progress',
     component: DeliverableProgress
+  },
+  {
+    path: '/projects/:projectId/variations',
+    component: Variations
   },
   {
     path: '/projects',
