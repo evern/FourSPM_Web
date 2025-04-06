@@ -1,4 +1,7 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
+import { renderDeliverablesButton } from './deliverables-button-renderer';
+
+
 
 export const variationColumns: ODataGridColumn[] = [
   {
@@ -34,5 +37,12 @@ export const variationColumns: ODataGridColumn[] = [
     cellClass: 'faded-placeholder',
     allowEditing: false, // Read-only field
     visible: false
+  },
+  {
+    dataField: 'guid',
+    caption: 'Deliverables',
+    width: 150,
+    allowEditing: false,
+    cellRender: renderDeliverablesButton
   }
 ];

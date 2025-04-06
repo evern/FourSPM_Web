@@ -1,4 +1,5 @@
 // Standard OData entity types that mirror backend entity models
+import { VariationDeliverableUiStatus } from './app-types';
 
 // Type to represent basic entity with ID
 export type Entity = {
@@ -38,6 +39,8 @@ export interface Project extends Entity {
   progressStart?: string | Date | null;
 }
 
+
+
 // Area interface - mirrors backend AreaEntity.cs
 export interface Area extends Entity {
   projectGuid: string;
@@ -61,9 +64,9 @@ export interface DocumentType extends Entity {
 export interface Deliverable extends Entity {
   projectGuid: string;
   areaNumber?: string;
-  departmentId: number;
+  departmentId: string;
   discipline?: string;
-  deliverableTypeId: number;
+  deliverableTypeId: string;
   documentType?: string;
   clientDocumentNumber?: string;
   internalDocumentNumber?: string;
@@ -80,6 +83,15 @@ export interface Deliverable extends Entity {
   updatedBy?: string | null;
   deleted?: Date | null;
   deletedBy?: string | null;
+  
+  // Variation fields from backend
+  variationStatus?: string;          // Maps to VariationStatus enum in backend
+  variationGuid?: string;            // Maps to Guid? VariationGuid
+  originalDeliverableGuid?: string;  // Maps to Guid? OriginalDeliverableGuid
+  approvedVariationHours?: number;   // Maps to decimal ApprovedVariationHours
+  
+  // UI status field from backend (added by ByVariation endpoint)
+  uiStatus?: VariationDeliverableUiStatus; // Maps to string UIStatus in DeliverableEntity.cs
 }
 
 // DeliverableGate interface - mirrors backend DeliverableGateEntity.cs

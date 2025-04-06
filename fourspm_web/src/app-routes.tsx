@@ -11,6 +11,7 @@ import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
 import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
 import Variations from './pages/variations/variations';
+import VariationDeliverables from './pages/variations/variation-deliverables';
 
 interface RouteConfig {
   path: string;
@@ -37,6 +38,10 @@ const routes: RouteConfig[] = [
   {
     path: '/projects/:projectId/variations',
     component: Variations
+  },
+  {
+    path: '/variations/:variationId/deliverables',
+    component: VariationDeliverables
   },
   {
     path: '/projects',

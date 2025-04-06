@@ -53,7 +53,8 @@ export interface ODataGridColumn extends Partial<Column> {
 
 interface ODataGridProps {
   title: string;
-  endpoint: string;
+  endpoint?: string;
+  dataSource?: any; // New prop to accept custom dataSource
   columns: ODataGridColumn[];
   keyField: string;
   defaultPageSize?: number;
@@ -74,11 +75,14 @@ interface ODataGridProps {
   showRecordCount?: boolean;
   countColumn?: string;
   customGridHeight?: string | number;
+  loading?: boolean; // Loading state prop
+  storeOptions?: any; // Options passed to the ODataStore
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
   title,
   endpoint,
+  dataSource: customDataSource, // Accept custom dataSource
   columns,
   keyField,
   defaultPageSize = 10,
@@ -99,101 +103,111 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   showRecordCount = true,
   countColumn,
   customGridHeight,
+  loading = false, // Default to false if not provided
+  storeOptions = {}, // Default to empty object if not provided
 }) => {
   const { user } = useAuth();
   const token = user?.token;
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
 
-  let store;
-  let dataSourceOptions: Options;
+  let dataSourceInstance;
 
-  store = new ODataStore({
-    url: endpoint,
-    version: 4,
-    key: keyField,
-    keyType: 'Guid',
-    fieldTypes: {
-      projectGuid: 'Guid'
-    },
-    beforeSend: (options: any) => {
-      if (!token) {
+  // Use the provided custom dataSource if available, otherwise create one from the endpoint
+  if (customDataSource) {
+    dataSourceInstance = customDataSource;
+  } else if (endpoint) {
+    // Only create an ODataStore if an endpoint is provided
+    let store = new ODataStore({
+      url: endpoint,
+      version: 4,
+      key: keyField,
+      keyType: 'Guid',
+      fieldTypes: {
+        projectGuid: 'Guid'
+      },
+      beforeSend: (options: any) => {
+        if (!token) {
+          return false;
+        }
+  
+        options.headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        };
+  
+        // Handle expand parameter based on the request method
+        const url = new URL(options.url);
+        const method = (options.method || '').toLowerCase();
+        
+        if (method === 'get' && expand) {
+          url.searchParams.set('$expand', expand.join(','));
+        } else {
+          url.searchParams.delete('$expand');
+        }
+        
+        if ((method === 'patch' || method === 'put' || method === 'post') && expand && options.payload) {
+          try {
+            if (typeof options.payload === 'object' && options.payload !== null) {
+              expand.forEach(navProp => {
+                delete options.payload[navProp];
+                delete options.payload[navProp.toLowerCase()];
+              });
+            } else if (typeof options.payload === 'string') {
+              const payload = JSON.parse(options.payload);
+              let modified = false;
+              
+              expand.forEach(navProp => {
+                if (payload.hasOwnProperty(navProp) || payload.hasOwnProperty(navProp.toLowerCase())) {
+                  delete payload[navProp];
+                  delete payload[navProp.toLowerCase()];
+                  modified = true;
+                }
+              });
+              
+              if (modified) {
+                options.payload = JSON.stringify(payload);
+              }
+            }
+          } catch (error) {
+            console.error('Error modifying payload:', error);
+          }
+        }
+        
+        options.url = url.toString();
+  
+        // Set appropriate headers for all HTTP methods
+        if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
+          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
+          options.headers['Prefer'] = 'return=minimal';
+        }
+        
+        return true;
+      },
+      errorHandler: (error) => {
+        if (error.httpStatus === 401) {
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return true;
+        }
         return false;
       }
-
-      options.headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
-      // Handle expand parameter based on the request method
-      const url = new URL(options.url);
-      const method = (options.method || '').toLowerCase();
-      
-      if (method === 'get' && expand) {
-        url.searchParams.set('$expand', expand.join(','));
-      } else {
-        url.searchParams.delete('$expand');
-      }
-      
-      if ((method === 'patch' || method === 'put' || method === 'post') && expand && options.payload) {
-        try {
-          if (typeof options.payload === 'object' && options.payload !== null) {
-            expand.forEach(navProp => {
-              delete options.payload[navProp];
-              delete options.payload[navProp.toLowerCase()];
-            });
-          } else if (typeof options.payload === 'string') {
-            const payload = JSON.parse(options.payload);
-            let modified = false;
-            
-            expand.forEach(navProp => {
-              if (payload.hasOwnProperty(navProp) || payload.hasOwnProperty(navProp.toLowerCase())) {
-                delete payload[navProp];
-                delete payload[navProp.toLowerCase()];
-                modified = true;
-              }
-            });
-            
-            if (modified) {
-              options.payload = JSON.stringify(payload);
-            }
-          }
-        } catch (error) {
-          console.error('Error modifying payload:', error);
-        }
-      }
-      
-      options.url = url.toString();
-
-      // Set appropriate headers for all HTTP methods
-      if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
-        options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-        options.headers['Prefer'] = 'return=minimal';
-      }
-      
-      return true;
-    },
-    errorHandler: (error) => {
-      if (error.httpStatus === 401) {
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return true;
-      }
-      return false;
+    });
+  
+    let dataSourceOptions: Options = {
+      store,
+      sort: defaultSort || [{ selector: 'created', desc: true }]
+    };
+  
+    if (defaultFilter.length > 0) {
+      dataSourceOptions.filter = defaultFilter;
     }
-  });
-
-  dataSourceOptions = {
-    store,
-    sort: defaultSort || [{ selector: 'created', desc: true }]
-  };
-
-  if (defaultFilter.length > 0) {
-    dataSourceOptions.filter = defaultFilter;
+  
+    dataSourceInstance = new DataSource(dataSourceOptions);
+  } else {
+    // Throw error if neither endpoint nor dataSource is provided
+    throw new Error('Either endpoint or dataSource must be provided to ODataGrid');
   }
-
-  const dataSourceInstance = new DataSource(dataSourceOptions);
 
   // Generate summary items for numeric fields
   const numericColumnSummaries = columns
@@ -296,6 +310,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             sorting: true,
             summary: false // Always calculate summaries locally
           }}
+          loadPanel={{ enabled: loading }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
           editing={{
             mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',

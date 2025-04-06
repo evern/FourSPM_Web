@@ -1,3 +1,5 @@
+// Application-wide enum definitions 
+
 // String-based lookup definitions for UI display
 export const departmentEnum = [
   { id: 'Administration', name: 'Administration' },
@@ -20,4 +22,11 @@ export const projectStatuses = [
   { id: 'Awarded', name: 'Awarded' },
   { id: 'Closed', name: 'Closed' },
   { id: 'Cancelled', name: 'Cancelled' }
+];
+
+export const variationStatusEnum = [
+  { id: 'Unapproved', name: 'Unapproved' },
+  { id: 'Approved', name: 'Approved' },
+  { id: 'UnapprovedCancellation', name: 'Unapproved Cancellation' },
+  { id: 'ApprovedCancellation', name: 'Approved Cancellation' }
 ];

@@ -2,7 +2,7 @@ import { sharedApiService } from '../api/shared-api.service';
 import { baseApiService } from '../api/base-api.service';
 import { API_CONFIG } from '../config/api';
 import { createProjectFilter } from '../utils/odata-filters';
-import { DELIVERABLES_ENDPOINT } from '../config/api-endpoints';
+import { DELIVERABLES_ENDPOINT, getDeliverablesByVariationUrl } from '../config/api-endpoints';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -25,6 +25,12 @@ export interface Deliverable {
   totalHours: number;          // Calculated as sum of budget and variation hours
   totalCost: number;
   bookingCode: string;         // Calculated as ClientNumber-ProjectNumber-AreaNumber-Discipline
+  
+  // Variation-specific fields
+  variationStatus?: number;    // 0:Standard, 1:UnapprovedVariation, 2:ApprovedVariation, 3:UnapprovedCancellation, 4:ApprovedCancellation
+  variationGuid?: string;      // GUID of the variation this deliverable is associated with
+  originalDeliverableGuid?: string; // GUID of the original deliverable (if this is a variation copy)
+  approvedVariationHours?: number; // Approved variation hours
 }
 
 /**
@@ -130,6 +136,208 @@ export const updateDeliverableGate = async (
     );
   } catch (error) {
     console.error(`Error updating deliverable ${deliverableKey} to gate ${gateGuid}: ${error}`);
+    throw error;
+  }
+};
+
+/**
+ * Interface for a variation deliverable request
+ */
+export interface VariationDeliverableRequest {
+  originalDeliverableGuid: string; // GUID of the original deliverable to create a variation for
+  variationGuid: string;          // GUID of the variation
+  variationHours: number;         // Hours to add or remove with this variation
+  isCancellation?: boolean;       // Whether this is a cancellation (default: false)
+  documentTitle?: string;         // Optional override for document title
+  documentType?: string;          // Optional override for document type
+  clientDocumentNumber?: string;  // Optional override for client document number
+}
+
+/**
+ * Add or update a variation copy of an existing deliverable
+ * @param request The variation deliverable request details
+ * @param token User authentication token
+ * @returns The created or updated variation deliverable
+ */
+export const addOrUpdateVariationDeliverable = async (
+  request: VariationDeliverableRequest,
+  token: string
+): Promise<Deliverable> => {
+  try {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
+    // Validate required fields
+    if (!request.originalDeliverableGuid) {
+      throw new Error('Original deliverable GUID is required');
+    }
+    
+    if (!request.variationGuid) {
+      throw new Error('Variation GUID is required');
+    }
+    
+    const url = `${DELIVERABLES_ENDPOINT}/AddOrUpdateVariation`;
+    
+    // Create the request payload
+    const payload = {
+      originalDeliverableGuid: request.originalDeliverableGuid,
+      variationGuid: request.variationGuid,
+      variationHours: request.variationHours || 0,
+      isCancellation: request.isCancellation || false,
+      documentTitle: request.documentTitle,
+      documentType: request.documentType,
+      clientDocumentNumber: request.clientDocumentNumber
+    };
+    
+    // Use the baseApiService which already handles token management
+    const response = await baseApiService.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error adding or updating variation deliverable:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a brand new deliverable for a variation (not a copy of an existing one)
+ * @param deliverable The deliverable data to create
+ * @param variationGuid The GUID of the variation
+ * @param token User authentication token
+ * @returns The created deliverable
+ */
+export const createNewVariationDeliverable = async (
+  deliverable: Partial<Deliverable>,
+  variationGuid: string,
+  token: string
+): Promise<Deliverable> => {
+  try {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
+    if (!variationGuid) {
+      throw new Error('Variation GUID is required');
+    }
+    
+    const url = `${DELIVERABLES_ENDPOINT}/CreateForVariation`;
+    
+    // Ensure the variation GUID is set
+    const payload = {
+      ...deliverable,
+      variationGuid: variationGuid,
+      // Set default values for remaining fields if not provided
+      bookingCode: deliverable.bookingCode || '',
+      clientDocumentNumber: deliverable.clientDocumentNumber || '',
+      projectNumber: deliverable.projectNumber || '',
+      totalCost: deliverable.totalCost || 0,
+      totalHours: deliverable.totalHours || 0,
+      variationHours: deliverable.variationHours || 0
+    };
+    
+    // Use the baseApiService which already handles token management
+    const response = await baseApiService.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating new variation deliverable:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gets all deliverables for a specific variation
+ * @param variationGuid The GUID of the variation
+ * @param token User authentication token
+ * @returns Array of deliverables associated with the variation
+ */
+export const getDeliverablesByVariation = async (
+  variationGuid: string,
+  token: string
+): Promise<Deliverable[]> => {
+  if (!token) {
+    throw new Error('Token is required');
+  }
+  
+  if (!variationGuid) {
+    throw new Error('Variation GUID is required');
+  }
+  
+  try {
+    const url = getDeliverablesByVariationUrl(variationGuid);
+    const response = await sharedApiService.get<any>(url, token);
+    return response.value || [];
+  } catch (error) {
+    console.error('Error fetching variation deliverables:', error);
+    throw error;
+  }
+};
+
+/**
+ * Cancels a deliverable by setting its variationStatus to UnapprovedCancellation using OData PATCH
+ * @param deliverableGuid The GUID of the deliverable to cancel
+ * @param token User authentication token
+ * @returns The updated deliverable with cancellation status
+ */
+export const cancelDeliverable = async (
+  deliverableGuid: string,
+  token: string
+): Promise<Deliverable> => {
+  try {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
+    if (!deliverableGuid) {
+      throw new Error('Deliverable GUID is required');
+    }
+    
+    // Following established OData pattern
+    const url = `${DELIVERABLES_ENDPOINT}(${deliverableGuid})`;
+    
+    // Only send the specific field being updated
+    const patchBody = {
+      // Using string value for enum as per OData serialization requirements
+      variationStatus: 'UnapprovedCancellation'
+    };
+    
+    // Use the baseApiService which handles token management
+    const response = await baseApiService.request(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'  // Ask server to return updated entity
+      },
+      body: JSON.stringify(patchBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to cancel deliverable: ${response.status} ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error cancelling deliverable:', error);
     throw error;
   }
 };

@@ -71,7 +71,7 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
             {
               text: 'Variations',
               path: `/projects/${project.guid}/variations`,
-              icon: 'field',
+              icon: 'detailslayout',
               id: `variations_${project.guid}`
             },
             {

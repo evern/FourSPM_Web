@@ -84,3 +84,22 @@ export const deleteVariation = async (variationId: string, token: string): Promi
     throw error;
   }
 };
+
+/**
+ * Gets a single variation by ID
+ * @param variationId Variation GUID
+ * @param token User authentication token
+ * @returns The variation with the specified ID
+ */
+export const getVariationById = async (variationId: string, token: string): Promise<Variation> => {
+  if (!token) {
+    throw new Error('Token is required');
+  }
+  
+  try {
+    return await sharedApiService.getById<Variation>(VARIATIONS_ENDPOINT, variationId, token);
+  } catch (error) {
+    console.error(`Error fetching variation ${variationId}:`, error);
+    throw error;
+  }
+};

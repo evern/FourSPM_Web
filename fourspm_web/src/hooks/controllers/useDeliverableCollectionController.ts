@@ -12,8 +12,9 @@ import { useCallback, useState } from 'react';
 
 /**
  * Default validation rules for deliverables
+ * Exported so they can be reused across deliverable-related controllers
  */
-const DEFAULT_DELIVERABLE_VALIDATION_RULES: ValidationRule[] = [
+export const DEFAULT_DELIVERABLE_VALIDATION_RULES: ValidationRule[] = [
   { 
     field: 'areaNumber', 
     required: true, 

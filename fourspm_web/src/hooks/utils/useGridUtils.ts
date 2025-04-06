@@ -24,6 +24,22 @@ export const useGridUtils = (): GridUtils => {
   const pendingOpsRef = useRef<Array<{rowIndex: number, fieldName: string, value: any}>>([])
   
   /**
+   * Cancels the current edit operation on the grid
+   */
+  const cancelEditData = useCallback(() => {
+    if (gridInstanceRef.current) {
+      try {
+        gridInstanceRef.current.cancelEditData();
+        return true;
+      } catch (error) {
+        console.error('Error canceling edit data:', error);
+        return false;
+      }
+    }
+    return false;
+  }, []);
+
+  /**
    * Sets a cell value programmatically with resilient handling
    */
   const setCellValue = useCallback((rowIndex: number, fieldName: string, value: any) => {
@@ -86,8 +102,10 @@ export const useGridUtils = (): GridUtils => {
     return gridInstanceRef.current || gridInstance;
   }, [gridInstance]);
   
+  // Return public API
   return {
     setCellValue,
-    handleGridInitialized
+    handleGridInitialized,
+    cancelEditData
   };
 };

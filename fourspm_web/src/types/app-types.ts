@@ -1,3 +1,5 @@
+import { Deliverable } from './odata-types';
+
 // Project period information
 export interface ProjectPeriod {
   periodNumber: number;
@@ -43,3 +45,10 @@ export interface DeliverableProgressDto {
   currentPeriodEarntPercentage?: number;  // Percentage earned specifically in the current period
   currentPeriodEarntHours?: number;       // Hours earned in the current period
 }
+
+/**
+ * UI status type for variation deliverables in the grid view
+ * Used to visually distinguish between different types of variation deliverables
+ * Now directly included in the Deliverable interface from the backend
+ */
+export type VariationDeliverableUiStatus = 'Original' | 'Add' | 'Edit' | 'Cancel';

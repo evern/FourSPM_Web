@@ -34,6 +34,13 @@ export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
  */
 
 /**
+ * Returns the endpoint URL for getting deliverables by variation ID
+ */
+export const getVariationDeliverablesEndpoint = (variationGuid: string): string => {
+  return `${DELIVERABLES_ENDPOINT}/ByVariation/${variationGuid}`;
+};
+
+/**
  * Generate the full URL for the deliverables with progress endpoint for a specific project and period
  * @param projectId The project GUID
  * @param period The reporting period
@@ -42,4 +49,13 @@ export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
 export const getDeliverablesWithProgressUrl = (projectId: string, period: number): string => {
   // Using OData function call format with parameters  
   return `${DELIVERABLES_ENDPOINT}/GetWithProgressPercentages(projectGuid=${projectId},period=${period})`;
+};
+
+/**
+ * Generate the URL for retrieving deliverables associated with a specific variation
+ * @param variationGuid The GUID of the variation
+ * @returns URL to the ByVariation endpoint for retrieving variation deliverables
+ */
+export const getDeliverablesByVariationUrl = (variationGuid: string): string => {
+  return `${DELIVERABLES_ENDPOINT}/ByVariation/${variationGuid}`;
 };

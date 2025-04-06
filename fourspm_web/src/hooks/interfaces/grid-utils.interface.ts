@@ -17,4 +17,10 @@ export interface GridUtils {
    * @returns Boolean indicating success (true) or failure (false)
    */
   setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
+  
+  /**
+   * Cancels the current edit operation on the grid
+   * @returns Boolean indicating success (true) or failure (false)
+   */
+  cancelEditData: () => boolean;
 }
