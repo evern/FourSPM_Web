@@ -1,12 +1,10 @@
 import { ODataGridColumn } from '../../types/column';
 import { departmentEnum, deliverableTypeEnum, variationStatusEnum } from '../../types/enums';
 import { Area, Discipline, DocumentType } from '../../types/odata-types';
+import { VariationDeliverableUiStatus } from '../../types/app-types';
 import 'devextreme/ui/html_editor';
 import { renderCancellationButton } from './cancellation-button-renderer';
 import { renderStatusIndicator } from './status-indicator-renderer';
-
-// UI Status types for variation deliverables
-export type UIDeliverableStatus = 'Original' | 'Add' | 'Edit' | 'Cancel';
 
 /**
  * Creates column definitions for variation deliverable grid
@@ -185,4 +183,19 @@ export const createVariationDeliverableColumns = (
       cellRender: (cellData: any) => renderCancellationButton(cellData, onCancellationClick || (() => {}))
     } as any // Type assertion to bypass TypeScript constraint
   ];
+};
+
+/**
+ * Ensures all columns have a dataField property for ODataGrid compatibility
+ * @param baseColumns The original columns array
+ * @returns Processed columns with guaranteed dataField properties
+ */
+export const processVariationDeliverableColumns = (baseColumns: ODataGridColumn[]): ODataGridColumn[] => {
+  return baseColumns.map(col => {
+    // If column has no dataField but has 'type' (like button columns), use 'guid' as dataField
+    if (!col.dataField && col.type === 'buttons') {
+      return { ...col, dataField: 'guid' };
+    }
+    return col;
+  });
 };

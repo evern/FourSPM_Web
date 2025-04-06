@@ -3,9 +3,7 @@ import { confirm } from 'devextreme/ui/dialog';
 import ArrayStore from 'devextreme/data/array_store';
 import DataSource from 'devextreme/data/data_source';
 import { v4 as uuidv4 } from 'uuid';
-import { DELIVERABLES_ENDPOINT, getVariationDeliverablesEndpoint } from '../../config/api-endpoints';
-import { cancelDeliverable as cancelDeliverableAdapter, getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
-import { getVariationById } from '../../adapters/variation.adapter';
+import { getVariationDeliverablesEndpoint } from '../../config/api-endpoints';
 import { VariationDeliverableUiStatus } from '../../types/app-types';
 import { Deliverable } from '../../types/odata-types';
 import { DEFAULT_DELIVERABLE_VALIDATION_RULES } from './useDeliverableCollectionController';
@@ -20,7 +18,8 @@ import { createGridOperationHook } from '../factories/createGridOperationHook';
 import { GridOperationsHook, ValidationRule } from '../interfaces/grid-operation-hook.interfaces';
 import { useGridUtils } from '../utils/useGridUtils';
 import { useProjectInfo } from '../utils/useProjectInfo';
-import { useDeliverableDocumentNumber } from '../utils/useDeliverableDocumentNumber';
+import { useVariationInfo } from '../utils/useVariationInfo';
+import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../utils/useDeliverableGridEditor';
 
 export interface UseVariationDeliverableCollectionControllerProps {
   token?: string;
@@ -44,12 +43,13 @@ export const useVariationDeliverableCollectionController = ({
   const collectionHook = createGridOperationHook<Deliverable>({ validationRules }, userToken) as GridOperationsHook<Deliverable>;
   const { setCellValue, handleGridInitialized, cancelEditData } = useGridUtils();
   
-  // State management
+  // Create state for deliverables (variation state is now handled by the hook)
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [deliverablesLoading, setDeliverablesLoading] = useState(false);
   const deliverablesRef = useRef<Deliverable[]>(deliverables);
-  const [variation, setVariation] = useState<any>(null);
-  const [projectGuid, setProjectGuid] = useState<string>('');
+  
+  // Use the variation info hook to load and manage variation data
+  const { variation, projectGuid, loading: variationLoading, reload: reloadVariation } = useVariationInfo(variationGuid, userToken);
   
   // Create an ArrayStore and DataSource to wrap our deliverables
   const arrayStore = useMemo(() => new ArrayStore({
@@ -68,8 +68,38 @@ export const useVariationDeliverableCollectionController = ({
     }
   }, [deliverables, arrayStore, deliverableDataSource]);
   
-  // Fetch project information when projectGuid is available
-  const { project } = useProjectInfo(projectGuid, userToken);
+  // Use state for project data - we'll manage loading with an effect
+  const [project, setProject] = useState<any>(null);
+  const [projectLoading, setProjectLoading] = useState<boolean>(false);
+  
+  // Load project info only after variation data is loaded and provides a valid projectGuid
+  useEffect(() => {
+    const loadProjectInfo = async () => {
+      // Only proceed if we have a valid projectGuid from the variation
+      if (!projectGuid || !userToken) {
+        return;
+      }
+      
+      setProjectLoading(true);
+      try {
+        // Import the actual API function directly to avoid hook dependency issues
+        const { fetchProject } = await import('../../adapters/project.adapter');
+        const projectData = await fetchProject(projectGuid, userToken);
+        setProject(projectData);
+      } catch (error) {
+        if (onError) onError(error);
+      } finally {
+        setProjectLoading(false);
+      }
+    };
+    
+    loadProjectInfo();
+  }, [projectGuid, userToken, onError]);
+  
+  // Combined loading state that tracks all data loading operations
+  const loading = useMemo(() => {
+    return variationLoading || projectLoading || deliverablesLoading;
+  }, [variationLoading, projectLoading, deliverablesLoading]);
 
   // Grid utilities
   const handleGridInit = useCallback((e: any) => {
@@ -83,38 +113,28 @@ export const useVariationDeliverableCollectionController = ({
     return getVariationDeliverablesEndpoint(variationGuid);
   }, [variationGuid]);
 
-  const loadVariationData = useCallback(async () => {
-    if (!variationGuid || !userToken) return;
-    
-    try {
-      const variationData = await getVariationById(variationGuid, userToken);
-      setVariation(variationData);
-      setProjectGuid(variationData.projectGuid);
-    } catch (error) {
-      if (onError) onError(error);
-    }
-  }, [variationGuid, userToken, onError]);
+  // Variation data is now loaded by the useVariationInfo hook
 
   const loadDeliverables = useCallback(async () => {
     if (!variationGuid || !userToken) return;
     
     try {
-      setLoading(true);
+      setDeliverablesLoading(true);
       const items = await getVariationDeliverables(variationGuid, userToken);
       setDeliverables(items);
       deliverablesRef.current = items;
       
       if (!projectGuid) {
-        await loadVariationData();
+        await reloadVariation();
       }
       
       if (onSuccess) onSuccess();
     } catch (error) {
       if (onError) onError(error);
     } finally {
-      setLoading(false);
+      setDeliverablesLoading(false);
     }
-  }, [variationGuid, userToken, projectGuid, loadVariationData, onError, onSuccess]);
+  }, [variationGuid, userToken, projectGuid, reloadVariation, onError, onSuccess]);
 
   const addOrUpdateVariationDeliverable = useCallback(async (
     deliverableGuid: string, 
@@ -180,30 +200,7 @@ export const useVariationDeliverableCollectionController = ({
     }
   }, [cancelDeliverableVariation, removeDeliverableFromVariation, loadDeliverables, onSuccess, onError]);
 
-  const addNewDeliverable = useCallback(async (deliverableData: Partial<Deliverable>) => {
-    try {
-      const newDeliverable: Deliverable = {
-        ...getDefaultDeliverableValues(),
-        ...deliverableData,
-        variationHours: deliverableData.variationUnits || deliverableData.variationHours || 0
-      };
-      
-      const createdEntity = await addNewDeliverableToVariation(newDeliverable, userToken);
-      
-      if (createdEntity) {
-        // Update deliverables state with the new entity
-        setDeliverables(prev => [...prev, createdEntity]);
-        deliverablesRef.current = [...deliverablesRef.current, createdEntity];
-      }
-      
-      if (onSuccess) onSuccess();
-      
-      return createdEntity;
-    } catch (error) {
-      if (onError) onError(error);
-      throw error;
-    }
-  }, [addNewDeliverableToVariation, userToken, onSuccess, onError]);
+
 
   const confirmCancellation = useCallback(async (deliverable: Deliverable) => {
     let message = '';
@@ -249,55 +246,25 @@ export const useVariationDeliverableCollectionController = ({
   }, [confirmCancellation, cancelDeliverable]);
 
   // ==========================================
-  // 3. Default Values and Field Validation
+  // 3. Default Values, Field Validation, and Editor Configuration
   // ==========================================
-  const getDefaultDeliverableValues = useCallback(() => ({
-    guid: uuidv4(),
-    variationGuid,
-    projectGuid,
-    departmentId: 'Administration',
-    deliverableTypeId: 'Task',
-    uiStatus: 'Add' as VariationDeliverableUiStatus
-  }), [variationGuid, projectGuid]);
-
-  const handleInitNewRow = useCallback((e: any) => {
-    if (e && e.data) {
-      // Apply default values first
-      Object.assign(e.data, getDefaultDeliverableValues());
-      
-      // Add project-related fields if available
-      if (project) {
-        if (project.client) {
-          e.data.clientNumber = project.client.number || '';
-        }
-        
-        if (project.projectNumber) {
-          e.data.projectNumber = project.projectNumber || '';
-        }
-      } else {
-        console.warn('Project data not available when initializing new deliverable');
-      }
-    }
-  }, [getDefaultDeliverableValues, project]);
-
   const isFieldEditable = useCallback((fieldName: string, uiStatus: VariationDeliverableUiStatus) => {
-    // These fields are calculated by the backend and should always be read-only
-    const alwaysReadOnly = [
-      'bookingCode', 
-      'internalDocumentNumber', 
-      'clientNumber', 
-      'projectNumber', 
-      'totalHours'
-    ];
-    
-    if (alwaysReadOnly.includes(fieldName)) {
+    // Always readonly fields from shared constant
+    if (ALWAYS_READONLY_DELIVERABLE_FIELDS.includes(fieldName)) {
       return false;
     }
     
-    if (uiStatus === 'Original' || uiStatus === 'Edit') {
+    // For original deliverables, everything is read-only
+    if (uiStatus === 'Original') {
+      return false;
+    }
+    
+    // For edited variations, only allow editing variation hours
+    if (uiStatus === 'Edit') {
       return fieldName === 'variationHours';
     }
     
+    // For new variations, most fields are editable except a few
     if (uiStatus === 'Add') {
       return fieldName !== 'budgetHours';
     }
@@ -306,24 +273,138 @@ export const useVariationDeliverableCollectionController = ({
   }, []);
 
   // ==========================================
-  // 4. Document Number Generation
+  // 4. Document Number Generation and Row Initialization
   // ==========================================
-  // Use the shared hook for document number generation
-  const { fetchSuggestedDocumentNumber, handleEditorPreparing } = useDeliverableDocumentNumber<VariationDeliverableUiStatus>({
+  // Use the shared hooks for document number generation, editor configuration, and row initialization
+  const { 
+    fetchSuggestedDocumentNumber, 
+    handleEditorPreparing: baseHandleEditorPreparing,
+    getDefaultDeliverableValues: baseGetDefaultValues,
+    handleInitNewRow: baseHandleInitNewRow
+  } = useDeliverableGridEditor<VariationDeliverableUiStatus>({
     projectGuid,
     userToken,
     isFieldEditable,
     setCellValue,
-    onError
+    onError,
+    enableRowInitialization: true,
+    project
   });
+  
+  /**
+   * Enhanced version of getDefaultDeliverableValues that adds variation-specific fields
+   */
+  const getDefaultDeliverableValues = useCallback(() => {
+    // Get base default values from the shared hook
+    const baseDefaults = baseGetDefaultValues();
+    
+    // Add variation-specific values
+    return {
+      ...baseDefaults,
+      variationGuid,
+      uiStatus: 'Add' as VariationDeliverableUiStatus
+    };
+  }, [baseGetDefaultValues, variationGuid]);
+  
+  /**
+   * Creates a new deliverable in the variation
+   * Uses the default values with proper OData serialization requirements
+   */
+  const addNewDeliverable = useCallback(async (deliverableData: Partial<Deliverable>) => {
+    try {
+      // TypeScript safety: ensure projectGuid is a string (not undefined)
+      if (!projectGuid) {
+        throw new Error('Project GUID is required to create a deliverable');
+      }
+      
+      // Get default values with proper typing - already includes the correct defaults 
+      // and variation-specific values like variationGuid and uiStatus
+      const defaults = getDefaultDeliverableValues() as Record<string, any>;
+      
+      // Ensure we always have a new GUID
+      const newGuid = uuidv4();
+      
+      // Build a base deliverable with all required fields as non-nullable
+      // This follows our memory about OData serialization requiring complete properties
+      const baseDeliverable = {
+        guid: newGuid,
+        projectGuid,
+        variationGuid,
+        ...defaults,
+        variationHours: deliverableData.variationUnits || deliverableData.variationHours || 0,
+        uiStatus: 'Add' as VariationDeliverableUiStatus
+      } as Deliverable;
+      
+      // Apply any remaining custom values from deliverableData
+      const newDeliverable: Deliverable = {
+        ...baseDeliverable,
+        ...deliverableData,
+        // Always re-enforce these critical fields
+        guid: newGuid,
+        projectGuid,
+        variationGuid
+      };
+      
+      const createdEntity = await addNewDeliverableToVariation(newDeliverable, userToken);
+      
+      if (createdEntity) {
+        // Update deliverables state with the new entity
+        setDeliverables(prev => [...prev, createdEntity]);
+        deliverablesRef.current = [...deliverablesRef.current, createdEntity];
+      }
+      
+      if (onSuccess) onSuccess();
+      
+      return createdEntity;
+    } catch (error) {
+      if (onError) onError(error);
+      throw error;
+    }
+  }, [
+    // API and handlers
+    addNewDeliverableToVariation, 
+    userToken, 
+    onSuccess, 
+    onError,
+    
+    // Critical data dependencies that were previously missing
+    projectGuid,
+    variationGuid,
+    getDefaultDeliverableValues,
+    setDeliverables,
+    deliverablesRef
+  ]);
+  
+  /**
+   * Enhanced version of handleInitNewRow that adds variation-specific handling
+   */
+  const handleInitNewRow = useCallback((e: any) => {
+    // Call the base initialization function
+    baseHandleInitNewRow(e);
+    
+    // Add variation-specific values
+    if (e && e.data) {
+      e.data.variationGuid = variationGuid;
+      e.data.uiStatus = 'Add';
+    }
+  }, [baseHandleInitNewRow, variationGuid]);
+  
+  /**
+   * Enhanced version of handleEditorPreparing that adds variation-specific handling
+   */
+  const handleEditorPreparing = useCallback((e: any) => {
+    // Call the base editor preparing function
+    baseHandleEditorPreparing(e);
+    
+    // Add any variation-specific editor customizations here if needed
+  }, [baseHandleEditorPreparing]);
 
   useEffect(() => {
     deliverablesRef.current = deliverables;
   }, [deliverables]);
 
-  useEffect(() => {
-    loadVariationData();
-  }, [loadVariationData]);
+  // Variation data is automatically loaded by the useVariationInfo hook
+  // No need for an explicit effect for loading variation
   
   useEffect(() => {
     if (variationGuid && userToken) {
@@ -415,6 +496,7 @@ export const useVariationDeliverableCollectionController = ({
     deliverables,
     loading,
     loadDeliverables,
+    reloadVariation, // Use the reload function from useVariationInfo instead
     handleRowUpdating,
     handleRowInserting,
     handleInitNewRow,
@@ -431,6 +513,10 @@ export const useVariationDeliverableCollectionController = ({
     handleGridInit,
     // Expose the data sources for the component
     arrayStore,
-    deliverableDataSource
+    deliverableDataSource,
+    // Expose state values
+    variation,
+    projectGuid,
+    project
   };
 };

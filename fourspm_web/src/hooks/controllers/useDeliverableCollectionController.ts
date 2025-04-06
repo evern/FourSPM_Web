@@ -1,12 +1,12 @@
 import { Deliverable } from '../../types/odata-types';
 import { GridOperationsHook, ValidationRule, GridOperationsConfig, ProjectScopedGridController } from '../interfaces/grid-operation-hook.interfaces';
 import { EntityHook } from '../interfaces/entity-hook.interfaces';
-import { getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { createGridOperationHook } from '../factories/createGridOperationHook';
 import { createEntityHook } from '../factories/createEntityHook';
 import { GridUtils } from '../interfaces/grid-utils.interface';
 import { useGridUtils } from '../utils/useGridUtils';
 import { useProjectInfo } from '../utils/useProjectInfo';
+import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../utils/useDeliverableGridEditor';
 import { v4 as uuidv4 } from 'uuid';
 import { useCallback, useState } from 'react';
 
@@ -84,6 +84,21 @@ export interface ProjectDeliverableCollectionControllerHook extends DeliverableC
     documentType: string,
     currentDeliverableGuid?: string
   ) => Promise<string>;
+  /**
+   * Helper function to update document number based on current values
+   * @param row The row containing the deliverable data
+   * @param deliverableTypeId The deliverable type ID
+   * @param areaNumber The area number
+   * @param discipline The discipline code
+   * @param documentType The document type code
+   */
+  updateDocumentNumber: (
+    row: any,
+    deliverableTypeId: any,
+    areaNumber: string,
+    discipline: string,
+    documentType: string
+  ) => Promise<void>;
   // Grid utility method
   setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
 }
@@ -145,264 +160,60 @@ export function useProjectDeliverableCollectionController(
   // Use the base deliverable controller with standard functionality
   const baseHook = useDeliverableCollectionController(userToken, gridConfig, validationRules, projectId);
   
-  // Use dedicated project info hook for project data
+  // Use the project info hook to get details about the current project
   const { project, isLoading: isProjectLoading } = useProjectInfo(projectId, userToken);
   
-  // Use the grid utils hook for grid functionality
+  // Add grid utility methods for data manipulation
   const { setCellValue, handleGridInitialized } = useGridUtils();
   
-  // Enhanced grid init handler that updates both the hook and local state
+  // Wrapper over grid initialization to store instance
   const handleGridInit = useCallback((e: any) => {
     handleGridInitialized(e);     // Also update the hook's instance
   }, [handleGridInitialized]);
   
   /**
-   * Handler for initializing a new row with default values for deliverables
+   * Defines which fields are editable based on the deliverable status
+   * 
+   * @param fieldName The name of the field to check
+   * @param uiStatus Optional status that can be used to determine editability
+   * (e.g., could be used to lock budget hours for deliverables in certain states)
    */
-  const handleInitNewRow = useCallback((e: any) => {
-    if (e && e.data) {
-      // Set default values for new deliverable
-      e.data.projectGuid = projectId; // Use projectGuid instead of projectId
-      e.data.guid = uuidv4(); // Use guid instead of id
-      
-      // Wait for project data before setting related fields
-      if (project) {
-        // Populate from project data
-        if (project.client) {
-          e.data.clientNumber = project.client.number || '';
-        }
-        
-        // Use projectNumber from project if available, otherwise extract from the URL
-        if (project.projectNumber) {
-          e.data.projectNumber = project.projectNumber || '';
-        }
-      } else {
-        // If project isn't loaded yet, log warning
-        console.warn('Project data not available when initializing new deliverable');
-      }
+  const isFieldEditable = useCallback((fieldName: string, uiStatus: string) => {
+    // Use the shared readonly fields list
+    if (ALWAYS_READONLY_DELIVERABLE_FIELDS.includes(fieldName)) {
+      return false;
+    }
+    
+    // Example of how uiStatus could be used to lock budget hours based on status
+    // if (fieldName === 'budgetHours' && ['Completed', 'Approved'].includes(uiStatus)) {
+    //   return false; // Lock budget hours for completed or approved deliverables
+    // }
+    
+    // Add deliverable-specific editability rules here if needed
+    return true; // All other fields are editable by default
+  }, []);
+  
+  /**
+   * Use the enhanced grid editor hook for all deliverable functionality including:
+   * - Document number generation and management
+   * - Row initialization with default values
+   * - Editor preparation and field validation
+   */
+  const { 
+    fetchSuggestedDocumentNumber, 
+    handleEditorPreparing, 
+    updateDocumentNumber,
+    getDefaultDeliverableValues,
+    handleInitNewRow
+  } = useDeliverableGridEditor<string>({
+    projectGuid: projectId || '',
+    userToken,
+    isFieldEditable,
+    setCellValue,
+    enableRowInitialization: true,
+    project
+  });
 
-      // Set default departmentId for new deliverables
-      e.data.departmentId = 'Administration';
-      e.data.deliverableTypeId = 'Task';
-    }
-  }, [projectId, project]);
-  
-  /**
-   * Fetches a suggested document number based on the provided parameters
-   */
-  const fetchSuggestedDocumentNumber = useCallback(async (
-    deliverableTypeId: string,
-    areaNumber: string,
-    discipline: string,
-    documentType: string,
-    currentDeliverableGuid?: string
-  ): Promise<string> => {
-    try {
-      // Replace undefined or empty values with placeholders for display
-      const displayAreaNumber = (!areaNumber || areaNumber === 'undefined') ? 'XX' : areaNumber;
-      const displayDiscipline = (!discipline || discipline === 'undefined') ? 'XX' : discipline;
-      const displayDocumentType = (!documentType || documentType === 'undefined') ? 'XXX' : documentType;
-      
-      // Special handling for backend call - don't call backend with placeholders
-      if ((deliverableTypeId === 'Deliverable' && (!areaNumber || areaNumber === 'undefined')) ||
-          (!discipline || discipline === 'undefined') ||
-          (!documentType || documentType === 'undefined')) {
-        // Return a client-side formatted placeholder number instead
-        // Get project info to construct a placeholder
-        if (project) {
-          const clientNum = project.client?.number || '';
-          const projectNum = project.projectNumber || '';
-          
-          // Create a formatted placeholder that follows the pattern but indicates missing fields
-          if (deliverableTypeId === 'Deliverable') {
-            return `${clientNum}-${projectNum}-${displayAreaNumber}-${displayDiscipline}-${displayDocumentType}-???`;
-          } else {
-            return `${clientNum}-${projectNum}-${displayDiscipline}-${displayDocumentType}-???`;
-          }
-        }
-        return ''; // Fallback if project info isn't available
-      }
-      
-      // Call the adapter function to get the suggested number from the backend
-      const suggestedNumber = await getSuggestedDocumentNumber(
-        projectId || '',
-        deliverableTypeId,
-        areaNumber,
-        discipline,
-        documentType,
-        userToken || '',
-        currentDeliverableGuid // Pass the current deliverable GUID to exclude it from calculations
-      );
-      
-      return suggestedNumber || '';
-    } catch (error) {
-      console.error('Error fetching suggested document number:', error);
-      return '';
-    }
-  }, [projectId, userToken, project]);
-  
-  /**
-   * Handler for editor preparing event - adds custom behaviors to the form fields
-   */
-  const handleEditorPreparing = useCallback((e: any) => {
-    // Save the original setValue function to call it later
-    const originalSetValue = e.editorOptions?.onValueChanged;
-    const dataField = e.dataField;
-    const editorOptions = e.editorOptions || {};
-    const row = e.row;
-    
-    // Set the initial value for new rows or apply conditional logic
-    if (dataField && row?.isNewRow) {
-      // For new rows, pre-populate data from project
-      if (dataField === 'projectGuid' && projectId) {
-        editorOptions.value = projectId;
-        editorOptions.disabled = true;
-      }
-      
-      // Auto-generate GUID for new rows
-      if (dataField === 'guid') {
-        editorOptions.value = uuidv4();
-      }
-    }
-    
-    // Setup field change watchers for fields that affect document numbering
-    if (['areaNumber', 'discipline', 'documentType', 'deliverableTypeId'].includes(dataField)) {
-      editorOptions.onValueChanged = async (args: any) => {
-        // Call the original handler first
-        if (originalSetValue) {
-          originalSetValue(args);
-        }
-        
-        // Get current values from the row data
-        const rowData = row.data;
-        const deliverableTypeId = dataField === 'deliverableTypeId' ? args.value : rowData.deliverableTypeId;
-        const areaNumber = dataField === 'areaNumber' ? args.value : rowData.areaNumber;
-        const discipline = dataField === 'discipline' ? args.value : rowData.discipline;
-        const documentType = dataField === 'documentType' ? args.value : rowData.documentType;
-        
-        // Only attempt to generate a document number if we have enough required fields
-        // Using numeric enum values from the backend (3 = Deliverable)
-        const shouldGenerateNumber = 
-          deliverableTypeId !== undefined && 
-          ((deliverableTypeId === 3 && areaNumber) || deliverableTypeId !== 3) &&
-          (discipline || documentType)
-        ;
-        
-        if (shouldGenerateNumber) {
-          // Use the hook's fetchSuggestedDocumentNumber method
-          const suggestedNumber = await fetchSuggestedDocumentNumber(
-            deliverableTypeId.toString(), 
-            areaNumber, 
-            discipline, 
-            documentType,
-            rowData.guid // Pass the current deliverable GUID to exclude it from calculation
-          );
-          
-          if (suggestedNumber) {
-            try {
-              // Store the suggested number directly in row.data first
-              row.data.internalDocumentNumber = suggestedNumber;
-              
-              // Use setCellValue from useGridUtils (abstracted grid functionality)
-              const success = setCellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
-            } catch (error) {
-              console.error('Error setting internal document number:', error);
-            }
-          }
-        }
-      };
-      return;
-    }
-    
-    // For internal document number, provide the ability to manually refresh the suggested number
-    if (dataField === 'internalDocumentNumber') {
-      // Only apply buttons if we have a proper row data object
-      if (row && row.data) {
-        // Add a button to manually refresh the document number if needed
-        editorOptions.buttons = [
-          {
-            name: 'suggestNumber',
-            location: 'after',
-            options: {
-              icon: 'refresh',
-              type: 'normal',
-              hint: 'Generate document number',
-              onClick: async () => {
-                try {
-                  if (row?.data) {
-                    // Get current values from the row data
-                    const deliverableTypeId = row.data.deliverableTypeId;
-                    const areaNumber = row.data.areaNumber;
-                    const discipline = row.data.discipline;
-                    const documentType = row.data.documentType;
-                    
-                    // Only attempt to generate if we have the necessary data
-                    if (deliverableTypeId !== undefined && 
-                       ((deliverableTypeId === 3 && areaNumber) || deliverableTypeId !== 3) &&
-                       (discipline || documentType)) {
-                      
-                      const suggestedNumber = await fetchSuggestedDocumentNumber(
-                        deliverableTypeId.toString(),
-                        areaNumber,
-                        discipline,
-                        documentType,
-                        row.data.guid // Pass the current deliverable GUID to exclude it from calculation
-                      );
-                      
-                      if (suggestedNumber) {
-                        // Update both the editor and the underlying data
-                        if (e.editorElement) {
-                          try {
-                            e.editorElement.dxTextBox('instance').option('value', suggestedNumber);
-                          } catch (err) {
-                            console.warn('Could not directly update editor:', err);
-                          }
-                        }
-                        
-                        // Store the suggested number directly in row.data
-                        row.data.internalDocumentNumber = suggestedNumber;
-                        
-                        // Use setCellValue from useGridUtils (abstracted grid functionality)
-                        const success = setCellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
-                      }
-                    } else {
-                      console.warn('Cannot generate number: Missing required fields');
-                    }
-                  }
-                } catch (error) {
-                  console.error('Error generating document number:', error);
-                }
-              }
-            }
-          }
-        ];
-      }
-    }
-    
-    // Handle special fields that need custom behavior
-    if (dataField === 'deliverableTypeId') {
-      // Override onValueChanged to update other fields when deliverable type changes
-      editorOptions.onValueChanged = (args: any) => {
-        // Call the original setValue function if it exists
-        if (originalSetValue) {
-          originalSetValue(args);
-        }
-        
-        // If this is a Deliverable, task or regular ICR document, handle it differently
-        // Note that we're now using number enum values: 0: Task, 1: NonDeliverable, 2: DeliverableICR, 3: Deliverable
-        const isDeliverableOrICR = args.value === 2 || args.value === 3;
-        
-        // Get the form instance
-        const form = e.component;
-        
-        // Make certain fields required based on deliverable type
-        const editors = form.getEditor('areaNumber');
-        if (editors) {
-          editors.option('disabled', !isDeliverableOrICR);
-        }
-      };
-    }
-  }, [projectId, fetchSuggestedDocumentNumber]);
   
   // Return the enhanced hook with project context and grid utilities
   return {
@@ -412,6 +223,7 @@ export function useProjectDeliverableCollectionController(
     handleEditorPreparing,
     handleInitNewRow,
     fetchSuggestedDocumentNumber,
+    updateDocumentNumber,
     setCellValue,
     handleGridInitialized: handleGridInit
   };

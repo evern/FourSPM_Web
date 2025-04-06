@@ -1,13 +1,9 @@
-import React, { useCallback, useRef, useMemo, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
 import { ODataGrid, ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
-import { getVariationById } from '../../adapters/variation.adapter';
-import ArrayStore from 'devextreme/data/array_store';
-import DataSource from 'devextreme/data/data_source';
-import { createVariationDeliverableColumns } from './variation-deliverable-columns';
+import { createVariationDeliverableColumns, processVariationDeliverableColumns } from './variation-deliverable-columns';
 import { useVariationDeliverableCollectionController } from '../../hooks/controllers/useVariationDeliverableCollectionController';
-import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useAreaDataProvider } from '../../hooks/data-providers/useAreaDataProvider';
 import { useDisciplineDataProvider } from '../../hooks/data-providers/useDisciplineDataProvider';
 import { useDocumentTypeDataProvider } from '../../hooks/data-providers/useDocumentTypeDataProvider';
@@ -24,10 +20,6 @@ const VariationDeliverables: React.FC = () => {
   // Get parameters from the route
   const params = useParams<VariationDeliverableParams>();
   const variationGuid = params.variationId;
-  
-  // Reference to the grid component
-  const gridRef = useRef<any>(null);
-  
   const { user } = useAuth();
   
   // Handle errors and success operations
@@ -47,47 +39,18 @@ const VariationDeliverables: React.FC = () => {
     handleRowInserting,
     handleInitNewRow,
     handleEditorPreparing,
-    getDeliverablesByVariationEndpoint,
-    deliverables,
-    loadDeliverables,
     loading,
     isReadOnly,
     handleGridInitialized, // Use the grid initialization handler directly from useGridUtils
-    arrayStore, // Use the arrayStore from the controller
-    deliverableDataSource // Use the dataSource from the controller
+    deliverableDataSource,
+    projectGuid,
+    project
   } = useVariationDeliverableCollectionController({
     token: user?.token,
     variationGuid,
     onError,
     onSuccess
   });
-  
-  // Load deliverables when the component mounts
-  useEffect(() => {
-    console.log('VariationDeliverables component mounted, calling loadDeliverables');
-    loadDeliverables();
-  }, [loadDeliverables]);
-  
-  // State for variation and derived projectGuid
-  const [variation, setVariation] = useState<any>(null);
-  const [projectGuid, setProjectGuid] = useState<string>('');
-  
-  // Load the variation data to get project info
-  useEffect(() => {
-    const loadVariationData = async () => {
-      if (variationGuid && user?.token) {
-        try {
-          const variationData = await getVariationById(variationGuid, user.token);
-          setVariation(variationData);
-          setProjectGuid(variationData.projectGuid);
-        } catch (error) {
-          console.error('Error loading variation data:', error);
-        }
-      }
-    };
-    
-    loadVariationData();
-  }, [variationGuid, user?.token]);
   
   // Get areas using the data provider hook - only when projectGuid is available
   const { areasDataSource } = useAreaDataProvider(projectGuid);
@@ -98,8 +61,8 @@ const VariationDeliverables: React.FC = () => {
   // Get document types using the standardized hook
   const { documentTypesStore } = useDocumentTypeDataProvider();
   
-  // Get project info - only when projectGuid is available
-  const { project } = useProjectInfo(projectGuid, user?.token);
+  // Project info now comes directly from the controller
+  // No need to use useProjectInfo here anymore
   
   // Create a callback for the cancellation button click
   const onCancellationClick = useCallback((data: any) => {
@@ -115,16 +78,8 @@ const VariationDeliverables: React.FC = () => {
     onCancellationClick
   );
   
-  // Ensure all columns have a dataField property for ODataGrid compatibility
-  const columns = baseColumns.map(col => {
-    // If column has no dataField but has 'type' (like button columns), use 'guid' as dataField
-    if (!col.dataField && col.type === 'buttons') {
-      return { ...col, dataField: 'guid' };
-    }
-    return col;
-  }) as ODataGridColumn[];
-  
-  // No need to create ArrayStore or DataSource here - they're provided by the controller
+  // Process columns to ensure all have a dataField property for ODataGrid compatibility
+  const columns = processVariationDeliverableColumns(baseColumns) as ODataGridColumn[];
 
   return (
     <div className="variation-deliverables-container">
