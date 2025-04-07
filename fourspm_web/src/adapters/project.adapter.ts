@@ -40,8 +40,7 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
   try {
     const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
       PROJECTS_ENDPOINT,
-      token,
-      '$expand=Client'
+      token
     );
     
     // Create status-based navigation structure

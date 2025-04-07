@@ -1,30 +1,31 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { projectStatuses } from '../../types/index';
-import { Client } from '../../types/odata-types';
-import ODataStore from 'devextreme/data/odata/store';
 
 // Constants for reusable text
 const CLIENT_CONTACT_PLACEHOLDER = 'Auto-filled on client selection';
 const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly on the provided day of week';
 
 /**
- * Creates column definitions for the projects grid
- * @param clientsStore ODataStore for grid data binding
- * @returns Array of column definitions
+ * Creates column definitions for the Projects grid with client information
+ * @param clientsDataSource - The data source for clients lookup
+ * @param nextProjectNumber - The next auto-incremented project number to use for new projects
+ * @returns Array of column definitions for the projects grid
  */
-export const projectColumns = (clientsStore: ODataStore): ODataGridColumn[] => {
-    return [
+export const createProjectColumns = (clientsDataSource: any, nextProjectNumber?: string): ODataGridColumn[] => [
     { 
       dataField: 'projectNumber', 
       caption: 'Project #', 
-      hidingPriority: 10  
+      hidingPriority: 10,
+      editorOptions: {
+        placeholder: nextProjectNumber ? `Suggested: ${nextProjectNumber}` : undefined
+      }
     },
     { 
       dataField: 'clientGuid', 
       caption: 'Client', 
-      hidingPriority: 7,  
+      hidingPriority: 7,
       lookup: {
-        dataSource: clientsStore,
+        dataSource: clientsDataSource,
         valueExpr: 'guid',
         displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : ''
       }
@@ -83,6 +84,7 @@ export const projectColumns = (clientsStore: ODataStore): ODataGridColumn[] => {
       dataField: 'progressStart',
       caption: 'Progress Start',
       hidingPriority: 2,  
+      dataType: 'date',
       customizeText: (cellInfo: { value: string | null }) => {
         if (!cellInfo.value) return '';
         const date = new Date(cellInfo.value);
@@ -94,8 +96,9 @@ export const projectColumns = (clientsStore: ODataStore): ODataGridColumn[] => {
       dataField: 'created',
       caption: 'Created',
       hidingPriority: 1,  
+      dataType: 'date',
       cellClass: 'faded-placeholder',
       allowEditing: false 
     }
-  ];
-};
+];
+

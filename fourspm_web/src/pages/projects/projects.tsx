@@ -1,68 +1,103 @@
-import React, { useEffect } from 'react';
-import { useAuth } from '../../contexts/auth';
-import { useProjectCollectionController } from '../../hooks/controllers/useProjectCollectionController';
-import { projectColumns } from './project-columns';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { LoadPanel } from 'devextreme-react/load-panel';
-import { useNavigation } from '../../contexts/navigation';
+import { createProjectColumns } from './project-columns';
+import { useProjects } from '../../contexts/projects/projects-context';
+import { useClientDataSource } from '../../stores/clientDataSource';
+import { useProjectGridHandlers } from '../../hooks/data-providers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { LoadPanel } from 'devextreme-react/load-panel';
+import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 import './projects.scss';
 
 /**
- * Projects Grid Page Component
+ * Projects component
  * 
- * Uses a hybrid approach for data access:
- * - ODataStore for grid data binding (efficient remote operations)
- * - Data providers for consistent access pattern
+ * Uses the Context + Reducer pattern for clean separation of view and logic.
+ * This component focuses purely on rendering and delegating events to the context.
  */
-const Projects: React.FC = () => {
-  const endpoint = PROJECTS_ENDPOINT;
-  const { refreshNavigation } = useNavigation();
-
-  // Use the collection controller to get the clientsStore
+export function Projects(): React.ReactElement {
+  // Get everything we need from the projects context
   const { 
-    clientsStore,
-    handleInitNewRow, 
-    handleRowValidating: validateRow, 
-    handleRowUpdating, 
-    handleRowRemoving, 
+    state, 
+    validateProject
+  } = useProjects();
+  
+  // Use the singleton client data source with loading tracking
+  const clientsDataSource = useClientDataSource();
+  const [clientDataLoaded, setClientDataLoaded] = useState(false);
+  
+  // Use auto-increment for project number
+  const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
+    endpoint: PROJECTS_ENDPOINT,
+    field: 'projectNumber',
+    padLength: 2,
+    startFrom: '01'
+  });
+  
+  // Get the grid event handlers from our custom hook
+  const { 
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    handleRowRemoving,
+    handleInitNewRow
+  } = useProjectGridHandlers({
+    validateProject,
+    nextProjectNumber,
     refreshNextNumber
-  } = useProjectCollectionController(
-    {
-      endpoint,
-      onInsertSuccess: () => refreshNavigation(),
-      onUpdateSuccess: () => refreshNavigation(),
-      onDeleteSuccess: () => refreshNavigation()
-    }
-  );
+  });
 
-  // Call refresh when component mounts
+  // Wait for client data to load before initializing the grid
   useEffect(() => {
-    refreshNextNumber();
-  }, [refreshNextNumber]);
+    clientsDataSource.waitForData()
+      .then(() => setClientDataLoaded(true))
+      .catch(() => setClientDataLoaded(true)); // Allow UI to proceed even on error
+  }, [clientsDataSource]);
+  
+
 
   return (
     <div className="projects-container">
+      {/* Display error message if there is one */}
+      {state.error && (
+        <div className="alert alert-danger">
+          Error: {state.error}
+        </div>
+      )}
+      
+      {/* Loading indicators */}
+      <LoadPanel 
+        visible={state.loading || !clientDataLoaded} 
+        message={state.loading ? 'Loading projects...' : 'Loading client data...'}
+        position={{ of: '.projects-grid' }}
+      />
+      
       <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
-        <ODataGrid
-          endpoint={endpoint}
-          columns={projectColumns(clientsStore)} // Only pass the store now
-          onInitNewRow={handleInitNewRow}
-          onRowValidating={validateRow}
-          onRowUpdating={handleRowUpdating}
-          onRowRemoving={handleRowRemoving}
-          allowAdding={true}
-          allowUpdating={true}
-          allowDeleting={true}
-          title=" "
-          keyField="guid"
-          expand={['Client']} 
-        />
+        
+        {/* Only render the grid once client data is loaded */}
+        {clientDataLoaded && (
+          <ODataGrid
+            endpoint={PROJECTS_ENDPOINT}
+            columns={createProjectColumns(clientsDataSource, nextProjectNumber)}
+            onRowValidating={handleRowValidating}
+            onRowUpdating={handleRowUpdating}
+            onRowInserting={handleRowInserting} 
+            onRowRemoving={handleRowRemoving}
+            onInitNewRow={handleInitNewRow}
+            keyField="guid"
+            allowAdding={true}
+            allowUpdating={true}
+            allowDeleting={true}
+            title=" "
+            expand={['Client']}
+            // Add default sort to ensure consistent query parameters
+            defaultSort={[{ selector: 'created', desc: true }]}
+          />
+        )}
       </div>
     </div>
   );
-};
+}
 
 export default Projects;
-export { Projects };

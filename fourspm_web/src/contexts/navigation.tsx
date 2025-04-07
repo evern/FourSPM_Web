@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useEffect, ReactElement, PropsWithChildren } from 'react';
+import React, { useState, createContext, useContext, useEffect, useCallback, useMemo, useRef, ReactElement, PropsWithChildren } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../adapters/project.adapter';
@@ -29,9 +29,10 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [navigation, setNavigation] = useState<NavigationItem[]>(appNavigation);
   const { user } = useAuth();
 
-  const refreshNavigation = async () => {
+  const refreshNavigation = useCallback(async () => {
     try {
       if (!user?.token) return;
+
 
       const staticNav = getStaticNavigation();
       const projectNav = await getProjectNavigation(user.token);
@@ -64,18 +65,25 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
       // Update navigation with project status and configurations at the end
       setNavigation([...staticNav, projectStatusNav, configurationsItem].filter(Boolean) as NavigationItem[]);
     } catch (error) {
-      console.error('Error refreshing navigation:', error);
+
     }
-  };
+  }, [user?.token]);
 
   useEffect(() => {
     refreshNavigation();
-  }, [user?.token]); // Refresh when auth token changes
+  }, [user?.token, refreshNavigation]); // Refresh when auth token changes or when the function reference changes
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    navigationData,
+    setNavigationData,
+    navigation,
+    refreshNavigation
+  }), [navigationData, navigation, refreshNavigation]);
+
+  // Use the memoized value when providing the context
   return (
-    <NavigationContext.Provider
-      value={{ navigationData, setNavigationData, navigation, refreshNavigation }}
-    >
+    <NavigationContext.Provider value={contextValue}>
       {children}
     </NavigationContext.Provider>
   );
@@ -85,9 +93,22 @@ function withNavigationWatcher<P extends RouteComponentProps>(Component: React.C
   return function WithNavigationWatcher(props: P): ReactElement {
     const { path } = props.match;
     const { setNavigationData } = useNavigation();
+    const isMountedRef = useRef(true);
+    
+    // Log navigation transitions
 
+    
     useEffect(() => {
-      setNavigationData({ currentPath: path });
+      // Only update navigation data if component is still mounted
+      if (isMountedRef.current) {
+        setNavigationData({ currentPath: path });
+      }
+      
+      return () => {
+        // Prevent state updates after unmount
+
+        isMountedRef.current = false;
+      };
     }, [path, setNavigationData]);
 
     return React.createElement(Component, props);

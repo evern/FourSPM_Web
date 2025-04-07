@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { useDisciplineCollectionController } from '../../hooks/controllers/useDisciplineCollectionController';
 import { disciplineColumns } from './discipline-columns';
@@ -7,7 +7,29 @@ import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import './disciplines.scss';
 
 const Disciplines: React.FC = () => {
+  console.log('Disciplines rendering');
+  
+  // Use a ref to track mount/render counts
+  const renderCountRef = useRef(0);
+  const mountCountRef = useRef(0);
+
+  // Track component mounting
+  useEffect(() => {
+    mountCountRef.current += 1;
+    console.log(`Disciplines mounted (mount count: ${mountCountRef.current})`);
+    
+    return () => {
+      console.log('Disciplines unmounting');
+    };
+  }, []);
+
+  // Track all renders
+  renderCountRef.current += 1;
+  console.log(`Disciplines render count: ${renderCountRef.current}`);
+  
+  // Log auth context changes to track if they're causing re-renders
   const { user } = useAuth();
+  console.log('Auth context user token in Disciplines:', user?.token ? 'exists' : 'none');
   const endpoint = DISCIPLINES_ENDPOINT;
   
   // Use the enhanced useDisciplineData hook with integrated grid operations and validation

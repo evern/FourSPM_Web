@@ -4,24 +4,24 @@ This document defines the standard architecture and implementation patterns for 
 
 ## Standard Architecture
 
-Every collection view in the application MUST be built using the following interconnected components with clear separation of concerns:
+Every collection view in the application MUST be built using the Context + Reducer pattern for clean separation of concerns and optimized performance:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│     Component       │    │     Controllers      │    │      Adapters        │
+│     Component       │    │      Context        │    │    Data Sources      │
 │                     │    │                     │    │                     │
-│  {entity}.tsx       │◄───┤use{Entity}Collection│◄───┤{entity}.adapter.ts  │
-│                     │    │Controller.ts        │    │                     │
+│  {entity}.tsx       │◄───┤{entity}-context.tsx │◄───┤{entity}DataSource.ts│
+│                     │    │                     │    │                     │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
           ▲                           ▲                          ▲
           │                           │                          │
           │                           │                          │
           │                           │                          │
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   View Definition   │    │    Data Providers   │    │   API Endpoints     │
+│   View Definition   │    │   Event Handlers    │    │   API Endpoints     │
 │                     │    │                     │    │                     │
-│ {entity}-columns.ts │    │use{LookupEntity}Data│    │  api-endpoints.ts   │
-│                     │    │Provider.ts          │    │                     │
+│ {entity}-columns.ts │    │use{Entity}Grid      │    │  api-endpoints.ts   │
+│                     │    │Handlers.ts          │    │                     │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
 ```
 
@@ -33,81 +33,190 @@ Where `{entity}` is replaced with the specific entity name (e.g., deliverable, p
 
 The view component MUST:
 
-- Use `useParams` to extract entity context (e.g., projectId) from the URL
-- Implement the appropriate collection controller hook
-- Use data provider hooks for all lookup data
+- Use the entity context via a custom hook (e.g., `useProjects`)
+- Implement grid event handlers from a dedicated hook
+- Use data source hooks for all lookup data
 - Render the `ODataGrid` component with standardized handlers
 - Include proper error handling and loading states
 
 **Required implementation:**
 ```typescript
-const {EntityName}: React.FC = () => {
-  const { contextId } = useParams<EntityParams>();
-  const { user } = useAuth();
-  const endpoint = {ENTITY}_ENDPOINT;
-
-  // Use the entity controller
-  const {
-    handleEditorPreparing,
-    handleRowUpdating,
-    handleRowRemoving,
-    handleRowInserting,
-    handleRowValidating,
-    handleInitNewRow,
-    handleGridInitialized
-  } = use{Entity}CollectionController(
-    user?.token,
-    contextId,
-    { endpoint, onDeleteError, onUpdateError }
-  );
-
-  // Use data providers for lookups
-  const { lookupDataSource } = useLookupDataProvider();
+export function EntityName(): React.ReactElement {
+  // Get everything we need from the entity context
+  const { 
+    state, 
+    validateEntity
+  } = useEntity();
   
-  // Create columns with data sources
-  const columns = create{Entity}Columns(lookupDataSource);
+  // Use the singleton data source with loading tracking
+  const lookupDataSource = useLookupDataSource();
+  const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Get all the grid event handlers from our custom hook
+  const { 
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    handleRowRemoving,
+    handleInitNewRow
+  } = useEntityGridHandlers({
+    validateEntity
+  });
+
+  // Create entity columns directly with the data source
+  // No need for useMemo as column creation is fast enough
+  // and ODataGrid handles optimization internally
+  
+  // Wait for data to load before initializing the grid
+  useEffect(() => {
+    lookupDataSource.waitForData()
+      .then(() => setDataLoaded(true))
+      .catch(() => setDataLoaded(true)); // Allow UI to proceed even on error
+  }, [lookupDataSource]);
 
   return (
-    <ODataGrid
-      endpoint={endpoint}
-      columns={columns}
-      keyField="guid"
-      onRowUpdating={handleRowUpdating}
-      onInitNewRow={handleInitNewRow}
-      onRowValidating={handleRowValidating}
-      onRowRemoving={handleRowRemoving}
-      onRowInserting={handleRowInserting}
-      onEditorPreparing={handleEditorPreparing}
-      onInitialized={handleGridInitialized}
-      defaultFilter={[['contextField', '=', contextId]]}
-    />
+    <div className="entity-container">
+      {/* Error handling */}
+      {state.error && (
+        <div className="alert alert-danger">
+          Error: {state.error}
+        </div>
+      )}
+      
+      {/* Loading indicators */}
+      <LoadPanel 
+        visible={state.loading || !dataLoaded} 
+        message={state.loading ? 'Loading...' : 'Loading reference data...'}
+        position={{ of: '.entity-grid' }}
+      />
+      
+      <div className="entity-grid">
+        <div className="grid-custom-title">Entities</div>
+        
+        {/* Only render the grid once data is loaded */}
+        {dataLoaded && (
+          <ODataGrid
+            endpoint={ENTITY_ENDPOINT}
+            columns={createEntityColumns(lookupDataSource)}
+            onRowValidating={handleRowValidating}
+            onRowUpdating={handleRowUpdating}
+            onRowInserting={handleRowInserting} 
+            onRowRemoving={handleRowRemoving}
+            onInitNewRow={handleInitNewRow}
+            keyField="guid"
+            allowAdding={true}
+            allowUpdating={true}
+            allowDeleting={true}
+            title=" "
+            expand={['RelatedEntity']}
+            // Add default sort to ensure consistent query parameters
+            defaultSort={[{ selector: 'created', desc: true }]}
+          />
+        )}
+      </div>
+    </div>
   );
-};
+
 ```
 
-### 2. Controller Hook (`use{Entity}CollectionController.ts`)
+### 2. Context (`{entity}-context.tsx`)
 
-This hook MUST manage the data operations and business logic:
+The context MUST manage state and validation logic:
 
-- Define validation rules for entity fields
-- Provide implementations for all grid operation handlers
-- Implement editor customization for special fields
-- Handle any entity-specific business logic
-- Properly handle project or parent entity context when applicable
+- Implement a React Context with a Reducer pattern
+- Provide validation functionality for entity fields
+- Maintain loading, error, and data states
+- Expose a clean and minimal API to components
+- Memoize the context value to prevent unnecessary re-renders
 
 **Interface Definition:**
-The controller interface definition is CRITICAL as it clearly documents all functionality provided by the controller and allows developers to quickly understand the differences between various entity controllers:
 
 ```typescript
-/**
- * Interface for {Entity} collection controller hook (for grid/list operations)
- */
-export interface {Entity}CollectionControllerHook extends GridOperationsHook<{Entity}> {
-  // Entity-specific collection operations
-  handleInitNewRow: (e: any) => void;
+// Types for the entity state and context
+export interface EntityState {
+  loading: boolean;
+  error: string | null;
+  // Any additional state needed
+}
+
+export interface EntityContextType {
+  state: EntityState;
+  validateEntity: (entity: Entity, rules?: ValidationRule[]) => boolean;
+  // Other necessary functionality
+}
+```
+
+**Context Implementation:**
+```typescript
+// Context creation
+const EntityContext = createContext<EntityContextType | undefined>(undefined);
+
+// Reducer for state management
+function entityReducer(state: EntityState, action: EntityAction): EntityState {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    // Other action handlers
+    default:
+      return state;
+  }
+}
+
+// Context provider
+export function EntityProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+  // Initialize state with reducer
+  const [state, dispatch] = useReducer(entityReducer, {
+    loading: false,
+    error: null,
+  });
   
-  // Data providers that this controller exposes
-  lookupStore: ODataStore;
+  // Entity validation function
+  const validateEntity = useCallback((entity: Entity, rules: ValidationRule[] = DEFAULT_VALIDATION_RULES): boolean => {
+    // Validation logic implementation
+    return true; // Return whether validation passed
+  }, []);
+  
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    state,
+    validateEntity,
+  }), [state, validateEntity]);
+  
+  return (
+    <EntityContext.Provider value={contextValue}>
+      {children}
+    </EntityContext.Provider>
+  );
+}
+
+// Custom hook to use the context
+export function useEntity(): EntityContextType {
+  const context = useContext(EntityContext);
+  if (context === undefined) {
+    throw new Error('useEntity must be used within an EntityProvider');
+  }
+  return context;
+}
+```
+
+### 3. Grid Handlers Hook (`use{Entity}GridHandlers.ts`)
+
+This hook MUST provide all necessary grid event handlers:
+
+- Implement handlers for row validating, updating, inserting, removing, and initializing new rows
+- Use the entity context's validation functionality
+- Handle any entity-specific business logic
+
+**Interface Definition:**
+```typescript
+export interface GridHandlers {
+  handleRowValidating: (e: any) => void;
+  handleRowUpdating: (e: any) => void;
+  handleRowInserting: (e: any) => void;
+  handleRowRemoving: (e: any) => void;
+  handleInitNewRow: (e: any) => void;
   
   // Any specialized operations for this entity type
   specializedOperation: (id: string) => Promise<void>;
@@ -120,78 +229,6 @@ export interface {Entity}CollectionControllerHook extends GridOperationsHook<{En
  * Interface for Project collection controller hook (for grid/list operations)
  */
 export interface ProjectCollectionControllerHook extends GridOperationsHook<Project> {
-  // Project-specific collection operations
-  handleInitNewRow: (e: any) => void;
-  // Client data - only expose what's needed
-  clientsStore: ODataStore;
-  // Auto increment properties
-  refreshNextNumber: () => void;
-}
-```
-
-**Controller structure:**
-```typescript
-// Base controller without context
-export function use{Entity}CollectionController(
-  userToken: string | undefined,
-  gridConfig?: GridOperationsConfig,
-  validationRules: ValidationRule[] = DEFAULT_VALIDATION_RULES
-): EntityCollectionControllerHook {
-  // Implementation
-}
-
-// Enhanced controller with context (if needed)
-export function useContext{Entity}CollectionController(
-  userToken: string | undefined,
-  contextId?: string,
-  gridConfig?: GridOperationsConfig,
-  validationRules: ValidationRule[] = DEFAULT_VALIDATION_RULES
-): ContextEntityCollectionControllerHook {
-  // Implementation using base controller
-}
-```
-
-### 3. Columns Definition (`{entity}-columns.ts`)
-
-Column definitions MUST:
-
-- Be isolated in a separate file
-- Use a factory function to create columns with injected lookup sources
-- Include proper typing with `ODataGridColumn`
-- Configure consistent hiding priorities
-- Use standard lookup configurations for dropdown fields
-
-**Column definition pattern:**
-```typescript
-export const create{Entity}Columns = (
-  lookup1DataSource: any,
-  lookup2DataSource: any
-): ODataGridColumn[] => {
-  return [
-    {
-      dataField: 'field1',
-      caption: 'Field 1',
-      hidingPriority: 1
-    },
-    {
-      dataField: 'lookupField',
-      caption: 'Lookup Field',
-      hidingPriority: 2,
-      lookup: {
-        dataSource: lookup1DataSource,
-        valueExpr: 'id',
-        displayExpr: 'name'
-      }
-    },
-    // Additional columns
-  ];
-};
-```
-
-### 4. Data Providers (`use{LookupEntity}DataProvider.ts`)
-
-Data provider hooks MUST:
-
 - Follow the naming convention `use{Entity}DataProvider`
 - Manage loading, caching, and error handling of reference data
 - Return both raw data arrays and DevExtreme DataSource objects
@@ -332,12 +369,13 @@ When implementing a new collection view, follow these steps:
 
 ## Example Implementation
 
-The Deliverables collection view serves as a reference implementation that adheres to these standards. Refer to the following files for examples:
+The Projects module serves as a reference implementation that adheres to this architecture pattern. Refer to the following files for examples:
 
-- View Component: `src/pages/deliverables/deliverables.tsx`
-- Controller: `src/hooks/controllers/useDeliverableCollectionController.ts`
-- Columns: `src/pages/deliverables/deliverable-columns.ts`
-- Data Providers: 
-  - `src/hooks/data-providers/useDisciplineDataProvider.ts`
-  - `src/hooks/data-providers/useDocumentTypeDataProvider.ts`
-- Adapter: `src/adapters/deliverable.adapter.ts`
+- View Component: `src/pages/projects/projects.tsx`
+- Context: `src/contexts/projects/projects-context.tsx`
+- Context Types: `src/contexts/projects/projects-types.ts`
+- Grid Handlers: `src/hooks/data-providers/useProjectGridHandlers.ts`
+- Data Source: `src/stores/clientDataSource.ts`
+- Columns: `src/pages/projects/project-columns.ts`
+
+
