@@ -22,7 +22,7 @@ const DeliverableEditorContext = createContext<DeliverableEditorContextProps | u
  * Handles editor-specific behaviors like field interactions, document number generation,
  * and form initialization for deliverables
  */
-export function DeliverableEditorProvider({ children }: DeliverableEditorProviderProps): React.ReactElement {
+export function DeliverableEditorProvider({ children, projectId }: DeliverableEditorProviderProps): React.ReactElement {
   // Initialize state with reducer
   const [state, dispatch] = useReducer(deliverableEditorReducer, initialDeliverableEditorState);
   const { user } = useAuth();
@@ -42,10 +42,10 @@ export function DeliverableEditorProvider({ children }: DeliverableEditorProvide
   }, []);
   
   // Get default values for a new deliverable
-  const getDefaultDeliverableValues = useCallback((projectId?: string): Partial<Deliverable> => {
+  const getDefaultDeliverableValues = useCallback((): Partial<Deliverable> => {
     return {
       guid: uuidv4(),
-      projectGuid: projectId || '',
+      projectGuid: projectId,
       departmentId: 'Design',
       deliverableTypeId: 'Deliverable',
       documentType: '',
@@ -57,7 +57,7 @@ export function DeliverableEditorProvider({ children }: DeliverableEditorProvide
       totalHours: 0,
       totalCost: 0
     };
-  }, []);
+  }, [projectId]);
   
   // Fetch suggested document number for deliverables
   const fetchSuggestedDeliverableDocumentNumber = useCallback(async (
@@ -265,7 +265,7 @@ export function DeliverableEditorProvider({ children }: DeliverableEditorProvide
   const handleDeliverableInitNewRow = useCallback((e: any) => {
     if (e?.data) {
       // Apply default deliverable values
-      const defaults = getDefaultDeliverableValues(e.data.projectGuid);
+      const defaults = getDefaultDeliverableValues();
       Object.assign(e.data, defaults);
     }
   }, [getDefaultDeliverableValues]);

@@ -5,15 +5,14 @@ import { HomePage, ProfilePage, ProjectsPage } from './pages';
 import Deliverables from './pages/deliverables/deliverables';
 import Areas from './pages/areas/areas';
 import ProjectProfile from './pages/project/project-profile';
-import DeliverableProgress from './pages/deliverable-progress/deliverable-progress';
-import { DeliverableProgressFinal } from './pages/deliverable-progress/deliverable-progress-final';
+import { DeliverableProgress } from './pages/deliverable-progress/deliverable-progress';
+import Projects from './pages/projects/projects';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
 import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
 import Variations from './pages/variations/variations';
 import VariationDeliverables from './pages/variations/variation-deliverables';
-import { Projects } from './pages/projects/projects';
 import { ProjectsProvider } from './contexts/projects/projects-context';
 import { DeliverablesProvider } from './contexts/deliverables/deliverables-context';
 
@@ -29,11 +28,7 @@ const routes: RouteConfig[] = [
   },
   {
     path: '/projects/:projectId/deliverables',
-    component: () => (
-      <DeliverablesProvider>
-        <Deliverables />
-      </DeliverablesProvider>
-    )
+    component: Deliverables
   },
   {
     path: '/projects/:projectId/areas',
@@ -41,7 +36,7 @@ const routes: RouteConfig[] = [
   },
   {
     path: '/projects/:projectId/progress',
-    component: DeliverableProgressFinal
+    component: DeliverableProgress
   },
   {
     path: '/projects/:projectId/variations',
@@ -53,11 +48,7 @@ const routes: RouteConfig[] = [
   },
   {
     path: '/projects',
-    component: () => (
-      <ProjectsProvider>
-        <Projects />
-      </ProjectsProvider>
-    )
+    component: Projects
   },
   {
     path: '/clients',

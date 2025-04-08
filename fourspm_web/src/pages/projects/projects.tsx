@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createProjectColumns } from './project-columns';
-import { useProjects } from '../../contexts/projects/projects-context';
+import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-context';
 import { useClientDataSource } from '../../stores/clientDataSource';
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
@@ -14,9 +14,21 @@ import './projects.scss';
  * Projects component
  * 
  * Uses the Context + Reducer pattern for clean separation of view and logic.
- * This component focuses purely on rendering and delegating events to the context.
+ * This component follows the same pattern as other modules like DeliverableProgress.
  */
-export function Projects(): React.ReactElement {
+function Projects(): React.ReactElement {
+  return (
+    <ProjectsProvider>
+      <ProjectsContent />
+    </ProjectsProvider>
+  );
+}
+
+/**
+ * Internal component that consumes the context
+ * Focuses purely on rendering and delegating events to the context
+ */
+const ProjectsContent = (): React.ReactElement => {
   // Get everything we need from the projects context and auth
   const { state } = useProjects();
   const { user } = useAuth();

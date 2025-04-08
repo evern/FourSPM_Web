@@ -14,6 +14,7 @@ import { useScreenSizeClass } from '../../utils/media-query';
 import { useProjectInfo } from '@/hooks/utils/useProjectInfo';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { DeliverableEditorProvider } from '@/contexts/editor/deliverable-editor-context';
+import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
 import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 import { GridRowEvent } from '@/hooks/grid-handlers/useDeliverableGridValidator';
 
@@ -26,10 +27,24 @@ interface DeliverableParams {
  * This follows the pattern of keeping context providers close to where they're used
  */
 export function Deliverables(): React.ReactElement {
+  // Extract project ID from URL params
+  const { projectId } = useParams<DeliverableParams>();
+  const { user } = useAuth();
+
+  // Get project info to pass to the context provider
+  const { project } = useProjectInfo(projectId, user?.token);
+  
+  // Validate projectId exists
+  if (!projectId) {
+    return <div className="error-message">Project ID is missing from the URL.</div>;
+  }
+  
   return (
-    <DeliverableEditorProvider>
-      <DeliverablesContent />
-    </DeliverableEditorProvider>
+    <DeliverablesProvider>
+      <DeliverableEditorProvider projectId={projectId}>
+        <DeliverablesContent />
+      </DeliverableEditorProvider>
+    </DeliverablesProvider>
   );
 }
 
@@ -144,7 +159,7 @@ const DeliverablesContent = (): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultFilter={[['projectGuid', '=', projectId]]}
             countColumn="guid"
-            defaultSort={[{ selector: 'internalDocumentNumber', desc: false }]}
+            defaultSort={[{ selector: 'created', desc: true }]}
             allowAdding={true}
             allowUpdating={true}
             allowDeleting={true}

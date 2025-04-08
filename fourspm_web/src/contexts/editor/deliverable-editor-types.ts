@@ -92,6 +92,7 @@ export interface DeliverableEditorHooks {
  */
 export interface DeliverableEditorProviderProps {
   children: React.ReactNode;
+  projectId: string;
 }
 
 /**
