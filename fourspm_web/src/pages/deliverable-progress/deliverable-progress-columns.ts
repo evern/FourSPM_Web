@@ -76,7 +76,7 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
         dataSource: deliverableGatesDataSource,
         valueExpr: 'guid',
         displayExpr: 'name'
-      },
+      }
     },
     // Progress percentage column - user edits the cumulative percentage earned up to the current period
     {

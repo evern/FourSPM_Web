@@ -102,10 +102,52 @@ export const useGridUtils = (): GridUtils => {
     return gridInstanceRef.current || gridInstance;
   }, [gridInstance]);
   
+  /**
+   * Reload the grid's data source without a full refresh
+   * Uses a safe approach that first cancels any active edit operations
+   */
+  const reloadGridDataSource = useCallback(() => {
+    if (!gridInstance) {
+      console.warn('Cannot reload grid data source - grid instance is not available');
+      return false;
+    }
+    
+    try {
+      // First end edit mode if active
+      if (gridInstance.hasEditData && gridInstance.hasEditData()) {
+        gridInstance.cancelEditData();
+      }
+      
+      // Then reload just the data source if possible
+      if (gridInstance.getDataSource) {
+        const dataSource = gridInstance.getDataSource();
+        if (dataSource && dataSource.reload) {
+          dataSource.reload();
+          return true;
+        }
+      }
+      
+      // Fall back to full refresh if data source reload isn't available
+      gridInstance.refresh();
+      return true;
+    } catch (error) {
+      console.error('Error reloading grid data source:', error);
+      // Try fallback refresh
+      try {
+        gridInstance.refresh();
+        return true;
+      } catch (refreshError) {
+        console.error('Error with fallback grid refresh:', refreshError);
+        return false;
+      }
+    }
+  }, [gridInstance]);
+
   // Return public API
   return {
     setCellValue,
     handleGridInitialized,
+    reloadGridDataSource,
     cancelEditData
   };
 };

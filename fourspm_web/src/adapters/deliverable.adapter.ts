@@ -341,3 +341,60 @@ export const cancelDeliverable = async (
     throw error;
   }
 };
+
+/**
+ * Interface for deliverable progress update request
+ */
+export interface DeliverableProgressUpdate {
+  deliverableGuid: string;
+  projectGuid: string;
+  cumulativeEarntPercentage: number;
+  period: number;
+  progressDate: string;
+}
+
+/**
+ * Updates the progress percentage for a deliverable
+ * @param progressUpdate The progress update details
+ * @param token User authentication token
+ * @returns Promise that resolves when the update is complete
+ */
+export const updateDeliverableProgress = async (
+  progressUpdate: DeliverableProgressUpdate,
+  token: string
+): Promise<void> => {
+  try {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
+    if (!progressUpdate.deliverableGuid) {
+      throw new Error('Deliverable GUID is required');
+    }
+
+    if (!progressUpdate.projectGuid) {
+      throw new Error('Project GUID is required');
+    }
+    
+    // Following established pattern for custom operations
+    const url = `${DELIVERABLES_ENDPOINT}/UpdateProgress`;
+    
+    // Use the baseApiService which handles token management
+    const response = await baseApiService.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(progressUpdate)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update deliverable progress: ${response.status} ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error updating deliverable progress:', error);
+    throw error;
+  }
+};

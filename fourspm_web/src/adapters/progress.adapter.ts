@@ -10,13 +10,15 @@ import { PROGRESS_ENDPOINT } from '../config/api-endpoints';
  * @param values The updated values
  * @param periodId The period to update
  * @param oldData Previous data from the row
+ * @param token Authentication token for API access
  * @returns A promise that resolves when the update is complete
  */
 export const handleProgressUpdate = async (
   key: string, 
   values: Partial<DeliverableProgressDto>, 
   periodId: number, 
-  oldData?: Partial<DeliverableProgressDto>
+  oldData?: Partial<DeliverableProgressDto>,
+  token?: string
 ) => {
   try {
     // Make sure we have the required data
@@ -30,8 +32,13 @@ export const handleProgressUpdate = async (
       return Promise.reject('No cumulativeEarntPercentage provided for progress update');
     }
 
-    const token = localStorage.getItem('user') ? 
-      JSON.parse(localStorage.getItem('user') || '{}').token : null;
+    // Return early if no token is provided
+    if (!token) {
+      console.error('No token provided for progress update');
+      return Promise.reject('No token provided for progress update');
+    }
+    
+    const authToken = token;
     
     // Calculate period-specific percentage (the change since the previous period)
     const previousPeriodPercentage = oldData?.previousPeriodEarntPercentage || 0;
@@ -55,11 +62,16 @@ export const handleProgressUpdate = async (
     // Use the shared API service to make the request
     const result = await sharedApiService.post<any>(
       `${PROGRESS_ENDPOINT}/AddOrUpdateExisting`,
-      token,
+      authToken,
       progressData
     );
 
-    return Promise.resolve(result);
+    // Return both the server response and the original key for row identification
+    return Promise.resolve({
+      result,
+      deliverableGuid: key,
+      progressData
+    });
   } catch (error) {
     console.error('Error updating progress:', error);
     return Promise.reject(`Error updating progress: ${error}`);

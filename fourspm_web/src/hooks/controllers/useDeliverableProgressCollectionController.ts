@@ -150,7 +150,8 @@ export const useDeliverableProgressCollectionController = (
         key,
         newData,
         currentPeriod,
-        oldData
+        oldData,
+        userToken || ''
       );
     }
   };

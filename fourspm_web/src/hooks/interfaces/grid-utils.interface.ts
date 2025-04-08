@@ -19,6 +19,13 @@ export interface GridUtils {
   setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
   
   /**
+   * Reloads the grid's data source without a full refresh
+   * Will automatically cancel any active edit operations first
+   * @returns Boolean indicating success (true) or failure (false)
+   */
+  reloadGridDataSource: () => boolean;
+  
+  /**
    * Cancels the current edit operation on the grid
    * @returns Boolean indicating success (true) or failure (false)
    */

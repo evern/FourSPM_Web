@@ -6,6 +6,7 @@ import Deliverables from './pages/deliverables/deliverables';
 import Areas from './pages/areas/areas';
 import ProjectProfile from './pages/project/project-profile';
 import DeliverableProgress from './pages/deliverable-progress/deliverable-progress';
+import { DeliverableProgressFinal } from './pages/deliverable-progress/deliverable-progress-final';
 import Clients from './pages/clients/clients';
 import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
@@ -40,7 +41,7 @@ const routes: RouteConfig[] = [
   },
   {
     path: '/projects/:projectId/progress',
-    component: DeliverableProgress
+    component: DeliverableProgressFinal
   },
   {
     path: '/projects/:projectId/variations',
