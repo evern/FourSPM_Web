@@ -6,7 +6,7 @@ import { createEntityHook } from '../factories/createEntityHook';
 import { GridUtils } from '../interfaces/grid-utils.interface';
 import { useGridUtils } from '../utils/useGridUtils';
 import { useProjectInfo } from '../utils/useProjectInfo';
-import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../utils/useDeliverableGridEditor';
+import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
 import { v4 as uuidv4 } from 'uuid';
 import { useCallback, useState } from 'react';
 

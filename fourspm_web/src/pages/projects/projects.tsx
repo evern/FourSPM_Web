@@ -3,10 +3,11 @@ import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createProjectColumns } from './project-columns';
 import { useProjects } from '../../contexts/projects/projects-context';
 import { useClientDataSource } from '../../stores/clientDataSource';
-import { useProjectGridHandlers } from '../../hooks/data-providers/useProjectGridHandlers';
+import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
+import { useAuth } from '../../contexts/auth';
 import './projects.scss';
 
 /**
@@ -16,11 +17,9 @@ import './projects.scss';
  * This component focuses purely on rendering and delegating events to the context.
  */
 export function Projects(): React.ReactElement {
-  // Get everything we need from the projects context
-  const { 
-    state, 
-    validateProject
-  } = useProjects();
+  // Get everything we need from the projects context and auth
+  const { state } = useProjects();
+  const { user } = useAuth();
   
   // Use the singleton client data source with loading tracking
   const clientsDataSource = useClientDataSource();
@@ -40,11 +39,10 @@ export function Projects(): React.ReactElement {
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
-    handleInitNewRow
-  } = useProjectGridHandlers({
-    validateProject,
+    handleInitNewRow  } = useProjectGridHandlers({
     nextProjectNumber,
-    refreshNextNumber
+    refreshNextNumber,
+    userToken: user?.token // Pass user token from auth context for API calls if needed
   });
 
   // Wait for client data to load before initializing the grid

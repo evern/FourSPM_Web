@@ -14,6 +14,7 @@ import Variations from './pages/variations/variations';
 import VariationDeliverables from './pages/variations/variation-deliverables';
 import { Projects } from './pages/projects/projects';
 import { ProjectsProvider } from './contexts/projects/projects-context';
+import { DeliverablesProvider } from './contexts/deliverables/deliverables-context';
 
 interface RouteConfig {
   path: string;
@@ -27,7 +28,11 @@ const routes: RouteConfig[] = [
   },
   {
     path: '/projects/:projectId/deliverables',
-    component: Deliverables
+    component: () => (
+      <DeliverablesProvider>
+        <Deliverables />
+      </DeliverablesProvider>
+    )
   },
   {
     path: '/projects/:projectId/areas',

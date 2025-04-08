@@ -9,7 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const ALWAYS_READONLY_DELIVERABLE_FIELDS = [
   'bookingCode',
-  'internalDocumentNumber',
   'clientNumber',
   'projectNumber',
   'totalHours'

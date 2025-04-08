@@ -7,9 +7,10 @@ import { useMemo } from 'react';
  * Custom hook to create a configured ODataStore with authentication
  * @param endpointPath The full path to the OData endpoint (including base URL)
  * @param keyField The key field name for the entity
+ * @param storeOptions Additional options to pass to the ODataStore constructor
  * @returns An ODataStore instance configured for the specified endpoint
  */
-export const useODataStore = (endpointPath: string, keyField: string = 'guid') => {
+export const useODataStore = (endpointPath: string, keyField: string = 'guid', storeOptions: Record<string, any> = {}) => {
   const { user } = useAuth();
   
   // Use useMemo to prevent creating a new store on every render
@@ -19,6 +20,12 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid') =
       version: 4,
       key: keyField,
       keyType: 'Guid',
+      // Default fieldTypes to ensure GUIDs are handled properly
+      fieldTypes: {
+        projectGuid: 'Guid',
+        ...(storeOptions.fieldTypes || {})
+      },
+      ...storeOptions,
       beforeSend: (options: any) => {
         const token = user?.token;
         
@@ -49,7 +56,7 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid') =
         return false;
       }
     });
-  }, [endpointPath, keyField, user?.token]); // Only recreate the store when these dependencies change
+  }, [endpointPath, keyField, user?.token, JSON.stringify(storeOptions)]); // Only recreate the store when these dependencies change
 };
 
 /**

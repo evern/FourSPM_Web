@@ -19,7 +19,7 @@ import { GridOperationsHook, ValidationRule } from '../interfaces/grid-operation
 import { useGridUtils } from '../utils/useGridUtils';
 import { useProjectInfo } from '../utils/useProjectInfo';
 import { useVariationInfo } from '../utils/useVariationInfo';
-import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../utils/useDeliverableGridEditor';
+import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
 
 export interface UseVariationDeliverableCollectionControllerProps {
   token?: string;

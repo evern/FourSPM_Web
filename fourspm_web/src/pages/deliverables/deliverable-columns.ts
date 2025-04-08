@@ -29,8 +29,9 @@ export const createDeliverableColumns = (
       caption: 'Area No.',
       hidingPriority: 5, // Mid-range priority
       lookup: {
-        dataSource: areasDataSource, // Use the DataSource with filter
-        valueExpr: 'number',
+        // Pass the areasDataSource directly - it's already configured with the correct filter
+        dataSource: areasDataSource,
+        valueExpr: 'number',  // This matches the key in our CustomStore
         displayExpr: item => item ? `${item.number} - ${item.description}` : ''
       }
     },

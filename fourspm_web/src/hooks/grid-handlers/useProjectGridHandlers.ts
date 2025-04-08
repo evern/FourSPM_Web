@@ -1,45 +1,47 @@
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-
-// Default validation rules for projects
-export const PROJECT_VALIDATION_RULES = [
-  { field: 'projectNumber', required: true, maxLength: 50, errorText: 'Project Number is required' },
-  { field: 'name', required: true, maxLength: 200, errorText: 'Project Name is required and must be at most 200 characters' },
-  { field: 'projectStatus', required: true, errorText: 'Project Status is required' },
-  { field: 'clientGuid', required: true, errorText: 'Client is required' }
-];
+import { useProjectGridValidator } from './useProjectGridValidator';
 
 /**
  * Hook for project grid event handlers
  * Extracts the event handling logic from the component to reduce clutter
  */
 export function useProjectGridHandlers({
-  validateProject,
   nextProjectNumber,
-  refreshNextNumber
+  refreshNextNumber,
+  userToken,
 }: {
-  validateProject: (data: any, rules: any[]) => boolean;
   nextProjectNumber?: string;
   refreshNextNumber?: () => void;
+  userToken?: string;
 }) {
-  // Handle row validation
-  const handleRowValidating = useCallback((e: any) => {
-    if (e.newData) {
-      const isValid = validateProject(e.newData, PROJECT_VALIDATION_RULES);
-      e.isValid = isValid;
-      
-      // If there are validation errors, stop the grid from proceeding
-      if (!isValid) {
-        e.cancel = true;
-      }
-    }
-  }, [validateProject]);
+  // Use the shared entity validator for projects
+  const {
+    handleRowValidating: validatorHandleRowValidating,
+    handleRowUpdating: validatorHandleRowUpdating,
+    validateProject
+  } = useProjectGridValidator({
+    userToken
+  });
   
-  // Handle row updating - let the grid handle the API call directly
+  // Wrap the validator's handleRowValidating to keep any project-specific behavior
+  const handleRowValidating = useCallback((e: any) => {
+    // Call the validator's implementation first
+    validatorHandleRowValidating(e);
+    
+    // If validation failed, we need to cancel the operation
+    if (e.isValid === false) {
+      e.cancel = true;
+    }
+  }, [validatorHandleRowValidating]);
+  
+  // Use the shared validator's row updating handler
   const handleRowUpdating = useCallback((e: any) => {
-    // Grid will handle the update through its OData endpoint
-    // No need to call updateProject or cancel the default behavior
-  }, []);
+    // Let the validator handle the validation
+    validatorHandleRowUpdating(e);
+    
+    // Grid will handle the update through its OData endpoint after validation
+  }, [validatorHandleRowUpdating]);
   
   // Handle row inserting - let the grid handle the API call directly
   const handleRowInserting = useCallback((e: any) => {
@@ -143,6 +145,7 @@ export function useProjectGridHandlers({
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
-    handleInitNewRow
+    handleInitNewRow,
+    validateProject
   };
 }
