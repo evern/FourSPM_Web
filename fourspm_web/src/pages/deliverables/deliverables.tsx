@@ -106,11 +106,15 @@ const DeliverablesContent = (): React.ReactElement => {
         </div>
       )}
       
-      {/* Loading indicator */}
-      <LoadPanel 
-        visible={state.loading || isLookupDataLoading} 
+      {/* Loading indicator with improved styling */}
+      <LoadPanel
+        visible={state.loading || isLookupDataLoading}
         message={state.loading ? 'Loading deliverables...' : 'Loading reference data...'}
-        position={{ of: '.custom-grid-wrapper' }}
+        position={{ of: '.deliverables-container' }}
+        shadingColor="rgba(0,0,0,0.1)"
+        showIndicator={true}
+        showPane={true}
+        shading={true}
       />
       
       <div className="custom-grid-wrapper">

@@ -12,13 +12,12 @@ export type DeliverableProgressAction =
 // Type for the deliverable progress context
 export interface DeliverableProgressContextType {
   state: DeliverableProgressState;
-  handleRowUpdating: (e: any) => void;
-  handleRowValidating: (e: any) => void;
-  handleEditorPreparing: (e: any) => void;
-  handleGridInitialized: (e: any) => void;
+  // Keep period-related functions as core state management
   setSelectedPeriod: (period: number) => void;
   incrementPeriod: () => void;
   decrementPeriod: () => void;
   selectedPeriod: number | null;
   progressDate: Date;
+  // Project data (will be added if not already in context)
+  projectId?: string;
 }

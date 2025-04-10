@@ -1,7 +1,5 @@
 import React, { createContext, useReducer, useContext, useCallback, useMemo } from 'react';
-import { useAuth } from '../auth';
 import { DeliverableProgressState, DeliverableProgressAction, DeliverableProgressContextType } from '../../contexts/deliverable-progress/deliverable-progress-types';
-import { useDeliverableProgressGridHandlers } from '../../hooks/grid-handlers/useDeliverableProgressGridHandlers';
 import { usePeriodManager } from '../../hooks/utils/usePeriodManager';
 
 // Create a context with a default undefined value
@@ -41,8 +39,6 @@ export function DeliverableProgressProvider({
     error: null
   });
 
-  const { user } = useAuth();
-
   // Use the period manager with provided initial values from props
   // This ensures the context uses the same period state that the component receives
   const periodManager = usePeriodManager(initialPeriod, startDate);
@@ -52,58 +48,29 @@ export function DeliverableProgressProvider({
     return periodManager.selectedPeriod || 0;
   }, [periodManager.selectedPeriod]);
 
-  // Use grid handlers hook to get all grid event handlers
-  const gridHandlers = useDeliverableProgressGridHandlers({
-    projectGuid: projectId,
-    userToken: user?.token,
-    getSelectedPeriod,
-    progressDate: periodManager.progressDate
-  });
-
-  // Pass-through function for grid handlers without state changes
-  // This prevents the context-level state updates that would trigger grid reloads
-  const handleRowUpdating = useCallback(async (e: any) => {
-    if (!user?.token) {
-      e.cancel = true;
-      return;
-    }
-
-    try {
-      // Direct pass-through to the handler without changing context state
-      // This prevents React re-renders that would cause grid refreshes
-      await gridHandlers.handleRowUpdating(e);
-    } catch (error) {
-      console.error('Error updating progress:', error);
-      e.cancel = true;
-    }
-  }, [gridHandlers.handleRowUpdating, user?.token]);
+  // No longer need grid handlers in context - they will be used directly in component
 
   // Pass-through to the period manager for consistency
   const { selectedPeriod, progressDate, setSelectedPeriod, incrementPeriod, decrementPeriod } = periodManager;
 
   // Create memoized context value to prevent unnecessary re-renders
+  // Focus only on state, period management, and project info
   const contextValue = useMemo(() => ({
     state,
-    handleRowUpdating,
-    handleRowValidating: gridHandlers.handleRowValidating,
-    handleEditorPreparing: gridHandlers.handleEditorPreparing,
-    handleGridInitialized: gridHandlers.handleGridInitialized,
     setSelectedPeriod,
     incrementPeriod,
     decrementPeriod,
     selectedPeriod: periodManager.selectedPeriod,
-    progressDate: periodManager.progressDate
+    progressDate: periodManager.progressDate,
+    projectId
   }), [
     state, 
-    handleRowUpdating, 
-    gridHandlers.handleRowValidating, 
-    gridHandlers.handleEditorPreparing, 
-    gridHandlers.handleGridInitialized,
     setSelectedPeriod, 
     incrementPeriod, 
     decrementPeriod,
     periodManager.selectedPeriod,
-    periodManager.progressDate
+    periodManager.progressDate,
+    projectId
   ]);
 
   return (

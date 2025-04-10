@@ -10,6 +10,7 @@ import { DeliverableProgressProvider, useDeliverableProgress } from '../../conte
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useDeliverableGateDataProvider } from '../../hooks/data-providers/useDeliverableGateDataProvider';
 import { useScreenSizeClass } from '../../utils/media-query';
+import { useDeliverableProgressGridHandlers } from '../../hooks/grid-handlers/useDeliverableProgressGridHandlers';
 
 // Import components
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
@@ -63,13 +64,14 @@ const DeliverableProgressContent = (): React.ReactElement => {
   const { projectId } = useParams<DeliverableProgressParams>();
   const { user } = useAuth();
   
-  // Get handlers from the context - the context now delegates period management to usePeriodManager
+  // Get state and period management from the context
   const {
     state,
-    handleRowUpdating,
-    handleRowValidating,
-    handleEditorPreparing,
-    handleGridInitialized
+    selectedPeriod,
+    progressDate,
+    incrementPeriod,
+    decrementPeriod,
+    setSelectedPeriod
   } = useDeliverableProgress();
   
   // Use standardized hooks for project info
@@ -86,15 +88,18 @@ const DeliverableProgressContent = (): React.ReactElement => {
     }
   }, [gatesDataSource]);
   
-  // Get period info directly from the context
-  // This ensures we're using the same period state that the grid handlers use
+  // Get grid handlers directly from the hook - following deliverables.tsx pattern
   const {
-    selectedPeriod,
-    progressDate,
-    incrementPeriod,
-    decrementPeriod,
-    setSelectedPeriod
-  } = useDeliverableProgress();
+    handleRowUpdating,
+    handleRowValidating,
+    handleEditorPreparing,
+    handleGridInitialized
+  } = useDeliverableProgressGridHandlers({
+    projectGuid: projectId || '',
+    userToken: user?.token,
+    getSelectedPeriod: () => selectedPeriod || 0,
+    progressDate: progressDate || new Date()
+  });
   
   // No longer need local period manager as we get periods from context
   
@@ -111,14 +116,14 @@ const DeliverableProgressContent = (): React.ReactElement => {
   // Track when data is fully loaded for grid display
   const [dataLoaded, setDataLoaded] = useState(false);
   
-  // Check if any data is still loading
-  const isLoading = isLoadingProject || isLoadingGates || state.loading;
+  // Check if any data is still loading - follow staggered loading pattern
+  const isLoading = state.loading || isLoadingProject || isLoadingGates;
   
-  // Prepare endpoint URL with period parameter
-  // Use selectedPeriod from the period manager directly, as it's no longer in state
-  const endpoint = useMemo(() => {
-    return getDeliverablesWithProgressUrl(projectId, selectedPeriod || 0);
-  }, [projectId, selectedPeriod]);
+  // Only proceed with next loading stage when previous is complete
+  const shouldRenderGrid = !isLoading && !!project && selectedPeriod !== null;
+  
+  // Set endpoint for the grid - only when all prerequisites are loaded
+  const endpoint = shouldRenderGrid ? getDeliverablesWithProgressUrl(projectId, selectedPeriod || 0) : '';
   
   // Set data as loaded once all lookups are loaded
   useEffect(() => {
@@ -146,16 +151,16 @@ const DeliverableProgressContent = (): React.ReactElement => {
   
   return (
     <div className="progress-container" ref={containerRef}>
-      {/* Show loading indicator when data is being fetched */}
-      <LoadPanel 
-        visible={isLoading} 
-        position={{ of: '.progress-container' }}
-        showIndicator={true}
-        showPane={true}
-      />
-      
-      {/* Only render content when data is loaded */}
-      {!isLoading && dataLoaded && project && (
+      {isLoading ? (
+        <LoadPanel
+          shadingColor="rgba(0,0,0,0.1)"
+          position={{ of: ".progress-container" }}
+          showIndicator={true}
+          showPane={true}
+          visible={true}
+          shading={true}
+        />
+      ) : shouldRenderGrid ? (
         <div className="custom-grid-wrapper">
           <div className="grid-custom-title">
             {project ? `${project.projectNumber} - ${project.name} Progress Tracking` : 'Progress Tracking'}
@@ -261,6 +266,8 @@ const DeliverableProgressContent = (): React.ReactElement => {
             />
           </ScrollView>
         </div>
+      ) : (
+        <div className="loading-message">Waiting for data to load...</div>
       )}
     </div>
   );

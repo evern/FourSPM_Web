@@ -31,7 +31,7 @@ interface VariationDeliverableParams {
  * Following the pattern from deliverables.tsx for direct data provider usage
  * but we still need the context provider for useVariationDeliverableGridHandlers
  */
-export function VariationDeliverablesFinal(): React.ReactElement {
+export function VariationDeliverables(): React.ReactElement {
   // Get route parameters
   const { variationId } = useParams<VariationDeliverableParams>();
   
@@ -227,4 +227,4 @@ const VariationDeliverablesContent = (): React.ReactElement => {
   );
 };
 
-export default VariationDeliverablesFinal;
+export default VariationDeliverables;
