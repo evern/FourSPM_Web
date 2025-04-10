@@ -214,16 +214,9 @@ export function useDeliverableProgressGridHandlers(options: {
           // Get the current cumulativeEarntPercentage
           const currentValue = e.row.data.cumulativeEarntPercentage || 0;
           
-          console.log('Gate changed:', {
-            newGate: selectedGate.name,
-            autoPercentage: selectedGate.autoPercentage,
-            currentValue
-          });
-          
           // Only update if the auto percentage is higher than current value
           if (selectedGate.autoPercentage > currentValue) {
             // Use the grid utils to set the cell value
-            console.log('Updating cumulativeEarntPercentage to:', selectedGate.autoPercentage);
             e.component.cellValue(e.row.rowIndex, 'cumulativeEarntPercentage', selectedGate.autoPercentage);
           }
           

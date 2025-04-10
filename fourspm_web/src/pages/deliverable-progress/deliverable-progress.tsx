@@ -83,7 +83,6 @@ const DeliverableProgressContent = (): React.ReactElement => {
   // Ensure gates data is properly initialized for lookups
   useEffect(() => {
     if (gatesDataSource && typeof gatesDataSource.load === 'function') {
-      console.log('Pre-loading gates data for lookup display');
       gatesDataSource.load();
     }
   }, [gatesDataSource]);
@@ -134,11 +133,6 @@ const DeliverableProgressContent = (): React.ReactElement => {
   
   // Memoize columns to prevent unnecessary re-renders
   const columns = useMemo(() => {
-    // Log to verify gatesDataSource is being passed correctly
-    console.log('[DeliverableProgressFinal] Creating columns with gates data source:', 
-      gatesDataSource ? 'defined' : 'undefined');
-      
-    // Use the same function as the original implementation to maintain consistency
     return createDeliverableProgressColumns(gatesDataSource, isMobile);
   }, [gatesDataSource, isMobile]);
 
