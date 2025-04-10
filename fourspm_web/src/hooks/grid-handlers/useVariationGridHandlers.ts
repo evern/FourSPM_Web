@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useVariationGridValidator } from './useVariationGridValidator';
 import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
+import { alert, confirm } from 'devextreme/ui/dialog';
 
 /**
  * Hook for variation grid event handlers
@@ -144,7 +145,7 @@ export function useVariationGridHandlers({
       e.editorName = 'dxDateBox';
       e.editorOptions.displayFormat = 'yyyy-MM-dd';
     }
-  }, []);
+  }, [userToken]);
   
   // Handle initializing new row
   const handleInitNewRow = useCallback((e: any) => {
@@ -164,6 +165,81 @@ export function useVariationGridHandlers({
     }
   }, [projectId, nextVariationNumber, refreshNextNumber]);
   
+  // Handle variation approval
+  const handleApproveVariation = useCallback(async (variationGuid: string, variation?: any) => {
+    try {
+      // Check if variation has been submitted first - this is also verified in the backend
+      if (variation && !variation.submitted) {
+        alert('This variation must be submitted before it can be approved', 'Validation Error');
+        return false;
+      }
+      
+      // Use token from hook parameters
+      if (!userToken) {
+        alert('User token not available. Please log in again.', 'Authentication Error');
+        return false;
+      }
+      
+      // Show confirmation dialog first
+      const confirmed = await confirm(
+        'Are you sure you want to approve this variation? This will update all deliverables in this variation to approved status.',
+        'Confirm Approval'
+      );
+      
+      if (!confirmed) {
+        return false;
+      }
+      
+      // Import the adapter function dynamically to avoid circular dependencies
+      const { approveVariation } = await import('../../adapters/variation.adapter');
+      
+      // Call the adapter method to approve the variation
+      await approveVariation(variationGuid, userToken);
+      
+      // Show success message
+      alert('Variation approved successfully', 'Success');
+      return true;
+    } catch (error) {
+      console.error('Error approving variation:', error);
+      alert(`Error approving variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+      return false;
+    }
+  }, [userToken]);
+
+  // Handle variation rejection
+  const handleRejectVariation = useCallback(async (variationGuid: string) => {
+    try {
+      // Use token from hook parameters
+      if (!userToken) {
+        alert('User token not available. Please log in again.', 'Authentication Error');
+        return false;
+      }
+      // Show confirmation dialog first
+      const confirmed = await confirm(
+        'Are you sure you want to reject this variation? This will revert all deliverables in this variation to unapproved status.',
+        'Confirm Rejection'
+      );
+      
+      if (!confirmed) {
+        return false;
+      }
+      
+      // Import the adapter function dynamically to avoid circular dependencies
+      const { rejectVariation } = await import('../../adapters/variation.adapter');
+      
+      // Call the adapter method to reject the variation
+      await rejectVariation(variationGuid, userToken);
+      
+      // Show success message
+      alert('Variation rejection processed successfully', 'Success');
+      return true;
+    } catch (error) {
+      console.error('Error rejecting variation:', error);
+      alert(`Error rejecting variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+      return false;
+    }
+  }, [userToken]);
+
   return {
     handleRowValidating,
     handleRowUpdating,
@@ -173,6 +249,8 @@ export function useVariationGridHandlers({
     handleInitNewRow,
     validateVariation,
     nextVariationNumber,
-    refreshNextNumber
+    refreshNextNumber,
+    handleApproveVariation,
+    handleRejectVariation
   };
 }

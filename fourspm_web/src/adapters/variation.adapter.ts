@@ -103,3 +103,45 @@ export const getVariationById = async (variationId: string, token: string): Prom
     throw error;
   }
 };
+
+/**
+ * Approves a variation
+ * @param variationGuid The GUID of the variation to approve
+ * @param token User authentication token
+ * @returns The updated variation with approval information
+ */
+export const approveVariation = async (variationGuid: string, token: string): Promise<Variation> => {
+  if (!token) {
+    throw new Error('Token is required');
+  }
+  
+  try {
+    // Use the post method to call our custom action endpoint
+    const response = await sharedApiService.post<Variation>(`${VARIATIONS_ENDPOINT}/ApproveVariation/${variationGuid}`, token, {});
+    return response;
+  } catch (error) {
+    console.error('Error approving variation:', error);
+    throw error;
+  }
+};
+
+/**
+ * Rejects a previously approved variation
+ * @param variationGuid The GUID of the variation to reject
+ * @param token User authentication token
+ * @returns The updated variation with approval information cleared
+ */
+export const rejectVariation = async (variationGuid: string, token: string): Promise<Variation> => {
+  if (!token) {
+    throw new Error('Token is required');
+  }
+  
+  try {
+    // Use the post method to call our custom action endpoint
+    const response = await sharedApiService.post<Variation>(`${VARIATIONS_ENDPOINT}/RejectVariation/${variationGuid}`, token, {});
+    return response;
+  } catch (error) {
+    console.error('Error rejecting variation:', error);
+    throw error;
+  }
+};

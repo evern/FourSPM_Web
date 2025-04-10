@@ -53,11 +53,21 @@ const VariationsContent = (): React.ReactElement => {
     handleRowInserting,
     handleRowRemoving,
     handleEditorPreparing,
-    handleInitNewRow
+    handleInitNewRow,
+    handleApproveVariation,
+    handleRejectVariation
   } = useVariationGridHandlers({
     projectId,
     userToken: user?.token
   });
+  
+  // Create variation columns configuration with handlers
+  const variationColumnsConfig = {
+    handleApproveVariation,
+    handleRejectVariation,
+    showSuccess: (message: string) => alert(`Success: ${message}`),
+    showError: (message: string) => alert(`Error: ${message}`)
+  };
   
   // Create project filter for grid
   const projectFilter: [string, string, any][] = projectId ? [["projectGuid", "=", projectId]] : [];
@@ -102,7 +112,7 @@ const VariationsContent = (): React.ReactElement => {
         <ODataGrid
           title=" "
           endpoint={VARIATIONS_ENDPOINT}
-          columns={variationColumns}
+          columns={variationColumns(variationColumnsConfig)}
           keyField="guid"
           onRowValidating={handleRowValidating}
           onRowUpdating={handleRowUpdating}

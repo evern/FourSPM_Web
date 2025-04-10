@@ -195,6 +195,8 @@ export const useVariationDeliverableGridHandlers = (props?: {
     let message = '';
     if (deliverableData.uiStatus === 'Add') {
       message = 'Are you sure you want to remove this deliverable from the variation?';
+    } else if (deliverableData.uiStatus === 'Edit') {
+      message = 'Are you sure you want to discard your changes to this deliverable?';
     } else if (deliverableData.variationStatus === 'UnapprovedCancellation') {
       message = 'Are you sure you want to undo the cancellation of this deliverable?';
     } else {

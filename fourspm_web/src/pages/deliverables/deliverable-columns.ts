@@ -110,8 +110,8 @@ export const createDeliverableColumns = (
       summaryType: 'sum'
     },
     {
-      dataField: 'variationHours',
-      caption: 'Variation Hours',
+      dataField: 'approvedVariationHours',
+      caption: 'Approved Var. Hrs',
       hidingPriority: 9,
       dataType: 'number',
       editorOptions: {

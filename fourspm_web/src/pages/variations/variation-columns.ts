@@ -1,8 +1,15 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 
+// Define the configuration type for variation columns
+type VariationColumnsConfig = {
+  handleApproveVariation: (variationGuid: string, variation?: any) => Promise<boolean>;
+  handleRejectVariation: (variationGuid: string) => Promise<boolean>;
+  showSuccess: (message: string) => void;
+  showError: (message: string) => void;
+};
 
-
-export const variationColumns: ODataGridColumn[] = [
+// Convert variationColumns to a function that takes configuration
+export const variationColumns = (config: VariationColumnsConfig): ODataGridColumn[] => [
   {
     dataField: 'name',
     caption: 'Name',
@@ -20,12 +27,18 @@ export const variationColumns: ODataGridColumn[] = [
     caption: 'Submitted',
     allowEditing: true,
     hidingPriority: 1,
-    dataType: 'date'
+    dataType: 'date',
+    editorOptions: {
+      allowNull: true,
+      showClearButton: true,
+      useMaskBehavior: true
+    }
   },
   {
     dataField: 'clientApproved',
     caption: 'Client Approved',
-    allowEditing: true,
+    allowEditing: false, // Read-only field - client approval requires the approval process
+    cellClass: 'faded-placeholder',
     hidingPriority: 1,
     dataType: 'date'
   },
@@ -51,6 +64,52 @@ export const variationColumns: ODataGridColumn[] = [
         onClick: (e: any) => {
           // Navigate to the variation deliverables component
           window.location.href = `#/variations/${e.row.data.guid}/deliverables`;
+        }
+      }
+    ]
+  },
+  {
+    type: 'buttons',
+    dataField: 'guid_clientActions', // Make the dataField unique by incorporating the button name
+    name: 'clientActions', // Unique name for this buttons column
+    caption: 'Client Action',
+    width: 120,
+    fixed: true,
+    fixedPosition: 'right',
+    allowEditing: false,
+    hidingPriority: 3, // Show as long as possible
+    // Define buttons for different states
+    buttons: [
+      // Approve button - only visible when not approved yet
+      {
+        hint: 'Approve Variation',
+        icon: 'check',
+        text: 'Approve',
+        visible: (e) => !e.row.data.clientApproved,
+        onClick: async (e) => {
+          // Call the approve variation handler from the config
+          const success = await config.handleApproveVariation(e.row.data.guid, e.row.data);
+          
+          // Refresh the grid if operation was successful
+          if (success) {
+            e.component.refresh();
+          }
+        }
+      },
+      // Reject button - only visible when already approved
+      {
+        hint: 'Reject Variation',
+        icon: 'close',
+        text: 'Reject',
+        visible: (e) => !!e.row.data.clientApproved,
+        onClick: async (e) => {
+          // Call the reject variation handler from the config
+          const success = await config.handleRejectVariation(e.row.data.guid);
+          
+          // Refresh the grid if operation was successful
+          if (success) {
+            e.component.refresh();
+          }
         }
       }
     ]
