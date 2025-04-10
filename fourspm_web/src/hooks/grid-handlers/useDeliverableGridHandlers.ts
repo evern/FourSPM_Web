@@ -22,16 +22,19 @@ export interface DeliverableGridHandlers {
   validateDeliverable: (deliverable: Record<string, any>) => ValidationResult;
 }
 
+interface UseDeliverableGridHandlersProps {
+  projectGuid?: string;
+  userToken?: string;
+  project?: any; // Add project parameter for client/project number data
+}
+
 /**
  * Hook for managing deliverable grid event handlers
  * @param options Configuration options for grid handlers
  * @returns Object containing all grid event handlers
  */
-export function useDeliverableGridHandlers(options: {
-  projectGuid?: string;
-  userToken?: string;
-}): DeliverableGridHandlers {
-  const { projectGuid, userToken } = options;
+export function useDeliverableGridHandlers(options: UseDeliverableGridHandlersProps): DeliverableGridHandlers {
+  const { projectGuid, userToken, project } = options;
   
   // Get grid utility methods
   const { setCellValue, handleGridInitialized } = useGridUtils();
@@ -81,8 +84,7 @@ export function useDeliverableGridHandlers(options: {
     // Any confirmation dialog would be handled at the UI level
   }, []);
   
-  // Handle initializing a new row - kept this from the original implementation
-  // because it has specific integration with baseHandleInitNewRow
+  // Handle initializing a new row with project-specific data
   const handleInitNewRow = useCallback((e: any) => {
     // Use the base implementation from the grid editor
     baseHandleInitNewRow(e);
@@ -91,7 +93,17 @@ export function useDeliverableGridHandlers(options: {
     if (projectGuid) {
       e.data.projectGuid = projectGuid;
     }
-  }, [baseHandleInitNewRow, projectGuid]);
+    
+    // Add client and project numbers if available
+    if (project) {
+      if (project.client) {
+        e.data.clientNumber = project.client.number || '';
+      }
+      if (project.projectNumber) {
+        e.data.projectNumber = project.projectNumber || '';
+      }
+    }
+  }, [baseHandleInitNewRow, projectGuid, project]);
   
   // Keep using handleEditorPreparing directly from useDeliverableGridEditor
   // which matches the implementation in the original deliverables.tsx
@@ -105,7 +117,6 @@ export function useDeliverableGridHandlers(options: {
     handleEditorPreparing,
     setCellValue,
     handleGridInitialized,
-    // Use the validateDeliverable from our validator
     validateDeliverable
   };
 }

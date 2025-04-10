@@ -77,60 +77,34 @@ export interface DeliverablesContextProps {
    */
   setLookupDataLoaded: (loaded: boolean) => void;
   
-  /**
-   * Provides default values for a new deliverable
-   * @param projectGuid Optional project ID to associate with the deliverable
-   * @returns A partial deliverable object with default values
-   */
-  getDeliverableDefaultValues: (projectGuid?: string) => Partial<Deliverable>;
   
+
+
+
   /**
-   * Determines if a field should be editable based on its name and status
-   * @param fieldName Name of the field to check
-   * @param uiStatus Optional UI status to consider for editability
-   * @returns Boolean indicating if the field should be editable
+   * Data source for areas lookup
    */
-  isFieldEditable: (fieldName: string, uiStatus?: string) => boolean;
-  
+  areasDataSource: any;
+
   /**
-   * Handler for grid initialization
+   * Data source for disciplines lookup
    */
-  handleGridInitialized: (e: any) => void;
-  
+  disciplinesDataSource: any;
+
   /**
-   * Utility to set a cell value in the grid
+   * Data source for document types lookup
    */
-  setCellValue: (rowIndex: number, dataField: string, value: any) => void;
-  
+  documentTypesDataSource: any;
+
   /**
-   * Handler for validating row data
+   * Flag indicating if lookup data is currently loading
    */
-  handleRowValidating: (e: GridRowEvent) => void;
-  
+  isLookupDataLoading: boolean;
+
   /**
-   * Handler for updating row data
+   * Project object with project details
    */
-  handleRowUpdating: (e: GridRowEvent) => any;
-  
-  /**
-   * Handler for inserting new row data
-   */
-  handleRowInserting: (e: GridRowEvent) => void;
-  
-  /**
-   * Handler for removing row data
-   */
-  handleRowRemoving: (e: GridRowEvent) => void;
-  
-  /**
-   * Handler for initializing a new row
-   */
-  handleInitNewRow: (e: GridRowEvent) => void;
-  
-  /**
-   * Validates a deliverable object
-   * @param data The deliverable data to validate
-   * @returns Validation result containing isValid flag and any errors
-   */
-  validateDeliverable: (data: Record<string, any>) => ValidationResult;
+  project: any | null;
+
+
 }

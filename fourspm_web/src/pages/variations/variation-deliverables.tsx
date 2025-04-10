@@ -81,7 +81,7 @@ const VariationDeliverablesContent = (): React.ReactElement => {
   
   // Get grid handlers from the hook - passing project and projectGuid directly
   const {
-    handleGridInitialized: baseHandleGridInitialized,
+    handleGridInitialized,
     handleRowUpdating,
     handleRowInserting,
     handleRowValidating,
@@ -92,12 +92,6 @@ const VariationDeliverablesContent = (): React.ReactElement => {
     project, // Pass project directly for client/project info
     projectGuid
   });
-  
-  // Grid initialization handler - simply pass through to the base handler
-  const handleGridInitialized = useCallback((e: any) => {
-    // Pass to the base handler for initialization
-    baseHandleGridInitialized(e);
-  }, [baseHandleGridInitialized]);
   
   /**
    * Sequential data readiness check:

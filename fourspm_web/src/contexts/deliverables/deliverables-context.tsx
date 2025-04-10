@@ -1,28 +1,20 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef } from 'react';
-import { Deliverable } from '@/types/odata-types';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect } from 'react';
 import { 
-  DeliverablesState, 
-  DeliverablesAction, 
   DeliverablesContextProps,
   DeliverablesProviderProps
 } from './deliverables-types';
 import { deliverablesReducer, initialDeliverablesState } from './deliverables-reducer';
-import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '@/contexts/auth';
-import { useDeliverableGridValidator } from '@/hooks/grid-handlers/useDeliverableGridValidator';
-import { useGridUtils } from '@/hooks/utils/useGridUtils';
-import { GridRowEvent } from '@/hooks/grid-handlers/useDeliverableGridValidator';
+import { useParams } from 'react-router-dom';
+// Removed direct import of useDeliverableGridValidator since it's used inside useDeliverableGridHandlers
+import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
+// Removed useGridUtils import since it's used inside useDeliverableGridHandlers
+import { useProjectInfo } from '@/hooks/utils/useProjectInfo';
+import { useAreaDataProvider } from '@/hooks/data-providers/useAreaDataProvider';
+import { useDisciplineDataProvider } from '@/hooks/data-providers/useDisciplineDataProvider';
+import { useDocumentTypeDataProvider } from '@/hooks/data-providers/useDocumentTypeDataProvider';
 
-/**
- * These fields are calculated by the backend and should always be read-only
- * Used by deliverable-related handlers to determine field editability
- */
-export const ALWAYS_READONLY_DELIVERABLE_FIELDS = [
-  'bookingCode',
-  'clientNumber',
-  'projectNumber',
-  'totalHours'
-];
+
 
 // Create the context
 const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(undefined);
@@ -30,24 +22,129 @@ const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(
 /**
  * Provider component for the deliverables context
  * Follows the Context + Reducer pattern for clean separation of state management and UI
+ * Implements a sequential loading pattern for better performance
  */
-export function DeliverablesProvider({ children, projectId }: DeliverablesProviderProps): React.ReactElement {
-  // Initialize state with reducer
-  const [state, dispatch] = useReducer(deliverablesReducer, initialDeliverablesState);
+export function DeliverablesProvider({ children, projectId: projectIdProp }: DeliverablesProviderProps): React.ReactElement {
+  /**
+   * Sequential Data Loading Pattern:
+   * 1. First load project data using useProjectInfo
+   * 2. Then load dependent data in the content component
+   * 3. Combine loading states to ensure we only proceed when project data is loaded
+   */
+  
+  // Get route parameters and authentication
+  const params = useParams<{ projectId: string }>();
+  const projectId = projectIdProp || params.projectId;
   const { user } = useAuth();
   
-  // Get grid utility methods
-  const { setCellValue, handleGridInitialized } = useGridUtils();
+  // Step 1: Load project data
+  const { project, isLoading: projectLoading, error: projectError } = 
+    useProjectInfo(projectId, user?.token);
   
-  // Get the validator functions from useDeliverableGridValidator
-  const {
+  // Memoize the project object to ensure stable references
+  const memoizedProject = useMemo(() => project, [project]);
+  
+  // Create minimal loading state
+  const loadingState = useMemo(() => ({
+    loading: projectLoading,
+    error: projectError ? projectError.message : null,
+    projectGuid: projectId || null,
+    lookupDataLoaded: false
+  }), [projectLoading, projectError, projectId]);
+  
+  // Create a loading context value with minimal implementations
+  const loadingContextValue = useMemo(() => ({
+    state: loadingState,
+    // Minimal implementations for required methods
+    setLoading: () => {},
+    setError: () => {},
+    setProjectGuid: () => {},
+    setLookupDataLoaded: () => {},
+    // Empty data sources
+    areasDataSource: { load: () => Promise.resolve([]) },
+    disciplinesDataSource: { load: () => Promise.resolve([]) },
+    documentTypesDataSource: { load: () => Promise.resolve([]) },
+    isLookupDataLoading: true,
+    project: null
+  }), [loadingState]);
+  
+  // If still loading project, render minimal provider
+  if (projectLoading) {
+    return <DeliverablesContext.Provider value={loadingContextValue}>
+      {children}
+    </DeliverablesContext.Provider>;
+  }
+  
+  // Render full content once project is loaded
+  return <DeliverablesContent 
+    projectId={projectId} 
+    project={memoizedProject}
+    user={user}
+  >
+    {children}
+  </DeliverablesContent>;
+}
+
+/**
+ * Internal component that loads lookup data and provides the full context implementation
+ * Only rendered after project data is successfully loaded
+ */
+function DeliverablesContent({
+  children,
+  projectId,
+  project,
+  user
+}: {
+  children: React.ReactNode;
+  projectId: string;
+  project: any;
+  user: any;
+}): React.ReactElement {
+  // Initialize state with reducer
+  const [state, dispatch] = useReducer(deliverablesReducer, {
+    ...initialDeliverablesState,
+    projectGuid: projectId
+  });
+  
+  // We don't need to call useGridUtils directly - these are provided by the grid handlers
+  
+  // Load data providers only when project is available
+  const shouldLoadProviders = !!project && !!projectId;
+  
+  // Data providers with conditional loading
+  const { areasDataSource, isLoading: areasLoading } = useAreaDataProvider(
+    shouldLoadProviders ? projectId : undefined
+  );
+  
+  const { disciplinesDataSource, isLoading: disciplinesLoading } = useDisciplineDataProvider(
+    shouldLoadProviders ? true : undefined
+  );
+  
+  const { documentTypesDataSource, isLoading: documentTypesLoading } = useDocumentTypeDataProvider(
+    shouldLoadProviders ? true : undefined
+  );
+  
+  // Combine loading states for lookup data
+  const isLookupDataLoading = useMemo(() => 
+    areasLoading || disciplinesLoading || documentTypesLoading,
+    [areasLoading, disciplinesLoading, documentTypesLoading]
+  );
+  
+  // Get all grid handler functions from a single source
+  const { 
     handleRowValidating,
-    handleRowUpdating,
+    handleRowUpdating, 
     handleRowInserting,
-    validateDeliverable
-  } = useDeliverableGridValidator({
-    projectGuid: projectId || state.projectGuid || '',
-    userToken: user?.token
+    handleRowRemoving,
+    handleInitNewRow: gridHandlerInitNewRow,
+    handleEditorPreparing,
+    validateDeliverable,
+    setCellValue,
+    handleGridInitialized
+  } = useDeliverableGridHandlers({
+    projectGuid: projectId,
+    userToken: user?.token,
+    project // Pass project to the grid handler
   });
 
   // Action creators
@@ -67,64 +164,14 @@ export function DeliverablesProvider({ children, projectId }: DeliverablesProvid
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
 
-  /**
-   * Defines which fields are editable based on the deliverable status
-   */
-  const isFieldEditable = useCallback((fieldName: string, uiStatus?: string) => {
-    // Use the shared readonly fields list
-    if (ALWAYS_READONLY_DELIVERABLE_FIELDS.includes(fieldName)) {
-      return false;
-    }
-    return true; // All other fields are editable by default
-  }, []);
-  
-  /**
-   * Handle deliverable row removal - simple pass-through implementation
-   */
-  const handleRowRemoving = useCallback((e: GridRowEvent) => {
-    // No special handling for removal at this level
-    // Any confirmation dialog would be handled at the UI level
-  }, []);
-  
-  /**
-   * Generate default values for a new deliverable
-   * Memoized to prevent unnecessary re-creations
-   */
-  const getDeliverableDefaultValues = useCallback((projectGuid?: string): Partial<Deliverable> => {
-    const now = new Date();
-    const deliverableGuid = uuidv4();
-    return {
-      guid: deliverableGuid,
-      originalDeliverableGuid: deliverableGuid, // For variation tracking
-      projectGuid: projectGuid || state.projectGuid || '',
-      departmentId: 'Design',
-      deliverableTypeId: 'Deliverable',
-      documentType: '',
-      clientDocumentNumber: '',
-      discipline: '',
-      areaNumber: '',
-      budgetHours: 0,
-      variationHours: 0,
-      totalHours: 0,
-      totalCost: 0,
-      isActive: true,
-      isReadOnly: false,
-      createdAt: now,
-      modifiedAt: now
-    };
-  }, [state.projectGuid]);
 
-  /**
-   * Handle initialization of a new deliverable row
-   */
-  const handleInitNewRow = useCallback((e: GridRowEvent) => {
-    if (e?.data) {
-      // Apply default deliverable values
-      const projectGuidToUse = projectId || (state.projectGuid || '');
-      const defaults = getDeliverableDefaultValues(projectGuidToUse);
-      Object.assign(e.data, defaults);
-    }
-  }, [getDeliverableDefaultValues, projectId, state.projectGuid]);
+  // Note: Default value generation and row initialization are handled by
+  // useDeliverableGridHandlers.ts which uses useDeliverableGridEditor.ts internally
+  
+  // Update lookup data loaded flag when all data sources are loaded
+  useEffect(() => {
+    setLookupDataLoaded(!isLookupDataLoading);
+  }, [isLookupDataLoading, setLookupDataLoaded]);
   
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
@@ -133,37 +180,26 @@ export function DeliverablesProvider({ children, projectId }: DeliverablesProvid
     setError,
     setProjectGuid,
     setLookupDataLoaded,
-    // Data access functions for deliverables
-    getDeliverableDefaultValues,
-    // Grid handlers
-    handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    handleRowRemoving,
-    validateDeliverable,
-    handleInitNewRow,
-    // Grid utilities
-    handleGridInitialized,
-    setCellValue,
-    isFieldEditable
+    // Data providers
+    areasDataSource,
+    disciplinesDataSource,
+    documentTypesDataSource,
+    isLookupDataLoading,
+    // Project data
+    project
   }), [
     state, 
     setLoading,
     setError,
     setProjectGuid,
     setLookupDataLoaded,
-    getDeliverableDefaultValues,
-    // Grid handler dependencies
-    handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    handleRowRemoving,
-    validateDeliverable,
-    handleInitNewRow,
-    // Grid utilities dependencies
-    handleGridInitialized,
-    setCellValue,
-    isFieldEditable
+    // Data provider dependencies
+    areasDataSource,
+    disciplinesDataSource,
+    documentTypesDataSource,
+    isLookupDataLoading,
+    // Project data dependency
+    project
   ]);
   
   return (

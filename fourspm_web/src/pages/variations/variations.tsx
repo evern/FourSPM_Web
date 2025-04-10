@@ -53,9 +53,7 @@ const VariationsContent = (): React.ReactElement => {
     handleRowInserting,
     handleRowRemoving,
     handleEditorPreparing,
-    handleInitNewRow,
-    nextVariationNumber,
-    refreshNextNumber
+    handleInitNewRow
   } = useVariationGridHandlers({
     projectId,
     userToken: user?.token
