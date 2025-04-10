@@ -184,12 +184,36 @@ export const useVariationDeliverableGridHandlers = (props?: {
   const handleCancellationClick = useCallback(async (e: any, isReadOnly?: boolean): Promise<void> => {
     // Check if variation is in read-only mode
     if (isReadOnly) {
-      await alert('This variation has been submitted and cannot be modified.', 'Variation Submitted');
+      // Determine if the variation is approved or just submitted
+      const status = variationDeliverables.variation?.clientApproved ? 'approved' : 'submitted';
+      const title = `Variation ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+      await alert(`This variation has been ${status} and cannot be modified.`, title);
       return;
     }
     
-    // Get the deliverable data from the row data
     const deliverableData = e.row ? e.row.data : e.data;
+    const currentVariationGuid = variationDeliverables.variation?.guid;
+    
+    // Check if this deliverable belongs to a different variation than the current one
+    if (deliverableData.variationGuid && 
+        deliverableData.variationGuid !== currentVariationGuid && 
+        deliverableData.variationStatus === 'ApprovedVariation') {
+      
+      // Extract variation name if available
+      let variationName = 'another approved variation';
+      if (deliverableData.variation && deliverableData.variation.name) {
+        variationName = deliverableData.variation.name;
+      } else if (deliverableData.variationName) {
+        variationName = deliverableData.variationName;
+      }
+      
+      // Display a friendly error message without a confirmation dialog
+      await alert(`This deliverable belongs to ${variationName} and cannot be cancelled.
+
+Please make changes to the original deliverable instead.`, 
+                 'Approved Variation');
+      return;
+    }
     
     // Determine confirmation message based on the current status
     let message = '';
@@ -225,16 +249,38 @@ export const useVariationDeliverableGridHandlers = (props?: {
     requestInProgressRef.current = true;
     
     try {
-      const variationGuid = variationDeliverables.variation?.guid;
-      if (!variationGuid || !user?.token) {
+      const currentVariationGuid = variationDeliverables.variation?.guid;
+      if (!currentVariationGuid || !user?.token) {
         throw new Error('Missing required parameters: variationId or authentication token');
+      }
+      
+      // Check if this deliverable belongs to a different variation than the current one
+      if (data.variationGuid && 
+          data.variationGuid !== currentVariationGuid && 
+          data.variationStatus === 'ApprovedVariation') {
+        
+        // Extract variation name if available
+        let variationName = 'another approved variation';
+        if (data.variation && data.variation.name) {
+          variationName = data.variation.name;
+        } else if (data.variationName) {
+          variationName = data.variationName;
+        }
+        
+        // Display a friendly error message without making the API call
+        await alert(`This deliverable belongs to ${variationName} and cannot be modified.
+
+Please make changes to the original deliverable instead.`, 
+                   'Approved Variation');
+        
+        return false;
       }
 
       await addExistingDeliverableToVariation({
         ...data,
         guid: data.guid,
         originalDeliverableGuid: originalDeliverableGuid || data.guid,
-        variationGuid: variationDeliverables.variation.guid
+        variationGuid: currentVariationGuid
       }, user.token);
       
       return true;
@@ -282,11 +328,14 @@ export const useVariationDeliverableGridHandlers = (props?: {
     requestInProgressRef.current = true;
     
     try {
-      const variationGuid = variationDeliverables.variation?.guid;
-      if (!variationGuid || !user?.token) {
+      const currentVariationGuid = variationDeliverables.variation?.guid;
+      if (!currentVariationGuid || !user?.token) {
         throw new Error('Missing required parameters: variationId or authentication token');
       }
 
+      // Note: We've moved the variation check to the onCancelDeliverable handler
+      // so users see the message before any confirmation dialog appears
+      
       // For Add status, we no longer need removeDeliverableFromVariation as that function was removed
       // For all other statuses, we use the new cancellation endpoint
       const originalGuid = deliverable.originalDeliverableGuid || deliverable.guid;
@@ -294,7 +343,7 @@ export const useVariationDeliverableGridHandlers = (props?: {
       // Call the updated adapter method with both required parameters
       const result = await cancelDeliverableVariation(
         originalGuid,
-        variationGuid, // This is now defined at the top of the function
+        currentVariationGuid,
         user.token
       );
       

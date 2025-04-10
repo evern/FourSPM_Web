@@ -99,13 +99,6 @@ const DeliverablesContent = (): React.ReactElement => {
   
   return (
     <div className="deliverables-container">
-      {/* Display error message if there is one */}
-      {state.error && (
-        <div className="alert alert-danger">
-          Error: {state.error}
-        </div>
-      )}
-      
       {/* Loading indicator with improved styling */}
       <LoadPanel
         visible={state.loading || isLookupDataLoading}

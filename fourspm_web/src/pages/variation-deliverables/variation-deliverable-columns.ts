@@ -168,6 +168,14 @@ export const createVariationDeliverableColumns = (
       summaryType: 'sum'
     },
     {
+      dataField: 'variationName',
+      caption: 'From Variation',
+      hidingPriority: 12,
+      allowEditing: false,
+      cellClass: 'faded-placeholder',
+      calculateCellValue: (rowData: any) => rowData.variationName
+    },
+    {
       dataField: 'totalHours',
       caption: 'Total Hours',
       hidingPriority: 2,

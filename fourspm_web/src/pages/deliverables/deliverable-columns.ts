@@ -114,13 +114,8 @@ export const createDeliverableColumns = (
       caption: 'Approved Var. Hrs',
       hidingPriority: 9,
       dataType: 'number',
-      editorOptions: {
-        type: 'number',
-        min: 0,
-        showSpinButtons: true,
-        showClearButton: false,
-        step: 1
-      },
+      allowEditing: false, // Read-only calculated field
+      cellClass: 'faded-placeholder',
       showSummary: true,
       summaryType: 'sum'
     },

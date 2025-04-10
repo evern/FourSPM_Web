@@ -61,6 +61,7 @@ export const variationColumns = (config: VariationColumnsConfig): ODataGridColum
         hint: 'View Variation Deliverables',
         icon: 'doc',
         text: 'View',
+        visible: (e) => !e.row.isNewRow && e.row.data.guid,
         onClick: (e: any) => {
           // Navigate to the variation deliverables component
           window.location.href = `#/variations/${e.row.data.guid}/deliverables`;
@@ -85,7 +86,7 @@ export const variationColumns = (config: VariationColumnsConfig): ODataGridColum
         hint: 'Approve Variation',
         icon: 'check',
         text: 'Approve',
-        visible: (e) => !e.row.data.clientApproved,
+        visible: (e) => !e.row.data.clientApproved && !e.row.isNewRow && e.row.data.guid,
         onClick: async (e) => {
           // Call the approve variation handler from the config
           const success = await config.handleApproveVariation(e.row.data.guid, e.row.data);
@@ -101,7 +102,7 @@ export const variationColumns = (config: VariationColumnsConfig): ODataGridColum
         hint: 'Reject Variation',
         icon: 'close',
         text: 'Reject',
-        visible: (e) => !!e.row.data.clientApproved,
+        visible: (e) => !!e.row.data.clientApproved && !e.row.isNewRow && e.row.data.guid,
         onClick: async (e) => {
           // Call the reject variation handler from the config
           const success = await config.handleRejectVariation(e.row.data.guid);
@@ -122,6 +123,7 @@ export const variationColumns = (config: VariationColumnsConfig): ODataGridColum
       {
         hint: 'Delete Variation',
         icon: 'trash',
+        visible: (e) => !e.row.isNewRow && e.row.data.guid,
         onClick: (e: any) => {
           e.component.deleteRow(e.row.rowIndex);
         }

@@ -203,11 +203,59 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         return true;
       },
       errorHandler: (error) => {
+        // Handle unauthorized access by redirecting to login
         if (error.httpStatus === 401) {
           localStorage.removeItem('user');
           window.location.href = '/login';
           return true;
         }
+        
+        // Extract error message from the error object
+        // DevExtreme OData errors can have the message in different places
+        let errorMessage = '';
+        if (error.errorDetails && error.errorDetails.message) {
+          errorMessage = error.errorDetails.message;
+        } else if (error.errorDetails && typeof error.errorDetails === 'string') {
+          errorMessage = error.errorDetails;
+        } else if (error.requestOptions && error.requestOptions.data) {
+          errorMessage = 'Operation failed';
+        }
+        
+        // Handle validation errors (HTTP 400) using toast notifications
+        if (error.httpStatus === 400) {
+          notify({
+            message: errorMessage || 'Cannot complete operation due to validation errors',
+            type: 'error',
+            displayTime: 3500,
+            position: {
+              at: 'top center',
+              my: 'top center',
+              offset: '0 10'
+            },
+            width: 'auto',
+            animation: {
+              show: { type: 'fade', duration: 300, from: 0, to: 1 },
+              hide: { type: 'fade', duration: 300, from: 1, to: 0 }
+            }
+          });
+          return true;
+        }
+        
+        // Handle server errors (HTTP 500) using toast notifications
+        if (error.httpStatus >= 500) {
+          notify({
+            message: errorMessage || 'A server error occurred. Please try again later.',
+            type: 'error',
+            displayTime: 3500,
+            position: {
+              at: 'top center',
+              my: 'top center',
+              offset: '0 10'
+            }
+          });
+          return true;
+        }
+        
         return false;
       }
     });
@@ -330,6 +378,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           }}
           loadPanel={{ enabled: loading }}
           noDataText={`No ${title.toLowerCase()} found. Create a new one to get started.`}
+          errorRowEnabled={false}
           editing={{
             mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',
             allowAdding,
