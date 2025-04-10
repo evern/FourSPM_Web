@@ -143,6 +143,11 @@ const VariationDeliverablesContent = (): React.ReactElement => {
     });
   }, [store]);
   
+  // Use error state from context
+  const error = contextError;
+  // Set the grid to read-only if the variation has been submitted
+  const isReadOnly = variation?.submitted !== null && variation?.submitted !== undefined;
+
   // Create columns with the lookup data sources from dedicated providers
   const columns = useMemo(() => {
     // Only create columns when data is ready to prevent issues with undefined datasources
@@ -155,16 +160,13 @@ const VariationDeliverablesContent = (): React.ReactElement => {
       disciplinesDataSource,
       documentTypesDataSource,
       isMobile,
-      handleCancellationClick
+      handleCancellationClick,
+      isReadOnly
     );
     
     // Process columns to ensure all have a dataField property for ODataGrid compatibility
     return processVariationDeliverableColumns(baseColumns) as ODataGridColumn[];
-  }, [dataReady, areasDataSource, disciplinesDataSource, documentTypesDataSource, isMobile, handleCancellationClick]);
-
-  // Use error state from context
-  const error = contextError;
-  const isReadOnly = false; // Set appropriate read-only logic if needed
+  }, [dataReady, areasDataSource, disciplinesDataSource, documentTypesDataSource, isMobile, handleCancellationClick, isReadOnly]);
 
   return (
     <div className="variation-deliverables-container">

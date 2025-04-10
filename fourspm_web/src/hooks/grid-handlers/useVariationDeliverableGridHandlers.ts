@@ -12,7 +12,7 @@ import { useDeliverableGridEditor } from '../grid-editors/useDeliverableGridEdit
 import { ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
 import { useAuth } from '@/contexts/auth';
 import { Deliverable } from '@/types/odata-types';
-import { confirm } from 'devextreme/ui/dialog';
+import { confirm, alert } from 'devextreme/ui/dialog';
 
 export const useVariationDeliverableGridHandlers = (props?: {
   projectGuid?: string;
@@ -181,7 +181,13 @@ export const useVariationDeliverableGridHandlers = (props?: {
     }
   }, [baseHandleEditorPreparing, variationDeliverables]);
   
-  const handleCancellationClick = useCallback(async (e: any): Promise<void> => {
+  const handleCancellationClick = useCallback(async (e: any, isReadOnly?: boolean): Promise<void> => {
+    // Check if variation is in read-only mode
+    if (isReadOnly) {
+      await alert('This variation has been submitted and cannot be modified.', 'Variation Submitted');
+      return;
+    }
+    
     // Get the deliverable data from the row data
     const deliverableData = e.row ? e.row.data : e.data;
     

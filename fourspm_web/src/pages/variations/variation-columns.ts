@@ -54,5 +54,19 @@ export const variationColumns: ODataGridColumn[] = [
         }
       }
     ]
+  },
+  {
+    type: 'buttons',
+    width: 50,
+    caption: ' ',
+    buttons: [
+      {
+        hint: 'Delete Variation',
+        icon: 'trash',
+        onClick: (e: any) => {
+          e.component.deleteRow(e.row.rowIndex);
+        }
+      }
+    ]
   }
 ];

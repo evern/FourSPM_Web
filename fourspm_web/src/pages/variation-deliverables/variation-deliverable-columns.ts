@@ -12,7 +12,8 @@ export const createVariationDeliverableColumns = (
   disciplinesDataSource: any,
   documentTypesDataSource: any,
   isMobile: boolean = false,
-  onCancellationClick?: (data: any) => void
+  onCancellationClick?: (data: any, isReadOnly?: boolean) => void,
+  isReadOnly: boolean = false
 ): ODataGridColumn[] => {
   return [
     {
@@ -219,28 +220,28 @@ export const createVariationDeliverableColumns = (
           hint: 'Remove Added Deliverable',
           icon: 'deleterow',
           visible: (e) => e.row.data.uiStatus === 'Add',
-          onClick: onCancellationClick
+          onClick: (e) => onCancellationClick?.(e, isReadOnly)
         },
         // Button for Edit status
         {
           hint: 'Cancel Edited Deliverable', 
           icon: 'revert',
           visible: (e) => e.row.data.uiStatus === 'Edit',
-          onClick: onCancellationClick
+          onClick: (e) => onCancellationClick?.(e, isReadOnly)
         },
         // Button for Original status
         {
           hint: 'Cancel Original Deliverable',
           icon: 'clear',
           visible: (e) => e.row.data.uiStatus === 'Original',
-          onClick: onCancellationClick
+          onClick: (e) => onCancellationClick?.(e, isReadOnly)
         },
         // Button for Cancelled status - to un-cancel a deliverable
         {
           hint: 'Un-cancel Deliverable',
           icon: 'undo',
           visible: (e) => e.row.data.variationStatus === 'UnapprovedCancellation',
-          onClick: onCancellationClick // Need to create this handler
+          onClick: (e) => onCancellationClick?.(e, isReadOnly) // Need to create this handler
         }
       ]
     }

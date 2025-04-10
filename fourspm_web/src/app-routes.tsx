@@ -12,7 +12,7 @@ import Disciplines from './pages/disciplines/disciplines';
 import DocumentTypes from './pages/document-types/document-types';
 import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
 import Variations from './pages/variations/variations';
-import VariationDeliverables from './pages/variations/variation-deliverables';
+import VariationDeliverables from './pages/variation-deliverables/variation-deliverables';
 
 interface RouteConfig {
   path: string;
