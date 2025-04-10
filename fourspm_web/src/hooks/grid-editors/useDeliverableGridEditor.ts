@@ -29,7 +29,11 @@ export interface useDeliverableGridEditorProps<TStatus = string> {
    * Optional project data for enhanced row initialization
    */
   project?: any;
-    // No additional parameters needed
+  /**
+   * Whether this editor is for variation deliverables
+   * When true, document numbers will use XXX instead of sequence numbers
+   */
+  isVariation?: boolean;
 }
 
 /**
@@ -42,7 +46,8 @@ export const useDeliverableGridEditor = <TStatus = string>({
   setCellValue,
   onError,
   enableRowInitialization = false,
-  project
+  project,
+  isVariation = false
 }: useDeliverableGridEditorProps<TStatus>) => {
   /**
    * Gets default values for a new deliverable based on the current context
@@ -126,12 +131,21 @@ export const useDeliverableGridEditor = <TStatus = string>({
         currentDeliverableGuid 
       );
       
-      return suggestedNumber || '';
+      // If this is a variation deliverable, replace the numerical suffix with XXX
+      if (isVariation && suggestedNumber) {
+        // Find the last dash followed by numbers and replace with XXX
+        return suggestedNumber.replace(/(-\d+)$/, '-XXX');
+      }
+      
+      return suggestedNumber;
     } catch (error) {
-      if (onError) onError(error);
+      console.error('Error fetching suggested document number:', error);
+      if (onError) {
+        onError(error);
+      }
       return '';
     }
-  }, [projectGuid, userToken, onError]);
+  }, [projectGuid, userToken, onError, isVariation]);
 
   /**
    * Handles editor preparing for deliverable fields, including automatic document number generation
@@ -171,25 +185,7 @@ export const useDeliverableGridEditor = <TStatus = string>({
         if (originalSetValue) {
           originalSetValue(args);
         }
-        
-        // Determine if this is a Deliverable or DeliverableICR that requires an area number
-        const isDeliverableOrICR = args.value === 'Deliverable' ||
-                                  args.value === 'DeliverableICR';
-        
-        // Instead of directly accessing the editor through form.getEditor,
-        // we'll update through row data and rely on the grid to update the UI
-        if (row && row.data) {
-          // When the deliverable type changes, we can't directly control the editor
-          // But the grid will respect allowEditing status on the next render
-          // Pass the information through to the consumer via setCellValue
-          if (setCellValue && row.rowIndex !== undefined) {
-            // Optionally update related fields based on the type change
-            if (!isDeliverableOrICR && row.data.areaNumber) {
-              setCellValue(row.rowIndex, 'areaNumber', '');
-            }
-          }
-        }
-        
+
         // Also trigger document number generation logic
         updateDocumentNumber(row, args.value, row.data.areaNumber, row.data.discipline, row.data.documentType);
       };

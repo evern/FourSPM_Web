@@ -8,6 +8,21 @@ import {
 } from './deliverables-types';
 import { deliverablesReducer, initialDeliverablesState } from './deliverables-reducer';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/contexts/auth';
+import { useDeliverableGridValidator } from '@/hooks/grid-handlers/useDeliverableGridValidator';
+import { useGridUtils } from '@/hooks/utils/useGridUtils';
+import { GridRowEvent } from '@/hooks/grid-handlers/useDeliverableGridValidator';
+
+/**
+ * These fields are calculated by the backend and should always be read-only
+ * Used by deliverable-related handlers to determine field editability
+ */
+export const ALWAYS_READONLY_DELIVERABLE_FIELDS = [
+  'bookingCode',
+  'clientNumber',
+  'projectNumber',
+  'totalHours'
+];
 
 // Create the context
 const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(undefined);
@@ -16,10 +31,25 @@ const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(
  * Provider component for the deliverables context
  * Follows the Context + Reducer pattern for clean separation of state management and UI
  */
-export function DeliverablesProvider({ children }: DeliverablesProviderProps): React.ReactElement {
+export function DeliverablesProvider({ children, projectId }: DeliverablesProviderProps): React.ReactElement {
   // Initialize state with reducer
   const [state, dispatch] = useReducer(deliverablesReducer, initialDeliverablesState);
+  const { user } = useAuth();
   
+  // Get grid utility methods
+  const { setCellValue, handleGridInitialized } = useGridUtils();
+  
+  // Get the validator functions from useDeliverableGridValidator
+  const {
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    validateDeliverable
+  } = useDeliverableGridValidator({
+    projectGuid: projectId || state.projectGuid || '',
+    userToken: user?.token
+  });
+
   // Action creators
   const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
@@ -36,22 +66,65 @@ export function DeliverablesProvider({ children }: DeliverablesProviderProps): R
   const setLookupDataLoaded = useCallback((loaded: boolean) => {
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
+
+  /**
+   * Defines which fields are editable based on the deliverable status
+   */
+  const isFieldEditable = useCallback((fieldName: string, uiStatus?: string) => {
+    // Use the shared readonly fields list
+    if (ALWAYS_READONLY_DELIVERABLE_FIELDS.includes(fieldName)) {
+      return false;
+    }
+    return true; // All other fields are editable by default
+  }, []);
+  
+  /**
+   * Handle deliverable row removal - simple pass-through implementation
+   */
+  const handleRowRemoving = useCallback((e: GridRowEvent) => {
+    // No special handling for removal at this level
+    // Any confirmation dialog would be handled at the UI level
+  }, []);
   
   /**
    * Generate default values for a new deliverable
    * Memoized to prevent unnecessary re-creations
    */
-  const getDeliverableDefaultValues = useCallback((projectId?: string): Partial<Deliverable> => {
+  const getDeliverableDefaultValues = useCallback((projectGuid?: string): Partial<Deliverable> => {
     const now = new Date();
+    const deliverableGuid = uuidv4();
     return {
-      guid: uuidv4(),
-      projectGuid: projectId || state.projectGuid || '',
+      guid: deliverableGuid,
+      originalDeliverableGuid: deliverableGuid, // For variation tracking
+      projectGuid: projectGuid || state.projectGuid || '',
+      departmentId: 'Design',
+      deliverableTypeId: 'Deliverable',
+      documentType: '',
+      clientDocumentNumber: '',
+      discipline: '',
+      areaNumber: '',
+      budgetHours: 0,
+      variationHours: 0,
+      totalHours: 0,
+      totalCost: 0,
       isActive: true,
       isReadOnly: false,
       createdAt: now,
       modifiedAt: now
     };
   }, [state.projectGuid]);
+
+  /**
+   * Handle initialization of a new deliverable row
+   */
+  const handleInitNewRow = useCallback((e: GridRowEvent) => {
+    if (e?.data) {
+      // Apply default deliverable values
+      const projectGuidToUse = projectId || (state.projectGuid || '');
+      const defaults = getDeliverableDefaultValues(projectGuidToUse);
+      Object.assign(e.data, defaults);
+    }
+  }, [getDeliverableDefaultValues, projectId, state.projectGuid]);
   
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
@@ -61,14 +134,36 @@ export function DeliverablesProvider({ children }: DeliverablesProviderProps): R
     setProjectGuid,
     setLookupDataLoaded,
     // Data access functions for deliverables
-    getDeliverableDefaultValues
+    getDeliverableDefaultValues,
+    // Grid handlers
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    handleRowRemoving,
+    validateDeliverable,
+    handleInitNewRow,
+    // Grid utilities
+    handleGridInitialized,
+    setCellValue,
+    isFieldEditable
   }), [
     state, 
     setLoading,
     setError,
     setProjectGuid,
     setLookupDataLoaded,
-    getDeliverableDefaultValues
+    getDeliverableDefaultValues,
+    // Grid handler dependencies
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    handleRowRemoving,
+    validateDeliverable,
+    handleInitNewRow,
+    // Grid utilities dependencies
+    handleGridInitialized,
+    setCellValue,
+    isFieldEditable
   ]);
   
   return (

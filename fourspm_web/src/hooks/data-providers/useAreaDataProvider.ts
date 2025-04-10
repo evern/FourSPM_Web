@@ -48,12 +48,16 @@ export interface AreaDataProviderResult {
  * @returns Object containing the areas store, data array, loading state, and helper methods
  */
 export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult => {
+  // IMPORTANT: All hooks MUST be called at the top level, unconditionally
+  // to satisfy React's rules of hooks
   const { user } = useAuth();
   const [areas, setAreas] = useState<AreaWithAliases[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(projectId ? true : false);
   const [error, setError] = useState<Error | null>(null);
   const initialLoadCompleted = useRef(false);
-  const cacheKey = projectId || 'all'; // Use 'all' as key when no projectId provided
+  
+  // Only use the projectId as cache key if it exists, otherwise use 'all'
+  const cacheKey = projectId || 'all';
   
   /**
    * Create a store for OData operations - this is used when we need direct grid operations
@@ -65,6 +69,10 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
       projectGuid: 'Guid'  // This ensures proper serialization of GUID values in filters
     }
   });
+  
+  // Early skip for the conditional logic when projectId is not available
+  // We've already called all the necessary hooks above, so this is safe
+  const shouldSkipActualLoading = !projectId;
 
   /**
    * Preprocess areas to add areaNumber alias
@@ -82,6 +90,15 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
    * Similar pattern to useClientDataProvider but with project-specific filtering
    */
   const areasDataSource = useMemo(() => {
+    // Return a dummy data source if we should skip loading
+    if (shouldSkipActualLoading) {
+      return {
+        load: () => Promise.resolve([]),
+        byKey: () => Promise.resolve(null),
+        map: (item: any) => item
+      };
+    }
+    
     return {
       load: function(loadOptions: any) {
         // Apply project filter if provided in the hook options
@@ -223,6 +240,15 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
    * Initial data loading (if needed)
    */
   useEffect(() => {
+    // Skip loading entirely if we have no projectGuid
+    if (shouldSkipActualLoading) {
+      if (!initialLoadCompleted.current) {
+        console.log('[AreaProvider] Skipping area data load - no projectGuid provided');
+        initialLoadCompleted.current = true;
+      }
+      return;
+    }
+    
     // If we already have cache data for this project, use it and skip the request
     if (areasGlobalCache[cacheKey] && !initialLoadCompleted.current) {
       console.log(`[AreaProvider] Using global cache for initial load of ${cacheKey}`);
@@ -248,7 +274,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
           setIsLoading(false);
         });
     }
-  }, [areasDataSource, projectId, cacheKey]); // Run on initial mount or when projectId changes
+  }, [areasDataSource, projectId, cacheKey, shouldSkipActualLoading]); // Run on initial mount or when projectId changes
   
   /**
    * Get an area by its ID
@@ -256,12 +282,15 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
    * @returns The area object or undefined if not found
    */
   const getAreaById = useCallback((id: string): AreaWithAliases | undefined => {
+    // Return undefined immediately if we're in skip mode
+    if (shouldSkipActualLoading) return undefined;
+    
     // Check global cache first for best performance
     if (areasGlobalCache[cacheKey]) {
       return areasGlobalCache[cacheKey].find(area => compareGuids(area.guid, id));
     }
     return areas.find(area => compareGuids(area.guid, id));
-  }, [areas, cacheKey]);
+  }, [areas, cacheKey, shouldSkipActualLoading]);
 
   /**
    * Get an area by its number
@@ -269,12 +298,15 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
    * @returns The area object or undefined if not found
    */
   const getAreaByNumber = useCallback((number: string): AreaWithAliases | undefined => {
+    // Return undefined immediately if we're in skip mode
+    if (shouldSkipActualLoading) return undefined;
+    
     // Check global cache first for best performance
     if (areasGlobalCache[cacheKey]) {
       return areasGlobalCache[cacheKey].find(area => area.number === number);
     }
     return areas.find(area => area.number === number);
-  }, [areas, cacheKey]);
+  }, [areas, cacheKey, shouldSkipActualLoading]);
 
   /**
    * Get areas filtered by project ID
@@ -282,6 +314,9 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
    * @returns Array of areas for the specified project
    */
   const getFilteredAreas = useCallback((projectGuid: string): AreaWithAliases[] => {
+    // Return empty array immediately if we're in skip mode
+    if (shouldSkipActualLoading) return [];
+    
     // Check if we have a cache for this specific project
     if (areasGlobalCache[projectGuid]) {
       return areasGlobalCache[projectGuid];
@@ -299,7 +334,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     
     // Finally, fall back to filtering the current areas array
     return areas.filter(area => compareGuids(area.projectGuid, projectGuid));
-  }, [areas, projectId]);
+  }, [areas, projectId, shouldSkipActualLoading]);
 
   return {
     areas,

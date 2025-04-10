@@ -1,5 +1,4 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
-import { renderDeliverablesButton } from './deliverables-button-renderer';
 
 
 
@@ -41,8 +40,19 @@ export const variationColumns: ODataGridColumn[] = [
   {
     dataField: 'guid',
     caption: 'Deliverables',
-    width: 150,
+    width: 120,
     allowEditing: false,
-    cellRender: renderDeliverablesButton
+    type: 'buttons',
+    buttons: [
+      {
+        hint: 'View Variation Deliverables',
+        icon: 'doc',
+        text: 'View',
+        onClick: (e: any) => {
+          // Navigate to the variation deliverables component
+          window.location.href = `#/variations/${e.row.data.guid}/deliverables`;
+        }
+      }
+    ]
   }
 ];

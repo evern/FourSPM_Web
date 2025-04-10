@@ -13,8 +13,6 @@ import DocumentTypes from './pages/document-types/document-types';
 import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
 import Variations from './pages/variations/variations';
 import VariationDeliverables from './pages/variations/variation-deliverables';
-import { ProjectsProvider } from './contexts/projects/projects-context';
-import { DeliverablesProvider } from './contexts/deliverables/deliverables-context';
 
 interface RouteConfig {
   path: string;

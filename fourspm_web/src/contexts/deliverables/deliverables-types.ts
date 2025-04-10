@@ -1,5 +1,6 @@
 import { Deliverable } from '@/types/odata-types';
 import React from 'react';
+import { GridRowEvent, ValidationResult } from '@/hooks/grid-handlers/useDeliverableGridValidator';
 
 /**
  * Defines the state structure for the deliverables context
@@ -40,6 +41,7 @@ export type DeliverablesAction =
  */
 export interface DeliverablesProviderProps {
   children: React.ReactNode;
+  projectId?: string;
 }
 
 /**
@@ -50,11 +52,6 @@ export interface DeliverablesContextProps {
    * Current state of the deliverables context
    */
   state: DeliverablesState;
-  
-  /**
-   * REMOVED: Validation is now handled by useDeliverableGridValidator
-   * See hooks/grid-handlers/useDeliverableGridValidator.ts
-   */
 
   /**
    * Sets the loading state
@@ -82,8 +79,58 @@ export interface DeliverablesContextProps {
   
   /**
    * Provides default values for a new deliverable
-   * @param projectId Optional project ID to associate with the deliverable
+   * @param projectGuid Optional project ID to associate with the deliverable
    * @returns A partial deliverable object with default values
    */
-  getDeliverableDefaultValues: (projectId?: string) => Partial<Deliverable>;
+  getDeliverableDefaultValues: (projectGuid?: string) => Partial<Deliverable>;
+  
+  /**
+   * Determines if a field should be editable based on its name and status
+   * @param fieldName Name of the field to check
+   * @param uiStatus Optional UI status to consider for editability
+   * @returns Boolean indicating if the field should be editable
+   */
+  isFieldEditable: (fieldName: string, uiStatus?: string) => boolean;
+  
+  /**
+   * Handler for grid initialization
+   */
+  handleGridInitialized: (e: any) => void;
+  
+  /**
+   * Utility to set a cell value in the grid
+   */
+  setCellValue: (rowIndex: number, dataField: string, value: any) => void;
+  
+  /**
+   * Handler for validating row data
+   */
+  handleRowValidating: (e: GridRowEvent) => void;
+  
+  /**
+   * Handler for updating row data
+   */
+  handleRowUpdating: (e: GridRowEvent) => any;
+  
+  /**
+   * Handler for inserting new row data
+   */
+  handleRowInserting: (e: GridRowEvent) => void;
+  
+  /**
+   * Handler for removing row data
+   */
+  handleRowRemoving: (e: GridRowEvent) => void;
+  
+  /**
+   * Handler for initializing a new row
+   */
+  handleInitNewRow: (e: GridRowEvent) => void;
+  
+  /**
+   * Validates a deliverable object
+   * @param data The deliverable data to validate
+   * @returns Validation result containing isValid flag and any errors
+   */
+  validateDeliverable: (data: Record<string, any>) => ValidationResult;
 }

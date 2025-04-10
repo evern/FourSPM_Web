@@ -13,7 +13,6 @@ import { useDocumentTypeDataProvider } from '../../hooks/data-providers/useDocum
 import { useScreenSizeClass } from '../../utils/media-query';
 import { useProjectInfo } from '@/hooks/utils/useProjectInfo';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { DeliverableEditorProvider } from '@/contexts/editor/deliverable-editor-context';
 import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
 import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 import { GridRowEvent } from '@/hooks/grid-handlers/useDeliverableGridValidator';
@@ -41,9 +40,7 @@ export function Deliverables(): React.ReactElement {
   
   return (
     <DeliverablesProvider>
-      <DeliverableEditorProvider projectId={projectId}>
-        <DeliverablesContent />
-      </DeliverableEditorProvider>
+      <DeliverablesContent />
     </DeliverablesProvider>
   );
 }
@@ -163,6 +160,7 @@ const DeliverablesContent = (): React.ReactElement => {
             allowAdding={true}
             allowUpdating={true}
             allowDeleting={true}
+            customGridHeight={900}
           />
         )}
       </div>

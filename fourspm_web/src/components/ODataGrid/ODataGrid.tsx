@@ -17,7 +17,8 @@ import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
 
 export interface ODataGridColumn extends Partial<Column> {
-  dataField: string;
+  // Standard column properties
+  dataField?: string; // Make optional to support command columns
   caption: string;
   width?: number;
   minWidth?: number;
@@ -28,6 +29,7 @@ export interface ODataGridColumn extends Partial<Column> {
   sortIndex?: number;
   fixed?: boolean;
   fixedPosition?: 'left' | 'right';
+  name?: string; // Used to uniquely identify columns especially for button columns
   editorOptions?: {
     mask?: string;
     maskRules?: Record<string, RegExp>;
@@ -49,6 +51,19 @@ export interface ODataGridColumn extends Partial<Column> {
   showSummary?: boolean;
   summaryType?: 'sum' | 'avg' | 'min' | 'max' | 'count';
   summaryFormat?: string | object;
+  
+  // Command column properties
+  type?: 'buttons' | 'detailExpand' | 'selection';
+  buttons?: Array<{
+    name?: string;
+    hint?: string;
+    icon?: string;
+    text?: string;
+    visible?: boolean | ((e: any) => boolean);
+    disabled?: boolean | ((e: any) => boolean);
+    onClick?: (e: any) => void;
+  }>;
+  cellTemplate?: (container: any, options: any) => void;
 }
 
 interface ODataGridProps {
@@ -118,13 +133,16 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     dataSourceInstance = customDataSource;
   } else if (endpoint) {
     // Only create an ODataStore if an endpoint is provided
+    // Merge default options with the provided storeOptions
     let store = new ODataStore({
       url: endpoint,
       version: 4,
       key: keyField,
       keyType: 'Guid',
+      // Merge default fieldTypes with those provided in storeOptions.fieldTypes
       fieldTypes: {
-        projectGuid: 'Guid'
+        projectGuid: 'Guid',
+        ...(storeOptions.fieldTypes || {})
       },
       beforeSend: (options: any) => {
         if (!token) {
@@ -339,33 +357,65 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             <Paging enabled={false} />
           )}
           <FilterRow visible={true} />
-          {columns.map((column) => (
-            <Column
-              key={column.dataField}
-              dataField={column.dataField}
-              caption={column.caption}
-              dataType={column.dataType}
-              minWidth={150}
-              allowEditing={column.allowEditing}
-              editorOptions={column.editorOptions}
-              customizeText={column.customizeText}
-              cellRender={column.cellRender}
-              calculateDisplayValue={column.calculateDisplayValue}
-              cssClass={column.cellClass}
-              sortOrder={column.sortOrder}
-              sortIndex={column.sortIndex}
-              fixed={column.fixed}
-              fixedPosition={column.fixedPosition}
-            >
-              {column.lookup && (
-                <Lookup
-                  dataSource={column.lookup.dataSource}
-                  valueExpr={column.lookup.valueExpr}
-                  displayExpr={column.lookup.displayExpr}
+          {columns.map((column) => {
+            // Pass all properties from column to DevExtreme Column component
+            // Start with common properties that all columns should have
+            const commonProps = {
+              key: column.dataField || `${column.type}-${column.name || column.caption}`, // Use name if available for better uniqueness
+              caption: column.caption,
+              width: column.width,
+              // Allow fixed position columns to be more compact if they have a specified width
+              minWidth: (column.fixed && column.width) ? undefined : (column.minWidth || 150),
+              allowEditing: column.allowEditing,
+              cssClass: column.cellClass,
+              sortOrder: column.sortOrder,
+              sortIndex: column.sortIndex,
+              fixed: column.fixed,
+              fixedPosition: column.fixedPosition
+            };
+            
+            // Handle command columns (type="buttons")
+            if (column.type === 'buttons') {
+              return (
+                <Column
+                  {...commonProps}
+                  dataField={column.dataField} // Explicitly pass dataField for button columns
+                  type={column.type}
+                  buttons={column.buttons ? column.buttons.map(button => ({
+                    name: button.name,
+                    hint: button.hint,   // Tooltip text
+                    icon: button.icon,   // Button icon
+                    text: button.text,   // Button text
+                    visible: button.visible,
+                    disabled: button.disabled,
+                    onClick: button.onClick
+                  })) : []}
+                  cellTemplate={column.cellTemplate}
                 />
-              )}
-            </Column>
-          ))}
+              );
+            }
+            
+            // Handle regular data columns
+            return (
+              <Column
+                {...commonProps}
+                dataField={column.dataField}
+                dataType={column.dataType}
+                editorOptions={column.editorOptions}
+                customizeText={column.customizeText}
+                cellRender={column.cellRender}
+                calculateDisplayValue={column.calculateDisplayValue}
+              >
+                {column.lookup && (
+                  <Lookup
+                    dataSource={column.lookup.dataSource}
+                    valueExpr={column.lookup.valueExpr}
+                    displayExpr={column.lookup.displayExpr}
+                  />
+                )}
+              </Column>
+            );
+          })}
           <Summary>
             {showRecordCount && (
               <TotalItem

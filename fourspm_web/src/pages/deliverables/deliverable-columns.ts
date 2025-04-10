@@ -77,14 +77,16 @@ export const createDeliverableColumns = (
     },
     {
       dataField: 'internalDocumentNumber',
-      caption: 'Internal Doc. No.',
+      caption: 'Internal Number',
       hidingPriority: 14, // Will be hidden last (highest number = shown longest)
       fixed: isMobile, // Conditionally apply fixed positioning on mobile only
-      fixedPosition: 'left'
+      fixedPosition: 'left',
+      showSummary: true,
+      summaryType: 'count'
     },
     {
       dataField: 'clientDocumentNumber',
-      caption: 'Client Doc. No.',
+      caption: 'Client Number',
       hidingPriority: 13, // Near last
     },
     {

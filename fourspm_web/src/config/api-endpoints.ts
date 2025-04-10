@@ -21,6 +21,7 @@ export const DOCUMENT_TYPES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DocumentT
 export const DELIVERABLE_GATES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`;
 export const PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Progress`;
 export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
+export const VARIATION_DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/VariationDeliverables`;
 
 /**
  * Note on OData Custom Function Endpoints:
@@ -35,9 +36,12 @@ export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
 
 /**
  * Returns the endpoint URL for getting deliverables by variation ID
+ * @param variationGuid The GUID of the variation
+ * @returns URL to the VariationDeliverables endpoint with filter
  */
 export const getVariationDeliverablesEndpoint = (variationGuid: string): string => {
-  return `${DELIVERABLES_ENDPOINT}/ByVariation/${variationGuid}`;
+  // Using the dedicated VariationDeliverables endpoint with OData filter for variationGuid
+  return `${VARIATION_DELIVERABLES_ENDPOINT}?$filter=variationGuid eq ${variationGuid}`;
 };
 
 /**
@@ -52,10 +56,40 @@ export const getDeliverablesWithProgressUrl = (projectId: string, period: number
 };
 
 /**
- * Generate the URL for retrieving deliverables associated with a specific variation
+ * Generate the URL for retrieving deliverables associated with a specific variation using filter approach
  * @param variationGuid The GUID of the variation
- * @returns URL to the ByVariation endpoint for retrieving variation deliverables
+ * @returns URL to the VariationDeliverables endpoint with filter for retrieving variation deliverables
  */
 export const getDeliverablesByVariationUrl = (variationGuid: string): string => {
-  return `${DELIVERABLES_ENDPOINT}/ByVariation/${variationGuid}`;
+  // Using the new dedicated VariationDeliverables endpoint
+  // IMPORTANT: GUID values must be formatted as guid'value' for OData v4 filtering
+  return `${VARIATION_DELIVERABLES_ENDPOINT}?$filter=variationGuid eq ${variationGuid}`;
+};
+
+/**
+ * Generate the URL for retrieving deliverables associated with a specific variation
+ * @param variationGuid The GUID of the variation
+ * @returns URL to the VariationDeliverables endpoint with variation parameter
+ * @description This uses the consolidated endpoint approach where variationId is passed as a parameter directly to the endpoint
+ * This allows the backend to include both variation deliverables and eligible original deliverables
+ */
+export const getVariationDeliverablesWithParamUrl = (variationGuid: string): string => {
+  // Passing variationId directly as a query parameter to match the controller signature
+  // When variationId is provided, the endpoint returns both variation deliverables and eligible original deliverables
+
+  return `${VARIATION_DELIVERABLES_ENDPOINT}?variationId=${variationGuid}`;
+};
+
+// NOTE: The GetMergedVariationDeliverables function endpoint has been consolidated into the main endpoint
+// Use getVariationDeliverablesWithParamUrl instead with the variationId parameter
+
+/**
+ * Generate the URL for cancelling a deliverable within a variation
+ * @param originalDeliverableGuid The GUID of the original deliverable to cancel
+ * @param variationGuid The GUID of the variation this cancellation belongs to
+ * @returns URL to the action endpoint for cancelling a deliverable
+ */
+export const getCancelDeliverableUrl = (originalDeliverableGuid: string, variationGuid: string): string => {
+  // Using OData function call format to cancel a deliverable
+  return `${VARIATION_DELIVERABLES_ENDPOINT}/CancelDeliverable(originalDeliverableGuid=${originalDeliverableGuid},variationGuid=${variationGuid})`;
 };

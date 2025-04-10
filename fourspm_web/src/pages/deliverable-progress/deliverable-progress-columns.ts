@@ -52,7 +52,9 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       cellClass: 'faded-placeholder',
       hidingPriority: 20, // Hidden last - most important
       fixed: isMobile,
-      fixedPosition: 'left'
+      fixedPosition: 'left',
+      showSummary: true,
+      summaryType: 'count'
     },
     {
       dataField: 'clientDocumentNumber',
