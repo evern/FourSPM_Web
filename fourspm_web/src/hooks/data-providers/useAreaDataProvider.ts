@@ -12,6 +12,7 @@ interface AreaCache {
   [projectId: string]: AreaWithAliases[];
 }
 
+// Caching disabled for now to avoid stale data issues
 // Shared global cache to ensure it's available across ALL component instances
 // This prevents redundant API calls across different component instances
 let areasGlobalCache: AreaCache = {};
@@ -19,6 +20,9 @@ let areasGlobalCache: AreaCache = {};
 // Flag to track if we're currently loading data for a specific project
 // This prevents duplicate API calls when multiple components request the same data simultaneously
 const loadingFlags: { [projectId: string]: boolean } = {};
+
+// Toggle for enabling/disabling cache
+const USE_CACHE = false;
 
 // This helps us normalize field names between Area and Deliverable entities
 type AreaWithAliases = Area & {
@@ -115,14 +119,14 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
           }
         }
         
-        // If we have cached data for this project, use it immediately
-        if (areasGlobalCache[targetProjectId]) {
+        // If caching is enabled and we have cached data for this project, use it immediately
+        if (USE_CACHE && areasGlobalCache[targetProjectId]) {
           // Using cached data for project
           return Promise.resolve(areasGlobalCache[targetProjectId]);
         }
         
-        // If we already loaded into component state and it matches our target, use that
-        if (areas.length > 0 && !isLoading && targetProjectId === cacheKey) {
+        // If caching is enabled and we already loaded into component state and it matches our target, use that
+        if (USE_CACHE && areas.length > 0 && !isLoading && targetProjectId === cacheKey) {
           // Using component state data
           if (!areasGlobalCache[targetProjectId]) {
             areasGlobalCache[targetProjectId] = areas;
@@ -130,8 +134,8 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
           return Promise.resolve(areas);
         }
         
-        // If we're already loading this project in another instance, wait for it
-        if (loadingFlags[targetProjectId]) {
+        // If caching is enabled and we're already loading this project in another instance, wait for it
+        if (USE_CACHE && loadingFlags[targetProjectId]) {
           // Already loading - waiting for completion
           // Poll the cache every 100ms for up to 5 seconds
           return new Promise((resolve, reject) => {
@@ -171,8 +175,10 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
           const areasData = data.value || data;
           const processedAreas = preprocessAreas(areasData);
           
-          // Update global cache and release loading flag
-          areasGlobalCache[targetProjectId] = processedAreas;
+          // Update global cache and release loading flag if caching is enabled
+          if (USE_CACHE) {
+            areasGlobalCache[targetProjectId] = processedAreas;
+          }
           loadingFlags[targetProjectId] = false;
           
           // If this is for the current component's project, update state too
@@ -335,6 +341,8 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     // Finally, fall back to filtering the current areas array
     return areas.filter(area => compareGuids(area.projectGuid, projectGuid));
   }, [areas, projectId, shouldSkipActualLoading]);
+
+
 
   return {
     areas,
