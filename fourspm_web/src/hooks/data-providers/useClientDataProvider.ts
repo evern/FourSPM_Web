@@ -11,6 +11,10 @@ import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 // This is key to preventing multiple requests
 let clientsGlobalCache: Client[] | null = null;
 
+// Flag to track if we're currently loading client data
+// This prevents duplicate API calls when multiple components initialize simultaneously
+let isLoadingClients = false;
+
 /**
  * Interface for client data provider result
  */
@@ -50,19 +54,42 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
       load: function(loadOptions: any) {
         // If global cache already has data, use it immediately
         if (clientsGlobalCache) {
-          console.log('[ClientProvider] Using global cache for load - no server request');
+          // Using global cache for load
           return Promise.resolve(clientsGlobalCache);
         }
         
         // If we already loaded data into component state, update global cache and return
         if (clients.length > 0 && !isLoading) {
-          console.log('[ClientProvider] Using component state for load - no server request');
+          // Using component state for load
           clientsGlobalCache = clients;
           return Promise.resolve(clients);
         }
         
+        // Check if another instance is already loading
+        if (isLoadingClients) {
+          // Wait for the existing request to complete and use its results
+          return new Promise<Client[]>((resolve) => {
+            const checkCacheInterval = setInterval(() => {
+              if (!isLoadingClients && clientsGlobalCache) {
+                clearInterval(checkCacheInterval);
+                resolve(clientsGlobalCache);
+                
+                // Update component state if needed
+                if (!initialLoadCompleted.current) {
+                  setClients(clientsGlobalCache);
+                  setIsLoading(false);
+                  initialLoadCompleted.current = true;
+                }
+              }
+            }, 100);
+          });
+        }
+        
+        // Set the loading flag to prevent duplicate requests
+        isLoadingClients = true;
+        
         // Otherwise make a direct fetch to avoid ODataStore overhead
-        console.log('[ClientProvider] No cache available - fetching from server');
+        // No cache available - fetching from server
         return fetch(CLIENTS_ENDPOINT, {
           headers: {
             'Authorization': user?.token ? `Bearer ${user.token}` : '',
@@ -81,12 +108,19 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
             initialLoadCompleted.current = true;
           }
           
+          // Clear the loading flag
+          isLoadingClients = false;
+          
           return clientsData;
         })
         .catch(err => {
           console.error('[ClientProvider] Error loading client data:', err);
           setError(err as Error);
           setIsLoading(false);
+          
+          // Clear the loading flag on error too
+          isLoadingClients = false;
+          
           return [];
         });
       },
@@ -94,14 +128,14 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
       byKey: function(key: string) {
         // Always check global cache first (most efficient)
         if (clientsGlobalCache) {
-          console.log('[ClientProvider] Looking up client by key from global cache');
+          // Looking up client from global cache
           const item = clientsGlobalCache.find(client => compareGuids(client.guid, key));
           return Promise.resolve(item);
         }
         
         // If we have clients in component state but not in global cache (shouldn't happen)
         if (clients.length > 0) {
-          console.log('[ClientProvider] Looking up client by key from component state');
+          // Looking up client from component state
           const item = clients.find(client => compareGuids(client.guid, key));
           
           // Update global cache for future lookups
@@ -113,7 +147,7 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
         }
         
         // If no cache available, fetch just the one client by key
-        console.log('[ClientProvider] Looking up client by key from server');
+        // Looking up client from server
         const keyFilterUrl = `${CLIENTS_ENDPOINT}?$filter=guid eq '${key}'`;
         return fetch(keyFilterUrl, {
           headers: {
@@ -134,7 +168,7 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
   useEffect(() => {
     // If we already have global cache data, use it and skip the request
     if (clientsGlobalCache && !initialLoadCompleted.current) {
-      console.log('[ClientProvider] Using global cache for initial load');
+      // Using global cache for initial load
       setClients(clientsGlobalCache);
       setIsLoading(false);
       initialLoadCompleted.current = true;
@@ -143,7 +177,7 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
     
     // Only load once unless forced
     if (!initialLoadCompleted.current) {
-      console.log('[ClientProvider] Initial client data load');
+      // Initial client data load
       setIsLoading(true);
       
       // Use the data source load method to ensure cache is populated

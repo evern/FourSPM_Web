@@ -358,10 +358,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           )}
           <FilterRow visible={true} />
           {columns.map((column) => {
+            // Create a unique key for each column
+            const columnKey = column.dataField || `${column.type}-${column.name || column.caption}`; // Use name if available for better uniqueness
+            
             // Pass all properties from column to DevExtreme Column component
-            // Start with common properties that all columns should have
+            // Common properties that all columns should have (except key)
             const commonProps = {
-              key: column.dataField || `${column.type}-${column.name || column.caption}`, // Use name if available for better uniqueness
               caption: column.caption,
               width: column.width,
               // Allow fixed position columns to be more compact if they have a specified width
@@ -378,6 +380,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             if (column.type === 'buttons') {
               return (
                 <Column
+                  key={columnKey}
                   {...commonProps}
                   dataField={column.dataField} // Explicitly pass dataField for button columns
                   type={column.type}
@@ -398,6 +401,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             // Handle regular data columns
             return (
               <Column
+                key={columnKey}
                 {...commonProps}
                 dataField={column.dataField}
                 dataType={column.dataType}

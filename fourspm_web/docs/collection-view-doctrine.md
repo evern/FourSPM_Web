@@ -20,20 +20,31 @@ Every collection view in the application MUST be built using the Context + Reduc
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
 │   View Definition   │    │   Specialized Hooks │    │   API Endpoints     │
 │                     │    │                     │    │                     │
-│ {entity}-columns.ts │    │ grid-handlers/     │    │  api-endpoints.ts   │
-│                     │    │ grid-editors/       │    │                     │
+│ {entity}-columns.ts │    │ grid-handlers/*    │    │  api-endpoints.ts   │
+│                     │    │ grid-validators/*   │    │                     │
+│                     │    │ grid-editors/**     │    │                     │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+
+* Entity-specific implementations (mandatory)
+** Shared components (optional)
 ```
 
 Where `{entity}` is replaced with the specific entity name (e.g., deliverable, project, area).
 
-This architecture includes specialized components with clear responsibilities:
+This architecture includes specialized components with defined responsibilities.
+
+### Mandatory Components
 
 1. **Data Context** (`{entity}-context.tsx`): Handles data access, CRUD operations, and application state management
-2. **Editor Context** (`{entity}-editor-context.tsx`): Manages editor field behaviors, validation, and generation of fields like document numbers
-3. **Grid Handlers** (`use{Entity}GridHandlers.ts`): Centralizes grid event handling with proper type safety
-4. **Grid Editors** (`use{Entity}GridEditor.ts`): Provides specialized editor preparation and field customization
-5. **Grid Validators** (`use{Entity}GridValidator.ts`): Contains business validation logic separated from UI concerns
+2. **Grid Handlers** (`use{Entity}GridHandlers.ts`): Centralizes grid event handling with proper type safety (entity-specific)
+3. **Grid Validators** (`use{Entity}GridValidator.ts`): Contains business validation logic separated from UI concerns (entity-specific)
+4. **Columns Definition** (`{entity}-columns.ts`): Defines grid column configuration
+5. **API Adapter** (`{entity}.adapter.ts`): Contains API interaction methods
+
+### Optional Components
+
+1. **Editor Context** (`{entity}-editor-context.tsx`): Manages editor field behaviors, validation, and generation of fields like document numbers (only needed for complex editing scenarios)
+2. **Grid Editors** (`useSharedGridEditor.ts`): Provides reusable editor preparation and field customization (shared across entities)
 
 ## Required Components
 
@@ -65,8 +76,10 @@ export default EntityName;
 
 This component MUST:
 - Use the data context via a custom hook (e.g., `useDeliverables`) 
-- Use the editor context via a custom hook (e.g., `useDeliverableEditor`)
-- Implement grid event handlers from dedicated hooks
+- Use the editor context via a custom hook (e.g., `useDeliverableEditor`) when needed
+- Implement entity-specific grid event handlers via dedicated hooks (e.g., `use{Entity}GridHandlers`)
+- Implement entity-specific grid validators via dedicated hooks (e.g., `use{Entity}GridValidator`)
+- Optionally use shared editor functionality (e.g., `useDeliverableGridEditor`) when applicable
 - Use data provider hooks for all lookup data
 - Render the `ODataGrid` component with standardized handlers
 - Include proper error handling and loading states
@@ -105,7 +118,8 @@ const EntityContent = (): React.ReactElement => {
     userToken: user?.token
   });
   
-  // Combine grid handler with editor context functionality
+  // Combine grid handler with shared editor functionality (optional pattern)
+  // Only needed when using shared editors like useDeliverableGridEditor
   const combinedInitNewRow = useCallback((e: any) => {
     baseHandleInitNewRow(e);
     // Add entity-specific functionality
@@ -353,219 +367,17 @@ export function useEntityEditor(): EntityEditorContextType {
   const context = useContext(EntityEditorContext);
   if (context === undefined) {
     throw new Error('useEntityEditor must be used within an EntityEditorProvider');
-  }
-  return context;
-}
-```
-
-### 4. Grid Handlers Hook (`use{Entity}GridHandlers.ts`)
-
-This hook MUST provide all necessary grid event handlers:
-
-- Implement handlers for row validating, updating, inserting, removing, and initializing new rows
-{{ ... }}
-- Handle any entity-specific business logic
-
-**Interface Definition:**
-```typescript
-export interface GridHandlers {
   handleRowValidating: (e: any) => void;
   handleRowUpdating: (e: any) => void;
   handleRowInserting: (e: any) => void;
   handleRowRemoving: (e: any) => void;
   handleInitNewRow: (e: any) => void;
-  
-  // Any specialized operations for this entity type
+  // Specialized operations for this entity type
   specializedOperation: (id: string) => Promise<void>;
 }
 ```
 
-**Example from Project controller:**
-```typescript
-/**
- * Interface for Project collection controller hook (for grid/list operations)
- */
-export interface ProjectCollectionControllerHook extends GridOperationsHook<Project> {
-- Follow the naming convention `use{Entity}DataProvider`
-- Manage loading, caching, and error handling of reference data
-- Return both raw data arrays and DevExtreme DataSource objects
-- Provide utility methods for finding items by ID or code
-- Use centralized API endpoint constants
-
-**Data provider pattern:**
-```typescript
-export const use{LookupEntity}DataProvider = (
-  contextId?: string
-): {LookupEntity}DataProviderResult => {
-  const [data, setData] = useState<{LookupEntity}[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  
-  // Use the centralized store
-  const store = useODataStore({LOOKUP_ENTITY}_ENDPOINT);
-  
-  // Create DataSource for DevExtreme
-  const dataSource = useMemo(() => ({
-    store: store
-  }), [store]);
-  
-  // Load data
-  useEffect(() => {
-    // Implementation
-  }, [store]);
-  
-  // Helper methods
-  const getById = useCallback((id: string) => {
-    // Implementation
-  }, [data]);
-  
-  return {
-    data,
-    store,
-    dataSource,
-    isLoading,
-    error,
-    getById
-  };
-};
-```
-
-### 5. Adapter (`{entity}.adapter.ts`)
-
-Adapters MUST:
-
-- Define the entity interface matching the backend model
-- Provide methods for all CRUD operations
-- Implement specialized methods for custom operations
-- Use centralized API endpoint constants
-- Handle OData query parameters and filters consistently
-
-**Adapter pattern:**
-```typescript
-// Entity interface
-export interface {Entity} {
-  guid: string;
-  // Other fields
-}
-
-// Standard CRUD methods
-export const get{Entities} = async (
-  token: string,
-  contextId?: string
-): Promise<{Entity}[]> => {
-  // Implementation using sharedApiService
-};
-
-// Specialized methods
-export const {specialOperation} = async (
-  params: any,
-  token: string
-): Promise<any> => {
-  // Implementation
-};
-```
-
-## Implementation Guidelines
-
-### Data Flow Standards
-
-1. **Initialization Flow:**
-   - Component MUST initialize controller and data providers
-   - Data providers MUST load lookup data on mount
-   - Controller MUST prepare all grid configuration and handlers
-   - ODataGrid MUST handle the actual data fetching
-
-2. **Data Loading Flow:**
-   - ALWAYS use the ODataGrid's built-in loading mechanism
-   - NEVER duplicate data loading logic in the component
-
-3. **Editing Flow:**
-   - ALL validation MUST be defined in the controller's validation rules
-   - Field customization MUST be handled in the controller's `handleEditorPreparing`
-   - NEVER manipulate grid data directly, ALWAYS use controller methods
-
-### Design Principles
-
-1. **Separation of Concerns:**
-   - View components MUST only handle rendering
-   - Controllers MUST handle all business logic and state
-   - Data providers MUST handle all reference data
-   - Adapters MUST handle all API communication
-
-2. **Centralized Configuration:**
-   - ALL API endpoints MUST be defined in api-endpoints.ts
-   - ALL validation rules MUST be defined at the controller level
-   - ALL column definitions MUST be isolated in their own file
-
-3. **Component Composition:**
-   - ALWAYS use composition over inheritance
-   - Base hooks SHOULD be combined with specialized hooks through composition
-   - REUSE common grid utilities and entity operations
-
-### Error Handling
-
-1. All components MUST implement proper error handling:
-   - Controllers MUST log errors and provide error callbacks
-   - Components SHOULD display appropriate error messages
-   - Data providers MUST manage and expose error states
-
-2. Loading states MUST be properly managed and exposed to the UI
-
-## Implementation Checklist
-
-When implementing a new collection view, follow these steps:
-
-1. [ ] Create the adapter with entity interface and CRUD methods
-2. [ ] Add any required API endpoints to api-endpoints.ts
-3. [ ] Implement data provider hooks for lookup data
-4. [ ] Create the controller hook with validation rules and handlers
-5. [ ] Define columns in a separate file
-6. [ ] Implement the view component
-7. [ ] Add the route to app-routes.tsx
-8. [ ] Test all CRUD operations
-
-## Specialized Hooks Architecture
-
-The application uses specialized hooks organized by functionality to ensure clean separation of concerns and optimal reusability:
-
-### 1. Grid Handlers
-
-Grid handlers MUST:  
-- Be located in `/src/hooks/grid-handlers/`
-- Implement strong type safety with properly typed events
-- Handle all grid operations (validating, updating, inserting, etc.)
-- Return a consistent interface of handlers through composition
-
-```typescript
-// Example Grid Handlers Hook
-export function useEntityGridHandlers(options: EntityHandlerOptions): EntityGridHandlers {
-  // Use specialized validator hook
-  const { validateEntity, handleRowValidating } = useEntityGridValidator(options);
-  
-  // Use specialized editor hook
-  const { handleEditorPreparing, handleInitNewRow } = useEntityGridEditor(options);
-  
-  // Return consolidated API with consistent naming
-  return {
-    handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    handleInitNewRow,
-    handleEditorPreparing,
-    validateEntity
-  };
-}
-```
-
-### 2. Grid Editors
-
-Grid editors MUST:
-- Be located in `/src/hooks/grid-editors/`
-- Focus on editor preparation and field customization
-- Implement specialized business logic for field generation
-- Utilize parameter objects for function arguments
-
-### 3. Grid Validators
+### 2. Grid Validators
 
 Validators MUST:
 - Contain all validation business rules
@@ -588,27 +400,239 @@ export interface GridRowEvent {
 }
 ```
 
-## Component Structure and Paths
+### 3. Data Context
 
-All collections views MUST follow this component structure and file organization:
+Data Context MUST:
+- Be implemented as a separate context from the main data context
+- Be provided at the component level, not the application level
+- Manage data state and CRUD operations
+- Expose a clean and minimal API to components
 
-| Component Type | Path Pattern | Purpose |
-|---------------|--------------|---------|
-| Main Component | `/src/pages/{entity}/{entity}.tsx` | Provides context, renders content component |
-| Content Component | Nested in main component | Consumes contexts, renders UI elements |
-| Data Context | `/src/contexts/{entity}/{entity}-context.tsx` | Manages data state and CRUD operations |
-| Data Context Types | `/src/contexts/{entity}/{entity}-types.ts` | Defines interfaces for state, actions, context |
-| Data Context Reducer | `/src/contexts/{entity}/{entity}-reducer.ts` | Handles state transitions and actions |
-| Editor Context | `/src/contexts/editor/{entity}-editor-context.tsx` | Manages editor behaviors and field generation |
-| Editor Context Types | `/src/contexts/editor/{entity}-editor-types.ts` | Defines interfaces for editor state and actions |
-| Grid Handlers | `/src/hooks/grid-handlers/use{Entity}GridHandlers.ts` | Coordinates grid events and behaviors |
-| Grid Validators | `/src/hooks/grid-handlers/use{Entity}GridValidator.ts` | Contains validation logic and rules |
-| Grid Editors | `/src/hooks/grid-editors/use{Entity}GridEditor.ts` | Handles field customization and document generation |
-| Data Providers | `/src/hooks/data-providers/use{LookupEntity}DataProvider.ts` | Provides lookup/reference data |
-| Columns | `/src/pages/{entity}/{entity}-columns.ts` | Defines grid column configuration |
-| Adapters | `/src/adapters/{entity}.adapter.ts` | Contains API interaction methods |
-| Models/Types | `/src/types/odata-types.ts` or `/src/types/{entity}-types.ts` | Defines entity interfaces |
-| API Endpoints | `/src/config/api-endpoints.ts` | Centralizes endpoint URLs |
+```typescript
+// Example Data Context Interface
+export interface DataContextHolder {
+  state: EntityState;
+  // CRUD operations
+  createEntity: (entity: Entity) => Promise<Entity>;
+  updateEntity: (entity: Entity) => Promise<Entity>;
+  deleteEntity: (id: string) => Promise<void>;
+  // Other necessary functionality
+}
+```
+
+### 4. Adapters
+
+Adapters MUST:
+- Define the entity interface matching the backend model
+- Provide methods for all CRUD operations
+- Implement specialized methods for custom operations
+- Use centralized API endpoint constants
+- Handle OData query parameters and filters consistently
+
+```typescript
+// Example Adapter Interface
+export interface Adapter<T> {
+  // CRUD operations
+  getEntities: (token: string) => Promise<T[]>;
+  createEntity: (entity: T, token: string) => Promise<T>;
+  updateEntity: (entity: T, token: string) => Promise<T>;
+  deleteEntity: (id: string, token: string) => Promise<void>;
+  // Specialized methods
+  specializedOperation: (params: any, token: string) => Promise<any>;
+}
+```
+
+## Optional Component Implementation Details
+
+### 1. Editor Context
+
+Editor Context MAY be implemented when:
+- Complex field generation logic is needed (e.g., document numbers)
+- Editor state needs to be shared across components
+- Custom validation needs to be applied at the context level
+
+When implemented, it MUST:
+- Be provided at the component level, not the application level
+- Follow reducer pattern for state management
+- Expose field validation and preparation methods
+
+```typescript
+// Example Editor Context Interface
+export interface EditorContext {
+  state: EditorState;
+  // Field validation and preparation methods
+  validateField: (field: string, value: any) => boolean;
+  prepareField: (field: string, value: any) => any;
+  // Other necessary functionality
+}
+```
+
+### 2. Cell Edit Interception Pattern
+
+For advanced grid editing scenarios, especially when dealing with status transitions or needing backend validation, you MAY implement the Cell Edit Interception Pattern:
+
+```typescript
+const handleRowUpdating = useCallback((e: any) => {
+  // 1. Cancel the grid's default update behavior
+  e.cancel = true;
+  
+  // 2. Extract key and data
+  const originalDeliverableGuid = e.key;
+  const newData = {...e.oldData, ...e.newData};
+  
+  // 3. Create async function with proper error handling
+  const update = async () => {
+    try {
+      // 4. Call your API method
+      await updateDeliverable(newData, originalDeliverableGuid);
+      
+      // 5. Refresh grid after update completes
+      setTimeout(() => {
+        // Exit edit mode first
+        if (e.component.hasEditData()) {
+          e.component.cancelEditData();
+        }
+        // Then reload data source
+        e.component.getDataSource().reload();
+      }, 50);
+    } catch (error) {
+      console.error('Error updating entity:', error);
+      throw error; // Important: re-throw to allow DevExtreme to show error
+    }
+  };
+  
+  // 6. Return the update promise (crucial!)
+  return update();
+}, [dependencies]);
+```
+
+This pattern ensures:
+- Backend validation is applied before grid updates
+- Status transitions are properly handled
+- Grid refreshes correctly after backend processing
+- Edit mode is exited cleanly after updates
+- User sees appropriate error messages if the update fails
+
+### 3. Shared Grid Editors
+
+Shared Grid Editors MAY be implemented when:
+- Common editor preparation logic can be reused across entities
+- Document number generation or other specialized field handling is needed
+
+When implemented, they MUST:
+- Accept configuration via props
+- Return base handlers that can be wrapped by entity-specific logic
+
+```typescript
+// Example Shared Grid Editor Interface
+export interface SharedGridEditor {
+  // Base handlers
+  handleEditorPreparing: (e: any) => void;
+  handleInitNewRow: (e: any) => void;
+  // Other necessary functionality
+}
+```
+
+### 3. Data Providers
+
+Data Providers MAY be implemented when:
+- Lookup data is needed for dropdowns or other UI elements
+- Reference data must be loaded from external endpoints
+
+When implemented, they MUST:
+- Handle caching and error states
+- Return both raw data and formatted DataSource objects
+- Accept context parameters for filtered data loading
+- Implement the loading flag pattern to prevent duplicate requests
+- Support conditional loading via the shouldLoad parameter
+
+```typescript
+// Example Data Provider Interface
+export interface DataProvider {
+  // Raw data and DataSource objects
+  data: any[];
+  dataSource: any;
+  // Error state and caching
+  error: any;
+  isLoading: boolean;
+  // Other necessary functionality
+}
+```
+
+#### 3.1 Staggered Loading Pattern
+
+For components that require multiple data providers, a staggered loading pattern MUST be implemented to:
+- Prevent duplicate API requests
+- Ensure data providers only load when their dependencies are available
+- Improve application performance by reducing unnecessary network traffic
+
+**Implementation Requirements:**
+
+1. **Module-Level Loading Flags and Cache**
+   ```typescript
+   // At module level outside the hook
+   let dataGlobalCache: DataType[] | null = null;
+   let isLoadingData = false;
+   ```
+
+2. **Conditional Loading Parameter**
+   ```typescript
+   // Data provider must accept a parameter to control if it should load
+   export const useDataProvider = (shouldLoad?: boolean): DataProviderResult => {
+     // Rest of implementation
+   }
+   ```
+
+3. **Loading Check in Data Source Methods**
+   ```typescript
+   load: function(loadOptions: any) {
+     // Skip loading if shouldLoad is false or undefined
+     if (shouldLoad === false || shouldLoad === undefined) {
+       return Promise.resolve([]);
+     }
+     
+     // Check if already loading
+     if (isLoadingData) {
+       return new Promise((resolve) => {
+         const checkInterval = setInterval(() => {
+           if (!isLoadingData && dataGlobalCache) {
+             clearInterval(checkInterval);
+             resolve(dataGlobalCache);
+           }
+         }, 100);
+       });
+     }
+     
+     // Set loading flag and proceed with fetch...
+   }
+   ```
+
+4. **Staggered Loading in Context Component**
+   ```typescript
+   const VariationDeliverablesContent = (): React.ReactElement => {
+     // Only load providers when dependencies are available
+     const shouldLoadProviders = !!variation && !!project && !!projectGuid;
+     
+     // Call hooks at top level (Rules of Hooks)
+     // But control when they actually fetch data
+     const { disciplinesDataSource } = useDisciplineDataProvider(
+       shouldLoadProviders ? true : undefined
+     );
+     
+     // Other providers...
+   }
+   ```
+
+5. **Loading State Management**
+   ```typescript
+   // Combine loading states for UI indicators
+   const isLookupDataLoading = useMemo(
+     () => areasLoading || disciplinesLoading || documentTypesLoading,
+     [areasLoading, disciplinesLoading, documentTypesLoading]
+   );
+   ```
+
+This pattern ensures that data providers are loaded efficiently, prevent duplicate requests, and maintain React's Rules of Hooks by calling all hooks at the top level while controlling their behavior with conditional parameters.
 
 ## Example Implementations
 
@@ -630,6 +654,21 @@ The following modules serve as reference implementations that adhere to this arc
   - `src/hooks/data-providers/useDocumentTypeDataProvider.ts`
 - Columns: `src/pages/deliverables/deliverable-columns.ts`
 - Adapter: `src/adapters/deliverable.adapter.ts`
+
+### 3. Variation Deliverables Module (Sequential Loading Pattern)
+- View Component: `src/pages/variations/variation-deliverables.tsx`
+- Data Context: `src/contexts/variation-deliverables/variation-deliverables-context.tsx`
+- Context Types: `src/contexts/variation-deliverables/variation-deliverables-types.ts`
+- Context Reducer: `src/contexts/variation-deliverables/variation-deliverables-reducer.ts`
+- Grid Handlers: `src/hooks/grid-handlers/useVariationDeliverableGridHandlers.ts`
+- Grid Validator: `src/hooks/grid-handlers/useVariationDeliverableGridValidator.ts`
+- Variation Hooks: `src/hooks/utils/useVariationInfo.ts`, `src/hooks/utils/useProjectInfo.ts`
+- Data Providers: 
+  - `src/hooks/data-providers/useAreaDataProvider.ts`
+  - `src/hooks/data-providers/useDisciplineDataProvider.ts`
+  - `src/hooks/data-providers/useDocumentTypeDataProvider.ts`
+- Columns: `src/pages/variations/variation-deliverable-columns.ts`
+- Adapter: `src/adapters/variation-deliverable.adapter.ts`, `src/adapters/variation.adapter.ts`
 
 ### 2. Projects Module
 - View Component: `src/pages/projects/projects.tsx`

@@ -1,25 +1,19 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { confirm } from 'devextreme/ui/dialog';
-import { useGridUtils } from '@/hooks/utils/useGridUtils';
 
 import { Deliverable } from '@/types/odata-types';
 import { VariationDeliverableUiStatus } from '@/types/app-types';
-import { ALWAYS_READONLY_DELIVERABLE_FIELDS } from '@/hooks/grid-editors/useDeliverableGridEditor';
 import { useVariationInfo } from '@/hooks/utils/useVariationInfo';
-
-// Data providers have been moved to the component level for better optimization
-// This follows the pattern from deliverables.tsx
+import { useProjectInfo } from '@/hooks/utils/useProjectInfo';
+import { useAreaDataProvider } from '@/hooks/data-providers/useAreaDataProvider';
+import { useDisciplineDataProvider } from '@/hooks/data-providers/useDisciplineDataProvider';
+import { useDocumentTypeDataProvider } from '@/hooks/data-providers/useDocumentTypeDataProvider';
 
 import {
-  VariationDeliverablesState,
-  VariationDeliverablesAction,
   VariationDeliverablesContextProps,
-  VariationDeliverablesProviderProps,
-  VariationDeliverableParams,
-  CancelDeliverableParams
+  VariationDeliverablesProviderProps
 } from './variation-deliverables-types';
 import {
   initialVariationDeliverablesState,
@@ -37,30 +31,68 @@ export function VariationDeliverablesProvider({
   variationId: variationGuidProp,
   projectId: projectGuidProp
 }: VariationDeliverablesProviderProps): React.ReactElement {
+  // No need to track initial mount with sequential loading pattern
+  
   // Get route parameters and authentication
   const params = useParams<{ variationId: string; projectId?: string }>();
   const variationId = variationGuidProp || params.variationId;
   const { user } = useAuth();
   
-  // Load variation info
-  const { variation, projectGuid, loading: variationLoading, reload: reloadVariation } = 
-    useVariationInfo(variationId, user?.token);
+  // Memoize the token to prevent unnecessary re-renders
+  const token = useMemo(() => user?.token, [user?.token]);
+  
+  /**
+   * Sequential Data Loading Pattern:
+   * 1. First load variation data using useVariationInfo
+   * 2. Then use the projectGuid from variation to load project data
+   * 3. Combine loading states to ensure we only proceed when both are loaded
+   */
+  // Step 1: Load variation data
+  const { variation, projectGuid, loading: variationLoading, error: variationError } = 
+    useVariationInfo(variationId, token);
+    
+  // Step 2: Load project data using projectGuid from variation
+  const { project, isLoading: projectLoading, error: projectError } = 
+    useProjectInfo(projectGuid, token);
+    
+  // Combine loading states to track overall loading progress
+  const isLoading = variationLoading || projectLoading;
+  const error = variationError || projectError;
+    
+  // Memoize the variation and project objects to ensure stable references
+  const memoizedVariation = useMemo(() => variation, [variation]);
+  const memoizedProject = useMemo(() => project, [project]);
+  const memoizedProjectGuid = useMemo(() => projectGuid, [projectGuid]);
+  
+  // Memoize loading state value with combined loading status
+  const loadingState = useMemo(() => ({
+    loading: isLoading,
+    error: error || null,
+    isReadOnly: true
+  }), [isLoading, error]);
+  
+  // Memoize minimal context value for loading state
+  const loadingContextValue = useMemo(() => ({
+    state: loadingState,
+    // Minimal required implementations that won't be called while loading
+    loadDeliverables: async () => {},
+    isFieldEditable: () => false,
+    getDefaultDeliverableValues: () => ({}),
+    // Empty data sources for loading state
+    areasDataSource: { load: () => Promise.resolve([]) },
+    disciplinesDataSource: { load: () => Promise.resolve([]) },
+    documentTypesDataSource: { load: () => Promise.resolve([]) },
+    isLookupDataLoading: true,
+    // Memoized references for stability
+    projectGuid: memoizedProjectGuid,
+    project: null,
+    variation: null
+  }), [loadingState, memoizedProjectGuid]);
   
   // If variation is still loading, render a simple provider with loading state
   if (variationLoading) {
     return (
-      <VariationDeliverablesContext.Provider value={{
-        state: { loading: true, error: null, isReadOnly: true },
-        // Minimal required implementations that won't be called while loading
-        loadDeliverables: async () => {},
-        // UI helper functions with minimal implementations
-        isFieldEditable: () => false,
-        getDefaultDeliverableValues: () => ({}),
-        // Limited data available during loading
-        projectGuid,
-        project: null,
-        variation: null
-      }}>
+      <VariationDeliverablesContext.Provider value={loadingContextValue}>
         {children}
       </VariationDeliverablesContext.Provider>
     );
@@ -69,8 +101,9 @@ export function VariationDeliverablesProvider({
   // Once variation is loaded, proceed with VariationDeliverablesContent which loads everything else
   return <VariationDeliverablesContent
     variationId={variationId}
-    projectGuid={projectGuid}
-    variation={variation}
+    projectGuid={memoizedProjectGuid}
+    variation={memoizedVariation}
+    project={memoizedProject}
     user={user}
   >
     {children}
@@ -86,41 +119,43 @@ function VariationDeliverablesContent({
   variationId,
   projectGuid,
   variation,
+  project,
   user
 }: {
   children: React.ReactNode;
   variationId: string;
   projectGuid: string;
   variation: any;
+  project: any;
   user: any;
 }): React.ReactElement {
   // Initialize state with reducer - this will contain application state
   const [state, dispatch] = useReducer(variationDeliverablesReducer, initialVariationDeliverablesState);
   
+  // Implement staggered loading pattern for dependent data
+  // Only load data providers when we have valid variation and project data
+  const shouldLoadProviders = !!variation && !!project && !!projectGuid;
+  
+  // Call all hooks at the top level with React (required by Rules of Hooks)
+  // But use the shouldLoadProviders flag to control when they actually fetch data
+  const { areasDataSource, isLoading: areasLoading } = useAreaDataProvider(
+    shouldLoadProviders ? projectGuid : undefined
+  );
 
-  // Set loading state
-  const setLoading = useCallback((isLoading: boolean) => {
-    dispatch({ type: 'SET_LOADING', payload: isLoading });
-  }, []);
-  
-  // Set error state
-  const setError = useCallback((error: string | null) => {
-    dispatch({ type: 'SET_ERROR', payload: error });
-  }, []);
-  
-  // Set read-only state
-  const setReadOnly = useCallback((isReadOnly: boolean) => {
-    dispatch({ type: 'SET_READ_ONLY', payload: isReadOnly });
-  }, []);
-  
-  // Simplified loadDeliverables function - just a stub now that grid handles loading
-  const loadDeliverables = useCallback(async () => {
-    // Empty stub - data loading is now handled entirely in the grid component
-    // through the data providers directly
-  }, []);
-  
-  // No need for initial load effect since the grid handles loading on mount
-  
+  const { disciplinesDataSource, isLoading: disciplinesLoading } = useDisciplineDataProvider(
+    shouldLoadProviders ? true : undefined
+  );
+
+  const { documentTypesDataSource, isLoading: documentTypesLoading } = useDocumentTypeDataProvider(
+    shouldLoadProviders ? true : undefined
+  );
+
+  // Combine lookup data loading states for a single loading indicator
+  const isLookupDataLoading = useMemo(
+    () => areasLoading || disciplinesLoading || documentTypesLoading,
+    [areasLoading, disciplinesLoading, documentTypesLoading]
+  );
+
   // Get default values for a new deliverable
   const getDefaultDeliverableValues = useCallback((): Partial<Deliverable> => {
     // This follows the pattern from memory about proper OData serialization
@@ -145,32 +180,39 @@ function VariationDeliverablesContent({
   // Simple field editability check - now handled in the grid editor
   const isFieldEditable = useCallback(() => true, []);
   
-  // These functions have been moved to useVariationDeliverableGridHandlers.ts
-  // We no longer need them in the context as they're part of the grid handlers
+  // Create stable state object
+  const stableState = useMemo(() => ({
+    loading: state.loading,
+    error: state.error,
+    isReadOnly: state.isReadOnly
+  }), [state.loading, state.error, state.isReadOnly]);
   
-  // Create memoized context value with minimal dependencies to prevent re-renders
+  // Create the context value with all required data providers
   const contextValue = useMemo(() => ({
-    state: {
-      loading: state.loading,
-      error: state.error,
-      isReadOnly: state.isReadOnly
-    },
-    loadDeliverables,
+    state: stableState,
     isFieldEditable,
     getDefaultDeliverableValues,
-    // Utility references only
+    // Data sources for lookups
+    areasDataSource,
+    disciplinesDataSource,
+    documentTypesDataSource,
+    isLookupDataLoading,
+    // Reference data
     projectGuid,
-    project: variation?.project,
+    project,
     variation
   }), [
-    state.loading,
-    state.error,
-    state.isReadOnly,
-    // These callbacks are stable (empty dependency arrays)
-    // so they won't cause re-renders
-    // Only including projectGuid and variation for actual data needs
+    stableState,
+    isFieldEditable,
+    getDefaultDeliverableValues,
+    // Data sources dependencies
+    areasDataSource,
+    disciplinesDataSource,
+    documentTypesDataSource,
+    isLookupDataLoading,
+    // Reference data dependencies
     projectGuid,
-    variation?.project,
+    project,
     variation
   ]);
   
@@ -194,11 +236,4 @@ export function useVariationDeliverables(): VariationDeliverablesContextProps {
   return context;
 }
 
-/**
- * Custom hook to check if all required data is loaded in the variation deliverables context
- * Note: This is deprecated as data loading is now handled at the component level
- */
-export function useVariationDeliverablesDataReady(): boolean {
-  const { state } = useVariationDeliverables();
-  return !state.loading;
-}
+

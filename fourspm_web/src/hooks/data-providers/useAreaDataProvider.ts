@@ -117,13 +117,13 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
         
         // If we have cached data for this project, use it immediately
         if (areasGlobalCache[targetProjectId]) {
-          console.log(`[AreaProvider] Using cache for project ${targetProjectId} - avoiding server request`);
+          // Using cached data for project
           return Promise.resolve(areasGlobalCache[targetProjectId]);
         }
         
         // If we already loaded into component state and it matches our target, use that
         if (areas.length > 0 && !isLoading && targetProjectId === cacheKey) {
-          console.log(`[AreaProvider] Using component state for project ${targetProjectId}`);
+          // Using component state data
           if (!areasGlobalCache[targetProjectId]) {
             areasGlobalCache[targetProjectId] = areas;
           }
@@ -132,7 +132,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
         
         // If we're already loading this project in another instance, wait for it
         if (loadingFlags[targetProjectId]) {
-          console.log(`[AreaProvider] Already loading ${targetProjectId} - waiting for completion`);
+          // Already loading - waiting for completion
           // Poll the cache every 100ms for up to 5 seconds
           return new Promise((resolve, reject) => {
             let attempts = 0;
@@ -150,7 +150,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
         }
         
         // Otherwise fetch from the server
-        console.log(`[AreaProvider] No cache for ${targetProjectId} - fetching from server`);
+        // No cache available - fetching from server
         loadingFlags[targetProjectId] = true;
         
         // Construct appropriate filter for API call
@@ -199,13 +199,13 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
           // Look up by number instead of guid to match our API filter
           const item = areasGlobalCache[projectId].find(area => area.number === key);
           if (item) {
-            console.log(`[AreaProvider] Found area number ${key} in cache for project ${projectId}`);
+            // Found area in cache
             return Promise.resolve(item);
           }
         }
         
         // If not in cache, fetch just this one area
-        console.log(`[AreaProvider] Area number ${key} not in cache - fetching from server`);
+        // Area not in cache - fetching from server
         // Use number field for filtering consistent with cache lookup
         const keyFilterUrl = `${AREAS_ENDPOINT}?$filter=number eq '${key}'`;
         
@@ -243,7 +243,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     // Skip loading entirely if we have no projectGuid
     if (shouldSkipActualLoading) {
       if (!initialLoadCompleted.current) {
-        console.log('[AreaProvider] Skipping area data load - no projectGuid provided');
+        // Skipping area data load - no projectGuid provided
         initialLoadCompleted.current = true;
       }
       return;
@@ -251,7 +251,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     
     // If we already have cache data for this project, use it and skip the request
     if (areasGlobalCache[cacheKey] && !initialLoadCompleted.current) {
-      console.log(`[AreaProvider] Using global cache for initial load of ${cacheKey}`);
+      // Using global cache for initial load
       setAreas(areasGlobalCache[cacheKey]);
       setIsLoading(false);
       initialLoadCompleted.current = true;
@@ -260,7 +260,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     
     // Only load once per project unless forced
     if (!initialLoadCompleted.current) {
-      console.log(`[AreaProvider] Initial area data load for ${cacheKey}`);
+      // Initial area data load
       
       // Use the data source load method to ensure cache is populated
       areasDataSource.load({ filter: projectId ? ['projectGuid', '=', projectId] : null })

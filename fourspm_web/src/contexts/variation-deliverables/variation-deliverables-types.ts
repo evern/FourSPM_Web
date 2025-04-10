@@ -53,9 +53,6 @@ export interface VariationDeliverablesContextProps {
     isReadOnly: boolean;
   };
   
-  // Grid operations
-  loadDeliverables: () => Promise<void>;
-  
   // Data operations have been moved to useVariationDeliverableGridHandlers.ts
   // They are no longer part of the context interface
   
@@ -63,7 +60,13 @@ export interface VariationDeliverablesContextProps {
   isFieldEditable: (fieldName: string, uiStatus: VariationDeliverableUiStatus) => boolean;
   getDefaultDeliverableValues: () => Partial<Deliverable>;
   
-  // Utility references - data providers moved to component level
+  // Data sources for lookup components
+  areasDataSource: any;
+  disciplinesDataSource: any;
+  documentTypesDataSource: any;
+  isLookupDataLoading: boolean;
+  
+  // Utility references
   projectGuid: string | undefined;
   project: any;
   variation: any;

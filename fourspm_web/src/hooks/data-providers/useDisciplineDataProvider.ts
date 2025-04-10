@@ -11,6 +11,10 @@ import { useAuth } from '../../contexts/auth';
 // This is key to preventing multiple requests
 let disciplinesGlobalCache: Discipline[] | null = null;
 
+// Flag to track if we're currently loading discipline data
+// This prevents duplicate API calls when multiple components initialize simultaneously
+let isLoadingDisciplines = false;
+
 /**
  * Interface for discipline data provider result
  */
@@ -28,9 +32,10 @@ export interface DisciplineDataProviderResult {
  * Data provider hook for discipline data
  * Manages both ODataStore for grid binding and in-memory data for validation
  * 
+ * @param shouldLoad Optional boolean to control when data is loaded
  * @returns Object containing the disciplines store, data array, loading state, and helper methods
  */
-export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
+export const useDisciplineDataProvider = (shouldLoad: boolean | undefined = true): DisciplineDataProviderResult => {
   const { user } = useAuth();
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -45,21 +50,49 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
     // Create the lookup data source with optimized load/byKey methods
     return {
       load: function(loadOptions: any) {
+        // Skip loading if shouldLoad parameter is explicitly false or undefined
+        if (shouldLoad === false || shouldLoad === undefined) {
+          return Promise.resolve([]);
+        }
+        
         // If global cache already has data, use it immediately
         if (disciplinesGlobalCache) {
-          console.log('[DisciplineProvider] Using global cache for load - no server request');
+          // Using global cache for load
           return Promise.resolve(disciplinesGlobalCache);
         }
         
         // If we already loaded data into component state, update global cache and return
         if (disciplines.length > 0 && !isLoading) {
-          console.log('[DisciplineProvider] Using component state for load - no server request');
+          // Using component state for load
           disciplinesGlobalCache = disciplines;
           return Promise.resolve(disciplines);
         }
         
+        // Check if another instance is already loading
+        if (isLoadingDisciplines) {
+          // Wait for the existing request to complete and use its results
+          return new Promise<Discipline[]>((resolve) => {
+            const checkCacheInterval = setInterval(() => {
+              if (!isLoadingDisciplines && disciplinesGlobalCache) {
+                clearInterval(checkCacheInterval);
+                resolve(disciplinesGlobalCache);
+                
+                // Update component state if needed
+                if (!initialLoadCompleted.current) {
+                  setDisciplines(disciplinesGlobalCache);
+                  setIsLoading(false);
+                  initialLoadCompleted.current = true;
+                }
+              }
+            }, 100);
+          });
+        }
+        
+        // Set the loading flag to prevent duplicate requests
+        isLoadingDisciplines = true;
+        
         // Otherwise make a direct fetch to avoid ODataStore overhead
-        console.log('[DisciplineProvider] No cache available - fetching from server');
+        // No cache available - fetching from server
         return fetch(DISCIPLINES_ENDPOINT, {
           headers: {
             'Authorization': user?.token ? `Bearer ${user.token}` : '',
@@ -78,12 +111,19 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
             initialLoadCompleted.current = true;
           }
           
+          // Clear the loading flag
+          isLoadingDisciplines = false;
+          
           return disciplinesData;
         })
         .catch(err => {
           console.error('[DisciplineProvider] Error loading discipline data:', err);
           setError(err as Error);
           setIsLoading(false);
+          
+          // Clear the loading flag on error too
+          isLoadingDisciplines = false;
+          
           return [];
         });
       },
@@ -91,14 +131,14 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
       byKey: function(key: string) {
         // Always check global cache first (most efficient)
         if (disciplinesGlobalCache) {
-          console.log('[DisciplineProvider] Looking up discipline by key from global cache');
+          // Looking up discipline from global cache
           const item = disciplinesGlobalCache.find(discipline => compareGuids(discipline.guid, key));
           return Promise.resolve(item);
         }
         
         // If we have disciplines in component state but not in global cache (shouldn't happen)
         if (disciplines.length > 0) {
-          console.log('[DisciplineProvider] Looking up discipline by key from component state');
+          // Looking up discipline from component state
           const item = disciplines.find(discipline => compareGuids(discipline.guid, key));
           
           // Update global cache for future lookups
@@ -110,7 +150,7 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
         }
         
         // If no cache available, fetch just the one discipline by key
-        console.log('[DisciplineProvider] Looking up discipline by key from server');
+        // Looking up discipline from server
         const keyFilterUrl = `${DISCIPLINES_ENDPOINT}?$filter=guid eq '${key}'`;
         return fetch(keyFilterUrl, {
           headers: {
@@ -129,9 +169,19 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
   
   // Initial data loading (if needed)
   useEffect(() => {
+    // Skip loading if shouldLoad is explicitly set to false or undefined
+    if (shouldLoad === false || shouldLoad === undefined) {
+      // Early return - caller doesn't want to load data yet
+      if (!initialLoadCompleted.current) {
+        setIsLoading(false);
+        initialLoadCompleted.current = true;
+      }
+      return;
+    }
+    
     // If we already have global cache data, use it and skip the request
     if (disciplinesGlobalCache && !initialLoadCompleted.current) {
-      console.log('[DisciplineProvider] Using global cache for initial load');
+      // Using global cache for initial load
       setDisciplines(disciplinesGlobalCache);
       setIsLoading(false);
       initialLoadCompleted.current = true;
@@ -140,7 +190,7 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
     
     // Only load once unless forced
     if (!initialLoadCompleted.current) {
-      console.log('[DisciplineProvider] Initial discipline data load');
+      // Initial discipline data load
       setIsLoading(true);
       
       // Use the data source load method to ensure cache is populated
@@ -154,7 +204,7 @@ export const useDisciplineDataProvider = (): DisciplineDataProviderResult => {
           setIsLoading(false);
         });
     }
-  }, [disciplinesDataSource]); // Only run on initial mount or when datasource changes
+  }, [disciplinesDataSource, shouldLoad]); // Re-run when shouldLoad changes
   
   /**
    * Get a discipline by its ID

@@ -11,6 +11,10 @@ import { useAuth } from '../../contexts/auth';
 // This is key to preventing multiple requests
 let documentTypesGlobalCache: DocumentType[] | null = null;
 
+// Flag to track if we're currently loading document type data
+// This prevents duplicate API calls when multiple components initialize simultaneously
+let isLoadingDocumentTypes = false;
+
 /**
  * Interface for document type data provider result
  */
@@ -28,9 +32,10 @@ export interface DocumentTypeDataProviderResult {
  * Data provider hook for document type data
  * Manages both ODataStore for grid binding and in-memory data for validation
  * 
+ * @param shouldLoad Optional boolean to control when data is loaded
  * @returns Object containing the document types store, data array, loading state, and helper methods
  */
-export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult => {
+export const useDocumentTypeDataProvider = (shouldLoad: boolean | undefined = true): DocumentTypeDataProviderResult => {
   const { user } = useAuth();
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -45,21 +50,49 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
     // Create the lookup data source with optimized load/byKey methods
     return {
       load: function(loadOptions: any) {
+        // Skip loading if shouldLoad parameter is explicitly false or undefined
+        if (shouldLoad === false || shouldLoad === undefined) {
+          return Promise.resolve([]);
+        }
+        
         // If global cache already has data, use it immediately
         if (documentTypesGlobalCache) {
-          console.log('[DocumentTypeProvider] Using global cache for load - no server request');
+          // Document type data from global cache
           return Promise.resolve(documentTypesGlobalCache);
         }
         
         // If we already loaded data into component state, update global cache and return
         if (documentTypes.length > 0 && !isLoading) {
-          console.log('[DocumentTypeProvider] Using component state for load - no server request');
+          // Document type data from component state
           documentTypesGlobalCache = documentTypes;
           return Promise.resolve(documentTypes);
         }
         
+        // Check if another instance is already loading
+        if (isLoadingDocumentTypes) {
+          // Wait for the existing request to complete and use its results
+          return new Promise<DocumentType[]>((resolve) => {
+            const checkCacheInterval = setInterval(() => {
+              if (!isLoadingDocumentTypes && documentTypesGlobalCache) {
+                clearInterval(checkCacheInterval);
+                resolve(documentTypesGlobalCache);
+                
+                // Update component state if needed
+                if (!initialLoadCompleted.current) {
+                  setDocumentTypes(documentTypesGlobalCache);
+                  setIsLoading(false);
+                  initialLoadCompleted.current = true;
+                }
+              }
+            }, 100);
+          });
+        }
+        
+        // Set the loading flag to prevent duplicate requests
+        isLoadingDocumentTypes = true;
+        
         // Otherwise make a direct fetch to avoid ODataStore overhead
-        console.log('[DocumentTypeProvider] No cache available - fetching from server');
+        // No cache available - fetching from server
         return fetch(DOCUMENT_TYPES_ENDPOINT, {
           headers: {
             'Authorization': user?.token ? `Bearer ${user.token}` : '',
@@ -78,12 +111,19 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
             initialLoadCompleted.current = true;
           }
           
+          // Clear the loading flag
+          isLoadingDocumentTypes = false;
+          
           return documentTypesData;
         })
         .catch(err => {
           console.error('[DocumentTypeProvider] Error loading document type data:', err);
           setError(err as Error);
           setIsLoading(false);
+          
+          // Clear the loading flag on error too
+          isLoadingDocumentTypes = false;
+          
           return [];
         });
       },
@@ -91,14 +131,14 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
       byKey: function(key: string) {
         // Always check global cache first (most efficient)
         if (documentTypesGlobalCache) {
-          console.log('[DocumentTypeProvider] Looking up document type by key from global cache');
+          // Looking up document type by key from global cache
           const item = documentTypesGlobalCache.find(documentType => compareGuids(documentType.guid, key));
           return Promise.resolve(item);
         }
         
         // If we have document types in component state but not in global cache (shouldn't happen)
         if (documentTypes.length > 0) {
-          console.log('[DocumentTypeProvider] Looking up document type by key from component state');
+          // Looking up document type by key from component state
           const item = documentTypes.find(documentType => compareGuids(documentType.guid, key));
           
           // Update global cache for future lookups
@@ -110,7 +150,7 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
         }
         
         // If no cache available, fetch just the one document type by key
-        console.log('[DocumentTypeProvider] Looking up document type by key from server');
+        // Looking up document type by key from server
         const keyFilterUrl = `${DOCUMENT_TYPES_ENDPOINT}?$filter=guid eq '${key}'`;
         return fetch(keyFilterUrl, {
           headers: {
@@ -129,9 +169,19 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
   
   // Initial data loading (if needed)
   useEffect(() => {
+    // Skip loading if shouldLoad is explicitly set to false or undefined
+    if (shouldLoad === false || shouldLoad === undefined) {
+      // Early return - caller doesn't want to load data yet
+      if (!initialLoadCompleted.current) {
+        setIsLoading(false);
+        initialLoadCompleted.current = true;
+      }
+      return;
+    }
+    
     // If we already have global cache data, use it and skip the request
     if (documentTypesGlobalCache && !initialLoadCompleted.current) {
-      console.log('[DocumentTypeProvider] Using global cache for initial load');
+      // Using global cache for initial load
       setDocumentTypes(documentTypesGlobalCache);
       setIsLoading(false);
       initialLoadCompleted.current = true;
@@ -140,7 +190,7 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
     
     // Only load once unless forced
     if (!initialLoadCompleted.current) {
-      console.log('[DocumentTypeProvider] Initial document type data load');
+      // Initial document type data load
       setIsLoading(true);
       
       // Use the data source load method to ensure cache is populated
@@ -154,7 +204,7 @@ export const useDocumentTypeDataProvider = (): DocumentTypeDataProviderResult =>
           setIsLoading(false);
         });
     }
-  }, [documentTypesDataSource]); // Only run on initial mount or when datasource changes
+  }, [documentTypesDataSource, shouldLoad]); // Re-run when shouldLoad changes
   
   /**
    * Get a document type by its ID
