@@ -117,7 +117,7 @@ const VariationDeliverablesContent = (): React.ReactElement => {
     return new ODataStore({
       url: getVariationDeliverablesWithParamUrl(variationId),
       version: 4,
-      key: 'originalDeliverableGuid', // Using originalDeliverableGuid as key for tracking rows
+      key: 'guid',
       keyType: 'Guid',
       beforeSend: (options) => {
         options.headers = {
@@ -209,7 +209,7 @@ const VariationDeliverablesContent = (): React.ReactElement => {
             dataSource={dataSource}
             loading={false}
             columns={columns}
-            keyField="originalDeliverableGuid"
+            keyField="guid"
             defaultPageSize={20}
             countColumn="guid"
             allowUpdating={!isReadOnly}

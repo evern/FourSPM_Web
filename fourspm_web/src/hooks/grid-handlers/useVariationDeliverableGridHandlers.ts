@@ -69,7 +69,7 @@ export const useVariationDeliverableGridHandlers = (props?: {
   const handleRowUpdating = useCallback((e: any) => {
     e.cancel = true;
     
-    const originalDeliverableGuid = e.key;
+    const originalDeliverableGuid = e.originalDeliverableGuid;
     const newData = {...e.oldData, ...e.newData};
     
     const update = async () => {
@@ -159,6 +159,9 @@ export const useVariationDeliverableGridHandlers = (props?: {
       if (uiStatus === 'Edit' || uiStatus === 'Original') {
         // Only variationHours is editable in Edit or Original status
         editorOptions.disabled = (dataField !== 'variationHours');
+      } else if (uiStatus === 'Cancel') {
+        // For Cancel status, all field editings are disabled
+        editorOptions.disabled = true;
       } else {
         // For other statuses (Add), use the default editability rules
         const isEditable = variationDeliverables.isFieldEditable(dataField, uiStatus);

@@ -81,6 +81,10 @@ export const createVariationDeliverableColumns = (
         dataSource: areasDataSource,
         valueExpr: 'number',
         displayExpr: item => item ? `${item.number} - ${item.description}` : ''
+      },
+      editorOptions: {
+        pageSize: 50,  // Load more data at once instead of individual requests
+        searchEnabled: true  // Enable the search box in the dropdown
       }
     },
     {
@@ -145,18 +149,11 @@ export const createVariationDeliverableColumns = (
       // Allow editing to support modifications to deliverable title in variations
     },
     {
-      dataField: 'budgetHours',
-      caption: 'Budget Hours',
-      hidingPriority: 11,
-      dataType: 'number',
-      allowEditing: false, // Read-only as this shows the original deliverable hours
-      cellClass: 'faded-placeholder'
-    },
-    {
       dataField: 'variationHours',
       caption: 'Variation Hours',
       hidingPriority: 10,
       dataType: 'number',
+      allowEditing: true,
       editorOptions: {
         type: 'number',
         min: 0,
@@ -176,7 +173,7 @@ export const createVariationDeliverableColumns = (
       calculateCellValue: (rowData: any) => rowData.variationName
     },
     {
-      dataField: 'totalHours',
+      dataField: 'variationDisplayHours',
       caption: 'Total Hours',
       hidingPriority: 2,
       allowEditing: false, // Read-only calculated field
@@ -184,24 +181,6 @@ export const createVariationDeliverableColumns = (
       dataType: 'number',
       showSummary: true,
       summaryType: 'sum'
-    },
-    {
-      dataField: 'totalCost',
-      caption: 'Total Cost',
-      hidingPriority: 3,
-      allowEditing: false,
-      cellClass: 'faded-placeholder',
-      dataType: 'number',
-      customizeText: (cellInfo: any) => {
-        return cellInfo.value ? `$${cellInfo.value.toFixed(2)}` : '$0.00';
-      },
-      showSummary: true,
-      summaryType: 'sum',
-      summaryFormat: {
-        type: 'currency',
-        precision: 2,
-        currency: 'AUD'
-      }
     },
     {
       dataField: 'bookingCode',

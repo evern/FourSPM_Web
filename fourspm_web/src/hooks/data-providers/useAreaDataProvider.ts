@@ -161,7 +161,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
         let apiUrl = AREAS_ENDPOINT;
         if (targetProjectId !== 'all') {
           // Proper OData v4 filter format for GUIDs with single quotes
-          apiUrl += `?$filter=projectGuid eq ${targetProjectId}`;
+          apiUrl += `?$filter=projectGuid eq ${targetProjectId.replace(/'/g, '')}`;
         }
         
         return fetch(apiUrl, {
@@ -213,7 +213,7 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
         // If not in cache, fetch just this one area
         // Area not in cache - fetching from server
         // Use number field for filtering consistent with cache lookup
-        const keyFilterUrl = `${AREAS_ENDPOINT}?$filter=number eq '${key}'`;
+        const keyFilterUrl = `${AREAS_ENDPOINT}?$filter=number eq '${key}' and projectGuid eq ${projectId.replace(/'/g, '')}`;
         
         return fetch(keyFilterUrl, {
           headers: {
