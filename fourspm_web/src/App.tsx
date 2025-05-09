@@ -11,6 +11,8 @@ import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
 import { useThemeContext, ThemeContext } from './theme/theme';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -32,17 +34,32 @@ const AppContent: React.FC = () => {
   return <UnauthenticatedContent />;
 }
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 30 * 60 * 1000, // 30 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 const RootApp = () => {
   const themeContext = useThemeContext();
 
   return (
     <Router>
       <ThemeContext.Provider value={themeContext}>
-        <AuthProvider>
-          <NavigationProvider>
-            <AppContent />
-          </NavigationProvider>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <NavigationProvider>
+              <AppContent />
+            </NavigationProvider>
+          </AuthProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
       </ThemeContext.Provider>
     </Router>
   );

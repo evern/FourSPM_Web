@@ -55,11 +55,6 @@ const ProjectProfile: React.FC = () => {
     }
   });
   
-  // Add debugging for isEditing state
-  useEffect(() => {
-    console.log('isEditing state changed:', isEditing);
-  }, [isEditing]);
-
   /**
    * Custom save handler that uses the form operations
    * 

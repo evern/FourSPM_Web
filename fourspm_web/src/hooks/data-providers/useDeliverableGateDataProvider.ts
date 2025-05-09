@@ -1,31 +1,38 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { DeliverableGate } from '../../types/odata-types';
-import { useODataStore } from '../../stores/odataStores';
-import ODataStore from 'devextreme/data/odata/store';
-import DataSource from 'devextreme/data/data_source';
-import { compareGuids } from '../../utils/guid-utils';
-import { useAuth } from '../../contexts/auth';
+import { useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DELIVERABLE_GATES_ENDPOINT } from '../../config/api-endpoints';
+import { useODataStore } from '../../stores/odataStores';
+import { DeliverableGate } from '../../types/odata-types';
+import { compareGuids } from '../../utils/guid-utils';
+import { baseApiService } from '../../api/base-api.service';
 
-// Module-level cache to ensure it's shared across ALL instances
-// This is key to preventing multiple requests
-let gatesGlobalCache: DeliverableGate[] | null = null;
-
-// Flag to track if we're currently loading gate data
-// This prevents duplicate API calls when multiple components initialize simultaneously
-let isLoadingGates = false;
+/**
+ * Fetch deliverable gates data from the API
+ * @returns Promise with array of deliverable gates
+ */
+const fetchDeliverableGates = async (): Promise<DeliverableGate[]> => {
+  const response = await baseApiService.request(DELIVERABLE_GATES_ENDPOINT);
+  const data = await response.json();
+  return data.value || [];
+};
 
 /**
  * Interface for deliverable gate data provider result
  */
 export interface DeliverableGateDataProviderResult {
+  // New naming pattern
+  deliverableGates: DeliverableGate[];
+  deliverableGatesStore: any;
+  deliverableGatesDataSource: any;
+  
+  // For backward compatibility with existing code
   gates: DeliverableGate[];
-  gatesStore: ODataStore;
-  gatesDataSource: any; // DataSource for lookup components
+  gatesDataSource: any;
+  
   isLoading: boolean;
   error: Error | null;
-  getGateById: (id: string) => DeliverableGate | undefined;
-  getGateBySequence: (sequence: number) => DeliverableGate | undefined;
+  getDeliverableGateById: (id: string) => DeliverableGate | undefined;
+  refetch: () => Promise<any>;
 }
 
 /**
@@ -34,204 +41,60 @@ export interface DeliverableGateDataProviderResult {
  * 
  * @returns Object containing the deliverable gates store, data array, loading state, and helper methods
  */
-export const useDeliverableGateDataProvider = (): DeliverableGateDataProviderResult => {
-  const { user } = useAuth();
-  const [gates, setGates] = useState<DeliverableGate[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  const initialLoadCompleted = useRef(false);
+export const useDeliverableGateDataProvider = (shouldLoad: boolean | undefined = true): DeliverableGateDataProviderResult => {
+  // Create a store for OData operations
+  const deliverableGatesStore = useODataStore(DELIVERABLE_GATES_ENDPOINT, 'guid');
 
-  // Standard ODataStore for grid operations with proper field types
-  const gatesStore = useODataStore(DELIVERABLE_GATES_ENDPOINT, 'guid', {
-    fieldTypes: {
-      guid: 'Guid',
-      maxPercentage: 'Decimal',
-      autoPercentage: 'Decimal'
-    }
+  // Use React Query to fetch and cache deliverable gates
+  const { 
+    data: deliverableGates = [], 
+    isLoading, 
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: ['deliverableGates'],
+    queryFn: fetchDeliverableGates
   });
   
-  /**
-   * Create a custom store for efficient lookups
-   * This leverages the global cache and prevents multiple requests
-   */
-  const gatesDataSource = useMemo(() => {
-    // Create the lookup data source with optimized load/byKey methods
-    return {
-      load: function(loadOptions: any) {
-        // If global cache already has data, use it immediately
-        if (gatesGlobalCache) {
-          // Using global cache for load
-          return Promise.resolve(gatesGlobalCache);
-        }
-        
-        // If we already loaded data into component state, update global cache and return
-        if (gates.length > 0 && !isLoading) {
-          // Using component state for load
-          gatesGlobalCache = gates;
-          return Promise.resolve(gates);
-        }
-        
-        // Check if another instance is already loading
-        if (isLoadingGates) {
-          // Wait for the existing request to complete and use its results
-          return new Promise<DeliverableGate[]>((resolve) => {
-            const checkCacheInterval = setInterval(() => {
-              if (!isLoadingGates && gatesGlobalCache) {
-                clearInterval(checkCacheInterval);
-                resolve(gatesGlobalCache);
-                
-                // Update component state if needed
-                if (!initialLoadCompleted.current) {
-                  setGates(gatesGlobalCache);
-                  setIsLoading(false);
-                  initialLoadCompleted.current = true;
-                }
-              }
-            }, 100);
-          });
-        }
-        
-        // Set the loading flag to prevent duplicate requests
-        isLoadingGates = true;
-        
-        // Otherwise make a direct fetch to avoid ODataStore overhead
-        // No cache available - fetching from server
-        return fetch(DELIVERABLE_GATES_ENDPOINT, {
-          headers: {
-            'Authorization': user?.token ? `Bearer ${user.token}` : '',
-            'Content-Type': 'application/json'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          const gatesData = data.value || data;
-          
-          // Update both global cache and component state
-          gatesGlobalCache = gatesData;
-          if (!initialLoadCompleted.current) {
-            setGates(gatesData);
-            setIsLoading(false);
-            initialLoadCompleted.current = true;
-          }
-          
-          // Clear the loading flag
-          isLoadingGates = false;
-          
-          return gatesData;
-        })
-        .catch(err => {
-          console.error('[GateProvider] Error loading gate data:', err);
-          setError(err as Error);
-          setIsLoading(false);
-          
-          // Clear the loading flag on error too
-          isLoadingGates = false;
-          
-          return [];
-        });
-      },
+  const error = queryError as Error | null;
 
-      byKey: function(key: string) {
-        // Always check global cache first (most efficient)
-        if (gatesGlobalCache) {
-          // Looking up gate from global cache
-          const item = gatesGlobalCache.find(gate => compareGuids(gate.guid, key));
-          return Promise.resolve(item);
-        }
-        
-        // If we have gates in component state but not in global cache (shouldn't happen)
-        if (gates.length > 0) {
-          // Looking up gate from component state
-          const item = gates.find(gate => compareGuids(gate.guid, key));
-          
-          // Update global cache for future lookups
-          if (!gatesGlobalCache) {
-            gatesGlobalCache = gates;
-          }
-          
-          return Promise.resolve(item);
-        }
-        
-        // If no cache available, fetch just the one gate by key
-        // Looking up gate from server
-        const keyFilterUrl = `${DELIVERABLE_GATES_ENDPOINT}?$filter=guid eq '${key}'`;
-        return fetch(keyFilterUrl, {
-          headers: {
-            'Authorization': user?.token ? `Bearer ${user.token}` : '',
-            'Content-Type': 'application/json'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          const items = data.value || data;
-          return items.length > 0 ? items[0] : null;
-        });
+  /**
+   * Create a custom data source for DevExtreme compatibility
+   */
+  const deliverableGatesDataSource = useMemo(() => ({
+    load: () => {
+      if (deliverableGates.length === 0 && !isLoading) {
+        refetch();
       }
-    };
-  }, [user?.token, gates, isLoading]);
-  
-  // Initial data loading (if needed)
-  useEffect(() => {
-    // If we already have global cache data, use it and skip the request
-    if (gatesGlobalCache && !initialLoadCompleted.current) {
-      // Using global cache for initial load
-      setGates(gatesGlobalCache);
-      setIsLoading(false);
-      initialLoadCompleted.current = true;
-      return;
+      return Promise.resolve(deliverableGates);
+    },
+    byKey: (key: string) => {
+      const foundItem = deliverableGates.find(gate => compareGuids(gate.guid, key));
+      return Promise.resolve(foundItem || null);
     }
-    
-    // Only load once unless forced
-    if (!initialLoadCompleted.current) {
-      // Initial gate data load
-      setIsLoading(true);
-      
-      // Use the data source load method to ensure cache is populated
-      gatesDataSource.load({})
-        .then((data: DeliverableGate[]) => {
-          // Data and state updates are handled in the load method
-        })
-        .catch((err: Error) => {
-          console.error('[GateProvider] Error in initial load:', err);
-          setError(err);
-          setIsLoading(false);
-        });
-    }
-  }, [gatesDataSource]);
-  
+  }), [deliverableGates, isLoading, refetch]);
+
   /**
-   * Get a deliverable gate by its ID
-   * @param id The gate ID to look for
-   * @returns The gate object or undefined if not found
+   * Get a deliverable gate by ID
    */
-  const getGateById = useCallback((id: string): DeliverableGate | undefined => {
-    // Check global cache first for best performance
-    if (gatesGlobalCache) {
-      return gatesGlobalCache.find(gate => compareGuids(gate.guid, id));
-    }
-    return gates.find(gate => compareGuids(gate.guid, id));
-  }, [gates]);
-  
-  /**
-   * Get a gate by its relative sequence number
-   * @returns The gate object or undefined if not found
-   */
-  const getGateBySequence = useCallback((sequence: number): DeliverableGate | undefined => {
-    // Check global cache first for best performance
-    if (gatesGlobalCache) {
-      return gatesGlobalCache.find(gate => gate.autoPercentage === sequence);
-    }
-    // Since sequence property doesn't exist, we're using autoPercentage as the equivalent
-    return gates.find(gate => gate.autoPercentage === sequence);
-  }, [gates]);
-  
+  const getDeliverableGateById = useCallback((id: string): DeliverableGate | undefined => {
+    if (!id) return undefined;
+    return deliverableGates.find(gate => compareGuids(gate.guid, id));
+  }, [deliverableGates]);
+
   return {
-    gates,
-    gatesStore,
-    gatesDataSource,
+    // New naming pattern
+    deliverableGates,
+    deliverableGatesStore,
+    deliverableGatesDataSource,
+    
+    // For backward compatibility with existing code
+    gates: deliverableGates,
+    gatesDataSource: deliverableGatesDataSource,
+    
     isLoading,
     error,
-    getGateById,
-    getGateBySequence
+    getDeliverableGateById,
+    refetch
   };
 };

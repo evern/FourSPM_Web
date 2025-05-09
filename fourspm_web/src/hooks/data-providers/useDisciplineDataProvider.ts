@@ -1,237 +1,89 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Discipline } from '../../types/odata-types';
-import { useODataStore } from '../../stores/odataStores';
-import ODataStore from 'devextreme/data/odata/store';
-import DataSource from 'devextreme/data/data_source';
-import { compareGuids } from '../../utils/guid-utils';
+import { useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DISCIPLINES_ENDPOINT } from '../../config/api-endpoints';
-import { useAuth } from '../../contexts/auth';
-
-// Module-level cache to ensure it's shared across ALL instances
-// This is key to preventing multiple requests
-let disciplinesGlobalCache: Discipline[] | null = null;
-
-// Flag to track if we're currently loading discipline data
-// This prevents duplicate API calls when multiple components initialize simultaneously
-let isLoadingDisciplines = false;
+import { useODataStore } from '../../stores/odataStores';
+import { Discipline } from '../../types/odata-types';
+import { compareGuids } from '../../utils/guid-utils';
+import { baseApiService } from '../../api/base-api.service';
 
 /**
- * Interface for discipline data provider result
+ * Fetch disciplines data from the API
+ * @returns Promise with array of disciplines
+ */
+const fetchDisciplines = async (): Promise<Discipline[]> => {
+  const response = await baseApiService.request(DISCIPLINES_ENDPOINT);
+  const data = await response.json();
+  return data.value || [];
+};
+
+/**
+ * Result interface for the discipline data provider hook
  */
 export interface DisciplineDataProviderResult {
   disciplines: Discipline[];
-  disciplinesStore: ODataStore;
-  disciplinesDataSource: any; // DataSource for lookup components
+  disciplinesStore: any;
+  disciplinesDataSource: any;
   isLoading: boolean;
   error: Error | null;
   getDisciplineById: (id: string) => Discipline | undefined;
   getDisciplineByCode: (code: string) => Discipline | undefined;
+  refetch: () => Promise<any>;
 }
 
 /**
  * Data provider hook for discipline data
- * Manages both ODataStore for grid binding and in-memory data for validation
- * 
- * @param shouldLoad Optional boolean to control when data is loaded
- * @returns Object containing the disciplines store, data array, loading state, and helper methods
+ * @returns Object containing the disciplines store, data array, and loading state
  */
 export const useDisciplineDataProvider = (shouldLoad: boolean | undefined = true): DisciplineDataProviderResult => {
-  const { user } = useAuth();
-  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  const initialLoadCompleted = useRef(false);
-  
-  // Use the hook to get the store
-  const disciplinesStore = useODataStore(DISCIPLINES_ENDPOINT);
-  
-  // Create a DataSource with caching for lookups
-  const disciplinesDataSource = useMemo(() => {
-    // Create the lookup data source with optimized load/byKey methods
-    return {
-      load: function(loadOptions: any) {
-        // Skip loading if shouldLoad parameter is explicitly false or undefined
-        if (shouldLoad === false || shouldLoad === undefined) {
-          return Promise.resolve([]);
-        }
-        
-        // If global cache already has data, use it immediately
-        if (disciplinesGlobalCache) {
-          // Using global cache for load
-          return Promise.resolve(disciplinesGlobalCache);
-        }
-        
-        // If we already loaded data into component state, update global cache and return
-        if (disciplines.length > 0 && !isLoading) {
-          // Using component state for load
-          disciplinesGlobalCache = disciplines;
-          return Promise.resolve(disciplines);
-        }
-        
-        // Check if another instance is already loading
-        if (isLoadingDisciplines) {
-          // Wait for the existing request to complete and use its results
-          return new Promise<Discipline[]>((resolve) => {
-            const checkCacheInterval = setInterval(() => {
-              if (!isLoadingDisciplines && disciplinesGlobalCache) {
-                clearInterval(checkCacheInterval);
-                resolve(disciplinesGlobalCache);
-                
-                // Update component state if needed
-                if (!initialLoadCompleted.current) {
-                  setDisciplines(disciplinesGlobalCache);
-                  setIsLoading(false);
-                  initialLoadCompleted.current = true;
-                }
-              }
-            }, 100);
-          });
-        }
-        
-        // Set the loading flag to prevent duplicate requests
-        isLoadingDisciplines = true;
-        
-        // Otherwise make a direct fetch to avoid ODataStore overhead
-        // No cache available - fetching from server
-        return fetch(DISCIPLINES_ENDPOINT, {
-          headers: {
-            'Authorization': user?.token ? `Bearer ${user.token}` : '',
-            'Content-Type': 'application/json'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          const disciplinesData = data.value || data;
-          
-          // Update both global cache and component state
-          disciplinesGlobalCache = disciplinesData;
-          if (!initialLoadCompleted.current) {
-            setDisciplines(disciplinesData);
-            setIsLoading(false);
-            initialLoadCompleted.current = true;
-          }
-          
-          // Clear the loading flag
-          isLoadingDisciplines = false;
-          
-          return disciplinesData;
-        })
-        .catch(err => {
-          console.error('[DisciplineProvider] Error loading discipline data:', err);
-          setError(err as Error);
-          setIsLoading(false);
-          
-          // Clear the loading flag on error too
-          isLoadingDisciplines = false;
-          
-          return [];
-        });
-      },
+  // Create a global store for direct OData operations
+  const disciplinesStore = useODataStore(DISCIPLINES_ENDPOINT, 'guid');
 
-      byKey: function(key: string) {
-        // Always check global cache first (most efficient)
-        if (disciplinesGlobalCache) {
-          // Looking up discipline from global cache
-          const item = disciplinesGlobalCache.find(discipline => compareGuids(discipline.guid, key));
-          return Promise.resolve(item);
-        }
-        
-        // If we have disciplines in component state but not in global cache (shouldn't happen)
-        if (disciplines.length > 0) {
-          // Looking up discipline from component state
-          const item = disciplines.find(discipline => compareGuids(discipline.guid, key));
-          
-          // Update global cache for future lookups
-          if (!disciplinesGlobalCache) {
-            disciplinesGlobalCache = disciplines;
-          }
-          
-          return Promise.resolve(item);
-        }
-        
-        // If no cache available, fetch just the one discipline by key
-        // Looking up discipline from server
-        const keyFilterUrl = `${DISCIPLINES_ENDPOINT}?$filter=guid eq '${key}'`;
-        return fetch(keyFilterUrl, {
-          headers: {
-            'Authorization': user?.token ? `Bearer ${user.token}` : '',
-            'Content-Type': 'application/json'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          const items = data.value || data;
-          return items.length > 0 ? items[0] : null;
-        });
-      }
-    };
-  }, [user?.token, disciplines, isLoading]);
+  // Use React Query to fetch and cache disciplines
+  const { 
+    data: disciplines = [], 
+    isLoading, 
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: ['disciplines'],
+    queryFn: fetchDisciplines
+  });
   
-  // Initial data loading (if needed)
-  useEffect(() => {
-    // Skip loading if shouldLoad is explicitly set to false or undefined
-    if (shouldLoad === false || shouldLoad === undefined) {
-      // Early return - caller doesn't want to load data yet
-      if (!initialLoadCompleted.current) {
-        setIsLoading(false);
-        initialLoadCompleted.current = true;
-      }
-      return;
-    }
-    
-    // If we already have global cache data, use it and skip the request
-    if (disciplinesGlobalCache && !initialLoadCompleted.current) {
-      // Using global cache for initial load
-      setDisciplines(disciplinesGlobalCache);
-      setIsLoading(false);
-      initialLoadCompleted.current = true;
-      return;
-    }
-    
-    // Only load once unless forced
-    if (!initialLoadCompleted.current) {
-      // Initial discipline data load
-      setIsLoading(true);
-      
-      // Use the data source load method to ensure cache is populated
-      disciplinesDataSource.load({})
-        .then((data: Discipline[]) => {
-          // Data and state updates are handled in the load method
-        })
-        .catch((err: Error) => {
-          console.error('[DisciplineProvider] Error in initial load:', err);
-          setError(err);
-          setIsLoading(false);
-        });
-    }
-  }, [disciplinesDataSource, shouldLoad]); // Re-run when shouldLoad changes
-  
+  const error = queryError as Error | null;
+
   /**
-   * Get a discipline by its ID
-   * @param id The discipline ID to look for
-   * @returns The discipline object or undefined if not found
+   * Custom data source for DevExtreme compatibility
+   */
+  const disciplinesDataSource = useMemo(() => ({
+    load: () => {
+      if (disciplines.length === 0 && !isLoading) {
+        refetch();
+      }
+      return Promise.resolve(disciplines);
+    },
+    byKey: (key: string) => {
+      const foundItem = disciplines.find(discipline => compareGuids(discipline.guid, key));
+      return Promise.resolve(foundItem || null);
+    }
+  }), [disciplines, isLoading, refetch]);
+
+  /**
+   * Get a discipline by ID
    */
   const getDisciplineById = useCallback((id: string): Discipline | undefined => {
-    // Check global cache first for best performance
-    if (disciplinesGlobalCache) {
-      return disciplinesGlobalCache.find(discipline => compareGuids(discipline.guid, id));
-    }
+    if (!id) return undefined;
     return disciplines.find(discipline => compareGuids(discipline.guid, id));
   }, [disciplines]);
-  
+
   /**
-   * Get a discipline by its code
+   * Get a discipline by code
    * @param code The discipline code to look for
    * @returns The discipline object or undefined if not found
    */
   const getDisciplineByCode = useCallback((code: string): Discipline | undefined => {
-    // Check global cache first for best performance
-    if (disciplinesGlobalCache) {
-      return disciplinesGlobalCache.find(discipline => discipline.code === code);
-    }
     return disciplines.find(discipline => discipline.code === code);
   }, [disciplines]);
-  
+
   return {
     disciplines,
     disciplinesStore,
@@ -239,6 +91,7 @@ export const useDisciplineDataProvider = (shouldLoad: boolean | undefined = true
     isLoading,
     error,
     getDisciplineById,
-    getDisciplineByCode
+    getDisciplineByCode,
+    refetch
   };
 };
