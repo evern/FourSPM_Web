@@ -78,6 +78,10 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
         dataSource: deliverableGatesDataSource,
         valueExpr: 'guid',
         displayExpr: 'name'
+      },
+      editorOptions: {
+        allowNull: true, // Allow clearing the gate value
+        showClearButton: true // Show a button to clear the selected value
       }
     },
     // Progress percentage column - user edits the cumulative percentage earned up to the current period

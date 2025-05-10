@@ -1,68 +1,99 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
-import { useDisciplineCollectionController } from '../../hooks/controllers/useDisciplineCollectionController';
 import { disciplineColumns } from './discipline-columns';
 import { useAuth } from '../../contexts/auth';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
+import { LoadPanel } from 'devextreme-react/load-panel';
 import './disciplines.scss';
+import { DisciplinesProvider, useDisciplines } from '@/contexts/disciplines/disciplines-context';
+import { useDisciplineGridHandlers } from '@/hooks/grid-handlers/useDisciplineGridHandlers';
+import { ErrorMessage } from '@/components';
 
-const Disciplines: React.FC = () => {
-  console.log('Disciplines rendering');
-  
-  // Use a ref to track mount/render counts
-  const renderCountRef = useRef(0);
-  const mountCountRef = useRef(0);
+/**
+ * Main Disciplines component following the Collection View Doctrine
+ */
+export function Disciplines(): React.ReactElement {
+  return (
+    <DisciplinesProvider>
+      <DisciplinesContent />
+    </DisciplinesProvider>
+  );
+}
 
-  // Track component mounting
-  useEffect(() => {
-    mountCountRef.current += 1;
-    console.log(`Disciplines mounted (mount count: ${mountCountRef.current})`);
-    
-    return () => {
-      console.log('Disciplines unmounting');
-    };
-  }, []);
-
-  // Track all renders
-  renderCountRef.current += 1;
-  console.log(`Disciplines render count: ${renderCountRef.current}`);
-  
-  // Log auth context changes to track if they're causing re-renders
+/**
+ * Internal component that uses the disciplines context
+ */
+const DisciplinesContent = React.memo((): React.ReactElement => {
+  // Get user auth token for API calls
   const { user } = useAuth();
-  console.log('Auth context user token in Disciplines:', user?.token ? 'exists' : 'none');
-  const endpoint = DISCIPLINES_ENDPOINT;
   
-  // Use the enhanced useDisciplineData hook with integrated grid operations and validation
-  const { 
-    handleRowUpdating, 
-    handleRowRemoving,
-    handleRowInserting,
-    handleRowValidating,
-    handleInitNewRow
-  } = useDisciplineCollectionController(user?.token, {
-    endpoint,
-    onDeleteError: (error) => console.error('Failed to delete discipline:', error),
-    onUpdateError: (error) => console.error('Failed to update discipline:', error)
-  });
+  // Use the disciplines context
+  const {
+    state,
+    disciplinesLoading,
+    disciplinesError
+  } = useDisciplines();
 
+  // Use the dedicated grid handlers hook
+  const { 
+    handleRowValidating,
+    handleRowUpdating,
+    handleRowInserting,
+    handleRowRemoving,
+    handleInitNewRow,
+    handleGridInitialized
+  } = useDisciplineGridHandlers({
+    userToken: user?.token
+  });
+  
+  // Determine if we're still loading - combine context and query loading states
+  const isLoading = disciplinesLoading || state.loading;
+  
+  // Check for errors - account for both context and query errors
+  const hasError = state.error !== null || disciplinesError !== null;
+  
   return (
     <div className="disciplines-container">
+      {/* Loading indicator */}
+      <LoadPanel
+        position={{ of: '.app-main-content' }}
+        visible={isLoading}
+        showIndicator={true}
+        shading={true}
+        shadingColor="rgba(0,0,0,0.1)"
+        showPane={true}
+      />
+      
+      {/* Error message */}
+      {hasError && (
+        <ErrorMessage
+          title="Error Loading Disciplines"
+          message={state.error || (disciplinesError ? String(disciplinesError) : 'An unknown error occurred')}
+        />
+      )}
+      
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Disciplines</div>
-        <ODataGrid
-          title=" "
-          endpoint={endpoint}
-          columns={disciplineColumns}
-          keyField="guid"
-          onRowUpdating={handleRowUpdating}
-          onInitNewRow={handleInitNewRow}
-          onRowValidating={handleRowValidating}
-          onRowRemoving={handleRowRemoving}
-          onRowInserting={handleRowInserting}
-        />
+        {!isLoading && !hasError && (
+          <ODataGrid
+            title=" "
+            endpoint={DISCIPLINES_ENDPOINT}
+            columns={disciplineColumns}
+            keyField="guid"
+            onRowUpdating={handleRowUpdating}
+            onInitNewRow={handleInitNewRow}
+            onRowValidating={handleRowValidating}
+            onRowRemoving={handleRowRemoving}
+            onRowInserting={handleRowInserting}
+            onInitialized={handleGridInitialized}
+            defaultSort={[{ selector: 'code', desc: false }]}
+          />
+        )}
       </div>
     </div>
   );
-};
+});
+
+
 
 export default Disciplines;

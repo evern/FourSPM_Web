@@ -1,6 +1,6 @@
 import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { departmentEnum, deliverableTypeEnum } from '../../types/enums';
-import { Area, Discipline, DocumentType } from '../../types/odata-types';
+// No need to import entity types directly
 
 // Create columns with DataSource objects passed in for lookups
 export const createDeliverableColumns = (

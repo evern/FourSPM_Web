@@ -1,9 +1,7 @@
-import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DOCUMENT_TYPES_ENDPOINT } from '../../config/api-endpoints';
 import { useODataStore } from '../../stores/odataStores';
 import { DocumentType } from '../../types/odata-types';
-import { compareGuids } from '../../utils/guid-utils';
 import { baseApiService } from '../../api/base-api.service';
 
 /**
@@ -22,11 +20,8 @@ const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
 export interface DocumentTypeDataProviderResult {
   documentTypes: DocumentType[];
   documentTypesStore: any;
-  documentTypesDataSource: any;
   isLoading: boolean;
   error: Error | null;
-  getDocumentTypeById: (id: string) => DocumentType | undefined;
-  getDocumentTypeByCode: (code: string) => DocumentType | undefined;
   refetch: () => Promise<any>;
 }
 
@@ -53,47 +48,11 @@ export const useDocumentTypeDataProvider = (shouldLoad: boolean | undefined = tr
   
   const error = queryError as Error | null;
   
-  /**
-   * Create a custom data source for DevExtreme compatibility
-   */
-  const documentTypesDataSource = useMemo(() => ({
-    load: () => {
-      if (documentTypes.length === 0 && !isLoading) {
-        refetch();
-      }
-      return Promise.resolve(documentTypes);
-    },
-    byKey: (key: string) => {
-      const foundItem = documentTypes.find(documentType => compareGuids(documentType.guid, key));
-      return Promise.resolve(foundItem || null);
-    }
-  }), [documentTypes, isLoading, refetch]);
-
-  /**
-   * Get a document type by ID
-   */
-  const getDocumentTypeById = useCallback((id: string): DocumentType | undefined => {
-    if (!id) return undefined;
-    return documentTypes.find(documentType => compareGuids(documentType.guid, id));
-  }, [documentTypes]);
-
-  /**
-   * Get a document type by code
-   * @param code The document type code to look for
-   * @returns The document type object or undefined if not found
-   */
-  const getDocumentTypeByCode = useCallback((code: string): DocumentType | undefined => {
-    return documentTypes.find(documentType => documentType.code === code);
-  }, [documentTypes]);
-
   return {
     documentTypes,
     documentTypesStore,
-    documentTypesDataSource,
     isLoading,
     error,
-    getDocumentTypeById,
-    getDocumentTypeByCode,
     refetch
   };
 };

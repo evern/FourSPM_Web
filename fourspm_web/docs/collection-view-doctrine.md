@@ -4,25 +4,48 @@ This document defines the standard architecture and implementation patterns for 
 
 ## Standard Architecture
 
-Every collection view in the application MUST be built using the Context + Reducer pattern with specialized hooks for grid behaviors, providing clear separation of concerns and optimized performance:
+### Determining Implementation Approach
+
+When implementing a new collection view, first determine whether it's a simple or complex view:
+
+**Simple Collection Views:**
+- Reference data with minimal business logic (e.g., Disciplines, Areas, Document Types)
+- No complex state transitions or workflows
+- Limited field validation requirements
+- Primarily CRUD operations with standard behaviors
+
+**Complex Collection Views:**
+- Business entities with complex workflows (e.g., Deliverables, Variations)
+- Multiple related data dependencies
+- Complex state transitions or field calculations
+- Specialized UI requirements beyond standard grid operations
+
+**Instructions for AI Code Assistants:**
+
+When implementing a collection view where complexity is not clearly specified:
+1. **Ask the user**: "Is this a simple reference data collection view (like Disciplines, Areas) or a complex business entity view (like Deliverables, Variations) with advanced workflows?"
+2. If still unclear, recommend the complex implementation to ensure future extensibility
+3. Document the chosen approach in the implementation
+
+Every collection view in the application MUST be built using the enhanced Context + React Query pattern with specialized hooks for grid behaviors, providing clear separation of concerns and optimized performance:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│     Main Component  │    │      Contexts       │    │    Data Sources      │
+│     Main Component  │    │      Context        │    │    Data Hooks       │
 │                     │    │                     │    │                     │
-│  {entity}.tsx       │◄───┤{entity}-context.tsx │◄───┤{entity}DataSource.ts│
-│  ├─ {Entity}Content │    │{entity}-editor-     │    │                     │
-└─────────────────────┘    │context.tsx          │    └─────────────────────┘
-          ▲                 └─────────────────────┘              ▲
-          │                           ▲                          │
+│  {entity}.tsx       │◄───┤{entity}-context.tsx │◄───┤useProjectData.ts    │
+│  ├─ {Entity}Content │    │   State Management │     │useDataProvider.ts   │
+└─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+          │                           ▲                          ▲
           │                           │                          │
+          ▼                           │                          │
           │                           │                          │
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   View Definition   │    │   Specialized Hooks │    │   API Endpoints     │
+│   Component Logic   │    │   OData Grid        │    │   API Layer         │
 │                     │    │                     │    │                     │
-│ {entity}-columns.ts │    │ grid-handlers/*    │    │  api-endpoints.ts   │
-│                     │    │ grid-validators/*   │    │                     │
-│                     │    │ grid-editors/**     │    │                     │
+│ grid-handlers/*     │───►│ ODataGrid.tsx       │◄───┤  api-endpoints.ts   │
+│ {entity}-columns.ts │    │ Direct API Connect  │    │                     │
+│                     │    │                     │    │                     │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
 
 * Entity-specific implementations (mandatory)
@@ -31,12 +54,160 @@ Every collection view in the application MUST be built using the Context + Reduc
 
 Where `{entity}` is replaced with the specific entity name (e.g., deliverable, project, area).
 
-This architecture includes specialized components with defined responsibilities.
+This architecture includes specialized components with defined responsibilities and incorporates React Query for optimized data fetching and state management.
+
+### Hybrid Architecture for Performance
+
+The architecture uses a hybrid approach to balance state management needs with performance concerns:
+
+1. **Context for Shared State** - Context provides centralized state management for shared data
+2. **React Query for Reference Data** - React Query efficiently fetches and caches reference/lookup data
+3. **Direct ODataGrid for Large Datasets** - ODataGrid connects directly to API endpoints for handling large datasets without intermediate hooks or contexts
+4. **Component-Level Grid Handlers** - Grid event handlers reside in the component that uses them
+
+This hybrid approach provides several benefits:
+
+1. **Better Performance** - Direct ODataGrid connections avoid React re-renders for large datasets
+2. **Simplified State Management** - Context handles only necessary shared state
+3. **Optimized Caching** - React Query efficiently caches reference data
+4. **Clear Responsibility Boundaries** - Components handle their own behaviors
+
+#### Direct API Endpoint Connection Pattern
+
+A foundational aspect of this architecture is that the ODataGrid component connects **directly** to API endpoints without intermediate data fetching mechanisms:
+
+1. **Direct Endpoint Connection** - The ODataGrid component takes an `endpoint` prop that points directly to the API endpoint URL
+2. **No Intermediate Fetching** - The component handles its own data fetching; we do NOT fetch the data separately via React Query or other hooks
+3. **Context Role** - For entity views using ODataGrid, the context should NOT fetch the main entity data directly, as this would create duplicate requests
+4. **Context Responsibilities** - The context should focus on cache invalidation, loading states, and reference data management
+
+```tsx
+// CORRECT: ODataGrid connects directly to endpoint
+<ODataGrid
+  endpoint={DISCIPLINES_ENDPOINT}
+  // other props...
+/>
+
+// INCORRECT: Don't fetch the same data in the context
+// const { data } = useQuery({
+//   queryKey: ['disciplines'],
+//   queryFn: fetchDisciplines // This creates duplicate requests!
+// });
+```
+
+This pattern ensures optimal performance for large datasets and prevents unnecessary duplicate network requests.
+
+#### Direct Grid Operation Hook Pattern
+
+For simpler reference data views (like Areas, Disciplines, Document Types), use the `createGridOperationHook` factory function directly rather than implementing custom handlers:
+
+1. **Use Factory Function** - Use the `createGridOperationHook` factory function to generate standardized grid operation handlers
+2. **Centralize Configuration** - Define validation rules, error handlers, and success callbacks in a single configuration object
+3. **Connect with Context** - Have the grid handlers access the context for error reporting and cache invalidation
+
+```tsx
+// CORRECT: Use the factory pattern for simpler reference data views
+const gridOperations = createGridOperationHook({
+  endpoint: AREAS_ENDPOINT,
+  validationRules: AREA_VALIDATION_RULES,
+  onUpdateError: (error) => setError(error.message),
+  invalidateCache: invalidateAllLookups,
+  defaultValues: {
+    guid: uuidv4(),
+    projectGuid: projectId
+  }
+}, userToken);
+
+// INCORRECT: Don't implement custom handlers when the factory can be used
+// const handleRowUpdating = useCallback((e: any) => {
+//   // Custom implementation duplicating factory functionality
+// }, []);
+```
+
+This ensures consistent implementation across reference data components and reduces code duplication.
+
+#### Specialized Validators for Complex Views
+
+For complex collection views (like Deliverables, Variations, Progress updates), implement dedicated validator hooks to handle business-specific validation logic:
+
+1. **Create Specialized Validators** - Implement custom validator hooks (e.g., `useDeliverableProgressGridValidator`) for complex business rules
+2. **Use Data Providers** - Connect validators to data providers for dependent entity validation
+3. **Implement Business Logic** - Include complex validation like relationship checks, state transitions, and constraint validation
+
+```tsx
+// EXAMPLE: Complex validator for business entities
+export function useDeliverableProgressGridValidator() {
+  // Get dependent data from providers
+  const { gates: deliverableGates } = useDeliverableGateDataProvider();
+
+  // Implement specialized validation logic
+  const validateGatePercentage = useCallback((e: any): boolean => {
+    // Complex business rules validation
+    if (e.newData.cumulativeEarntPercentage !== undefined) {
+      const currentGate = deliverableGates.find(
+        gate => compareGuids(gate.guid, e.newData.deliverableGateGuid)
+      );
+      
+      // Business constraint validation
+      if (currentGate && e.newData.cumulativeEarntPercentage > currentGate.maxPercentage) {
+        e.isValid = false;
+        e.errorText = `Percentage cannot exceed gate maximum of ${currentGate.maxPercentage}%`;
+        return false;
+      }
+    }
+    return true;
+  }, [deliverableGates]);
+  
+  // Return validator functions
+  return { validateGatePercentage, validateOtherBusinessRules };
+}
+```
+
+When working with complex collection views, these specialized validators ensure business rules are enforced consistently.
+
+#### Sequential Loading Pattern
+
+A critical aspect of collection views is the proper sequencing of data loading, especially for lookup data. This pattern MUST be followed for all collection views and can be implemented with React Query through dependent queries:
+
+1. **Parent Entity Loading** - First load the parent entity (typically project)
+2. **Primary Entity Loading** - Load the primary entities using the parent's ID (e.g., deliverables, areas)
+3. **Lookup Data Loading** - Load lookup data once parent entities are available, using the `enabled` flag in React Query:
+   ```tsx
+   // Example of sequential loading with React Query
+   const { projectId } = useParams();
+   
+   // 1. First load the parent entity (project)
+   const { data: project } = useQuery({
+     queryKey: ['project', projectId],
+     queryFn: () => fetchProject(projectId),
+     enabled: !!projectId
+   });
+   
+   // 2. Then load the primary entities (e.g., deliverables)
+   const { data: deliverables } = useQuery({
+     queryKey: ['deliverables', projectId],
+     queryFn: () => fetchDeliverables(projectId),
+     enabled: !!project // Only runs when project is available
+   });
+   
+   // 3. Load lookup data for grid editing
+   const { data: lookupData } = useQuery({
+     queryKey: ['lookup', projectId],
+     queryFn: () => fetchLookupData(projectId),
+     enabled: !!project, // Only runs when project is fully loaded
+   });
+   ```
+
+4. **Loading State Management** - Track loading states for each sequential step to communicate progress to users
+
+This pattern ensures proper data dependencies are respected while still leveraging React Query's caching capabilities.
+
+This approach provides the benefits of React Query (caching, background refetching, optimistic updates) while maintaining the architectural pattern of the application.
 
 ### Mandatory Components
 
-1. **Data Context** (`{entity}-context.tsx`): Handles data access, CRUD operations, and application state management
-2. **Grid Handlers** (`use{Entity}GridHandlers.ts`): Centralizes grid event handling with proper type safety (entity-specific)
+1. **Data Context** (`{entity}-context.tsx`): Handles shared state and reference data via React Query
+2. **Component with Grid Handlers**: Main component uses grid handler hooks directly
 3. **Grid Validators** (`use{Entity}GridValidator.ts`): Contains business validation logic separated from UI concerns (entity-specific)
 4. **Columns Definition** (`{entity}-columns.ts`): Defines grid column configuration
 5. **API Adapter** (`{entity}.adapter.ts`): Contains API interaction methods
@@ -52,20 +223,32 @@ This architecture includes specialized components with defined responsibilities.
 
 For complex entity views (like Deliverables), we use a two-layer component approach:
 
-#### 1.1 Main Component (`{entity}.tsx`) 
+#### 1. Main Component (`{entity}.tsx`)
 
-This component MUST:
-- Provide the entity-specific Editor Context if needed
-- Export a clean public API
+This is the entry point for a collection view. It is responsible for setting up all necessary context providers and handling routing concerns.
+
+#### Responsibilities:
+
+1. **Route Parameter Handling**: Extract and validate URL parameters
+2. **Context Setup**: Provide the valid parameters to context providers
+3. **Component Composition**: Set up the component hierarchy
 
 **Required implementation:**
 ```typescript
 // Main entry point that sets up the context providers
 export function EntityName(): React.ReactElement {
+  // Handle routing concerns in the component, not the context
+  const { entityId } = useParams<EntityParams>();
+  
+  // Validate parameters before passing to context
+  if (!entityId) {
+    return <div className="error-message">Entity ID is missing from the URL.</div>;
+  }
+  
   return (
-    <EntityEditorProvider>
+    <EntityProvider entityId={entityId}>
       <EntityContent />
-    </EntityEditorProvider>
+    </EntityProvider>
   );
 }
 
@@ -663,10 +846,6 @@ The following modules serve as reference implementations that adhere to this arc
 - Grid Handlers: `src/hooks/grid-handlers/useVariationDeliverableGridHandlers.ts`
 - Grid Validator: `src/hooks/grid-handlers/useVariationDeliverableGridValidator.ts`
 - Variation Hooks: `src/hooks/utils/useVariationInfo.ts`, `src/hooks/utils/useProjectInfo.ts`
-- Data Providers: 
-  - `src/hooks/data-providers/useAreaDataProvider.ts`
-  - `src/hooks/data-providers/useDisciplineDataProvider.ts`
-  - `src/hooks/data-providers/useDocumentTypeDataProvider.ts`
 - Columns: `src/pages/variations/variation-deliverable-columns.ts`
 - Adapter: `src/adapters/variation-deliverable.adapter.ts`, `src/adapters/variation.adapter.ts`
 
@@ -678,4 +857,430 @@ The following modules serve as reference implementations that adhere to this arc
 - Data Source: `src/stores/clientDataSource.ts`
 - Columns: `src/pages/projects/project-columns.ts`
 
+## CRUD Operations Implementation Pattern
+
+The Variations context (`src/contexts/variations/variations-context.tsx`) provides an exemplary implementation of the CRUD operations pattern within our architecture. This pattern should be followed for all complex business entities requiring state management.
+
+### Core CRUD Pattern
+
+All entity contexts should implement the following CRUD operations pattern:
+
+1. **Create (Add) Operation**
+```typescript
+const addEntity = useCallback(async (entity: EntityType): Promise<EntityType> => {
+  if (!user?.token || !isMountedRef.current) {
+    throw new Error('Unable to create entity - user is not authenticated');
+  }
+  
+  try {
+    dispatch({ type: 'ADD_ENTITY_START', payload: entity });
+    const newEntity = await createEntity(entity, user.token);
+    
+    if (isMountedRef.current) {
+      dispatch({ type: 'ADD_ENTITY_SUCCESS', payload: newEntity });
+    }
+    return newEntity;
+  } catch (error) {
+    if (isMountedRef.current) {
+      dispatch({ 
+        type: 'ADD_ENTITY_ERROR', 
+        payload: { 
+          error: error instanceof Error ? error.message : 'Failed to create entity',
+          entity
+        } 
+      });
+    }
+    throw error;
+  }
+}, [user?.token]);
+```
+
+2. **Read Operation**
+```typescript
+const fetchEntities = useCallback(async (parentId: string) => {
+  if (!user?.token || !isMountedRef.current) return;
+  
+  try {
+    dispatch({ type: 'FETCH_ENTITIES_START' });
+    const entities = await getParentEntities(parentId, user.token);
+    
+    if (isMountedRef.current) {
+      dispatch({ type: 'FETCH_ENTITIES_SUCCESS', payload: entities });
+    }
+  } catch (error) {
+    if (isMountedRef.current) {
+      dispatch({ type: 'FETCH_ENTITIES_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch entities' });
+    }
+  }
+}, [user?.token]);
+```
+
+3. **Update Operation**
+```typescript
+const updateEntity = useCallback(async (entity: EntityType): Promise<EntityType> => {
+  if (!user?.token || !isMountedRef.current) {
+    throw new Error('Unable to update entity - user is not authenticated');
+  }
+  
+  try {
+    dispatch({ type: 'UPDATE_ENTITY_START', payload: entity });
+    await updateEntityApi(entity, user.token);
+    
+    if (isMountedRef.current) {
+      dispatch({ type: 'UPDATE_ENTITY_SUCCESS', payload: entity });
+    }
+    return entity;
+  } catch (error) {
+    if (isMountedRef.current) {
+      dispatch({ 
+        type: 'UPDATE_ENTITY_ERROR', 
+        payload: { 
+          error: error instanceof Error ? error.message : 'Failed to update entity',
+          entity
+        } 
+      });
+    }
+    throw error;
+  }
+}, [user?.token]);
+```
+
+4. **Delete Operation**
+```typescript
+const deleteEntity = useCallback(async (id: string): Promise<void> => {
+  if (!user?.token || !isMountedRef.current) {
+    throw new Error('Unable to delete entity - user is not authenticated');
+  }
+  
+  try {
+    dispatch({ type: 'DELETE_ENTITY_START', payload: id });
+    await deleteEntityApi(id, user.token);
+    
+    if (isMountedRef.current) {
+      dispatch({ type: 'DELETE_ENTITY_SUCCESS', payload: id });
+    }
+  } catch (error) {
+    if (isMountedRef.current) {
+      dispatch({ 
+        type: 'DELETE_ENTITY_ERROR', 
+        payload: { 
+          error: error instanceof Error ? error.message : 'Failed to delete entity',
+          id
+        } 
+      });
+    }
+    throw error;
+  }
+}, [user?.token]);
+```
+
+### Critical Implementation Details
+
+1. **Mount State Tracking**
+
+Always use an `isMountedRef` to prevent state updates after component unmounting:
+
+```typescript
+// CRITICAL: Track the component mount state to prevent state updates after unmounting
+const isMountedRef = React.useRef(true);
+
+useEffect(() => {
+  // Set mounted flag to true when component mounts
+  isMountedRef.current = true;
+  
+  // Clean up function to prevent state updates after unmounting
+  return () => {
+    isMountedRef.current = false;
+  };
+}, []);
+```
+
+2. **Context Value Memoization**
+
+Always memoize the context value to prevent unnecessary re-renders:
+
+```typescript
+// CRITICAL: Memoize the context value to prevent unnecessary re-renders
+const contextValue = useMemo(() => ({
+  state,
+  validateEntity,
+  fetchEntities,
+  addEntity,
+  updateEntity,
+  deleteEntity,
+  // Additional functions
+  specializedFunction,
+  // Cache invalidation
+  invalidateAllLookups
+}), [
+  state, 
+  validateEntity,
+  fetchEntities,
+  addEntity,
+  updateEntity,
+  deleteEntity,
+  // Additional dependencies
+  specializedFunction,
+  // Cache invalidation dependency
+  invalidateAllLookups
+]);
+```
+
+3. **React Query Cache Invalidation**
+
+Implement a cache invalidation function to refresh dependent data after entity operations:
+
+```typescript
+// Cache invalidation function - invalidates all related lookup data
+const invalidateAllLookups = useCallback(() => {
+  // Invalidate any queries that might use entities as reference data
+  queryClient.invalidateQueries({ queryKey: ['entities'] });
+  queryClient.invalidateQueries({ queryKey: ['lookup'] });
+  queryClient.invalidateQueries({ queryKey: ['parent'] });
+  
+  console.log('Invalidated all lookup data after entity change');
+}, [queryClient]);
+```
+
+4. **Grid Handler Integration**
+
+Connect grid handlers to use the context CRUD functions while maintaining proper state:  
+
+```typescript
+// In grid handlers file
+export function useEntityGridHandlers() {
+  // Get the entity context for CRUD operations
+  const { 
+    addEntity, 
+    updateEntity, 
+    deleteEntity: removeEntity, 
+    invalidateAllLookups 
+  } = useEntityContext();
+  
+  // Handle row updating - cancel default behavior and use our context function
+  const handleRowUpdating = useCallback((e: any) => {
+    // Cancel default grid behavior
+    e.cancel = true;
+    
+    const update = async () => {
+      try {
+        // Map grid data to entity model
+        const updatedEntity = {
+          ...e.oldData,
+          ...e.newData
+        };
+        
+        // Call the context method directly with skipStateUpdate=true to prevent UI flickering
+        // This prevents unnecessary context state updates while still updating the database
+        await updateEntity(updatedEntity, true);
+        
+        // Invalidate caches after successful update
+        invalidateAllLookups();
+        
+        // Refresh the grid
+        setTimeout(() => {
+          if (e.component.hasEditData()) {
+            e.component.cancelEditData();
+          }
+          e.component.getDataSource().reload();
+        }, 50);
+      } catch (error) {
+        // Re-throw to propagate to DevExtreme
+        throw error;
+      }
+    };
+    
+    // Return the update promise
+    return update();
+  }, [updateEntity, invalidateAllLookups]);
+  
+  return {
+    handleRowUpdating,
+    // Other handler functions...
+  };
+}
+```
+
+This standardized CRUD operations pattern ensures that all entity contexts provide consistent behavior, proper error handling, and optimized performance through careful management of component lifecycle and render optimization.
+
+5. **Optimizing Grid Operations with skipStateUpdate**
+
+To prevent unnecessary re-renders and UI flickering when working with DataGrid components, implement the `skipStateUpdate` pattern in context CRUD methods.
+
+### Purpose and Benefits
+
+**The `skipStateUpdate` pattern should only be used when CRUD operations are NOT using the default ODataGrid data flow**. This occurs in two common scenarios:
+
+1. When using a customDataSource instead of the direct endpoint parameter
+2. When overriding the default grid behavior with `e.cancel = true` and custom handlers
+
+When implemented properly, this pattern solves several key issues in DataGrid implementations:
+
+1. **Prevents UI Flickering**: By avoiding simultaneous context state updates and grid refreshes
+2. **Improves Performance**: Reduces unnecessary re-renders in the component tree
+3. **Maintains Data Consistency**: Still invalidates React Query caches to ensure fresh data
+4. **Separates Concerns**: Lets the grid manage its own update cycle while still informing the context of changes
+
+### Implementation Pattern
+
+```typescript
+// In the entity context file
+const updateEntity = useCallback(async (entity: Entity, skipStateUpdate = false): Promise<Entity> => {
+  if (!user?.token) {
+    throw new Error('User token is required');
+  }
+  
+  try {
+    // Only dispatch state updates if we're not skipping them
+    if (!skipStateUpdate) {
+      dispatch({ type: 'UPDATE_ENTITY_START', payload: entity });
+    }
+    
+    const result = await updateEntityApi(entity, user.token);
+    
+    // Only update the context state if we're not skipping updates
+    if (!skipStateUpdate) {
+      dispatch({ type: 'UPDATE_ENTITY_SUCCESS', payload: result });
+    }
+    
+    // Always invalidate queries regardless of skipStateUpdate
+    // This ensures data consistency across the application
+    queryClient.invalidateQueries({ queryKey: ['entities'] });
+    
+    return result;
+  } catch (error) {
+    if (!skipStateUpdate) {
+      dispatch({ 
+        type: 'UPDATE_ENTITY_ERROR', 
+        payload: { 
+          error: error instanceof Error ? error.message : 'Failed to update entity',
+          entity 
+        } 
+      });
+    }
+    throw error;
+  }
+}, [user?.token, queryClient]);
+```
+
+### Common Data Flow Patterns
+
+**Pattern 1: Grid-Managed Updates**
+
+In this approach, the grid and context operate in parallel paths:
+
+1. **ODataGrid**: Connects directly to the API endpoint for CRUD operations
+2. **Context**: Provides business logic and specialized functions
+3. **Grid Handlers**: Translate grid events to context method calls with `skipStateUpdate=true`
+
+After completing a grid update with skipStateUpdate:
+
+```typescript
+// In grid handlers
+const handleRowUpdating = useCallback((e: any) => {
+  // Cancel default grid behavior
+  e.cancel = true;
+  
+  const update = async () => {
+    try {
+      // Call context method with skipStateUpdate=true
+      await updateEntity(updatedEntity, true);
+      
+      // Manual grid refresh after a small delay
+      setTimeout(() => {
+        if (e.component.hasEditData()) {
+          e.component.cancelEditData();
+        }
+        e.component.getDataSource().reload();
+      }, 50);
+      
+    } catch (error) {
+      throw error; // Re-throw to DevExtreme for error handling
+    }
+  };
+  
+  // Return the update promise to DevExtreme
+  return update();
+}, [updateEntity]);
+```
+
+**Pattern 2: Direct API Pattern for Insert Operations**
+
+For insert operations with skipStateUpdate, use a direct API call pattern:
+
+```typescript
+// In the context
+const addEntity = useCallback(async (entity: Entity, skipStateUpdate = false): Promise<Entity> => {
+  // ... validation logic ...
+  
+  try {
+    if (skipStateUpdate && user?.token) {
+      // Direct API call with minimal context interaction
+      const result = await entityAdapter.create(entity, user.token);
+      // Still invalidate queries for consistency
+      queryClient.invalidateQueries({ queryKey: ['entities'] });
+      return result;
+    } else {
+      // Standard context update path
+      dispatch({ type: 'ADD_ENTITY_START', payload: entity });
+      // ... rest of implementation ...
+    }
+  } catch (error) {
+    // ... error handling ...
+  }
+}, [user?.token, queryClient]);
+```
+
+### When to Use skipStateUpdate
+
+**Use the `skipStateUpdate` pattern when you've overridden the default ODataGrid data flow**. This pattern is specifically designed for scenarios where:
+
+1. **Overridden Grid Events**: When using `e.cancel = true` in grid handlers to customize update/insert behavior
+2. **Manual Grid Refreshes**: When you need to call `dataGridRef.current.refresh()` or `dataSource.reload()` manually
+3. **Custom Endpoints**: When using specialized API endpoints instead of standard OData CRUD operations
+4. **Complex State Transitions**: When entity updates involve status transitions or workflows that require custom logic
+5. **Context-Managed Business Logic**: When the context needs to perform validation or transformation before saving
+
+For standard reference data grids that use the ODataGrid with a direct endpoint parameter and don't override the default grid handlers, this pattern is unnecessary as the grid already manages its own updates efficiently.
+
+**CRITICAL: skipStateUpdate Implementation Requirements**
+
+1. **Context Method Signatures**: All CRUD methods in entity contexts should accept an optional `skipStateUpdate` parameter:
+   ```typescript
+   addEntity(entity: Entity, skipStateUpdate?: boolean): Promise<Entity>;
+   updateEntity(entity: Entity, skipStateUpdate?: boolean): Promise<Entity>;
+   ```
+
+2. **Type Definitions**: Update interface definitions to include the optional parameter:
+   ```typescript
+   export interface EntityContextProps {
+     // Other properties...
+     updateEntity: (entity: Entity, skipStateUpdate?: boolean) => Promise<Entity>;
+   }
+   ```
+
+3. **Grid Handler Usage**: When calling entity methods from grid handlers, always pass `skipStateUpdate=true` to prevent UI flickering:
+   ```typescript
+   // In grid handlers
+   await entityContext.updateEntity(updatedEntity, true);
+   ```
+
+4. **Cache Invalidation**: Even when skipping state updates, always invalidate React Query caches to maintain data consistency across the application.
+
+5. **Direct API Calls**: For insert operations with skipStateUpdate, you may need to implement direct API calls that bypass state updates while still ensuring all required data is sent.
+
+6. **Grid Refresh Strategy**: After calling a context method with skipStateUpdate, implement a manual grid refresh strategy:
+   ```typescript
+   // Wait a short time before refreshing grid
+   setTimeout(() => {
+     // Cancel any pending edit operations first
+     if (gridRef.current.hasEditData()) {
+       gridRef.current.cancelEditData();
+     }
+     // Then reload the data source
+     gridRef.current.getDataSource().reload();
+   }, 50);
+   ```
+
+This pattern is essential for complex collection views with DataGrid components where context state updates can cause flickering and performance issues. All new collection views MUST follow this pattern for optimal performance and user experience.
 

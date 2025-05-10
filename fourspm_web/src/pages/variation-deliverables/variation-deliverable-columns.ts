@@ -1,6 +1,6 @@
-import { ODataGridColumn } from '../../types/column';
+import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
 import { departmentEnum, deliverableTypeEnum } from '../../types/enums';
-import { Area, Discipline, DocumentType } from '../../types/odata-types';
+// No need to import entity types directly
 import 'devextreme/ui/html_editor';
 
 /**
@@ -24,7 +24,7 @@ export const createVariationDeliverableColumns = (
       hidingPriority: 15, // Show as long as possible
       fixed: true,
       fixedPosition: 'left',
-      allowSorting: true,
+      // allowSorting is not supported in ODataGridColumn interface
       // Use command column pattern but with disabled buttons for status display
       type: 'buttons',
       name: 'statusButtons', // Unique name for this buttons column
@@ -170,7 +170,7 @@ export const createVariationDeliverableColumns = (
       hidingPriority: 12,
       allowEditing: false,
       cellClass: 'faded-placeholder',
-      calculateCellValue: (rowData: any) => rowData.variationName
+      customizeText: (cellInfo: any) => cellInfo.value || (cellInfo.data && cellInfo.data.variationName) || ''
     },
     {
       dataField: 'variationDisplayHours',

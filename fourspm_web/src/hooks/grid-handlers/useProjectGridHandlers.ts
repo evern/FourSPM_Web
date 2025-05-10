@@ -1,6 +1,16 @@
 import { useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { useProjectGridValidator } from './useProjectGridValidator';
+import { useProjects } from '../../contexts/projects/projects-context';
+import { ValidationRule } from '../interfaces/grid-operation-hook.interfaces';
+
+/**
+ * Interface for project grid validation handlers
+ */
+export interface ProjectGridValidationHandlers {
+  handleRowValidating: (e: any) => void;
+  handleRowUpdating: (e: any) => void;
+  handleRowInserting: (e: any) => void;
+  validateProject: (project: any) => { isValid: boolean; errors: Record<string, string> };
+}
 
 /**
  * Hook for project grid event handlers
@@ -15,50 +25,60 @@ export function useProjectGridHandlers({
   refreshNextNumber?: () => void;
   userToken?: string;
 }) {
-  // Use the shared entity validator for projects
-  const {
-    handleRowValidating: validatorHandleRowValidating,
-    handleRowUpdating: validatorHandleRowUpdating,
-    validateProject
-  } = useProjectGridValidator({
-    userToken
-  });
+  // Get business logic functions from projects context
+  const { validateProject, generateProjectId, setProjectDefaults } = useProjects();
   
-  // Wrap the validator's handleRowValidating to keep any project-specific behavior
+  // Wrap the context's validation in a grid-friendly handler
   const handleRowValidating = useCallback((e: any) => {
-    // Call the validator's implementation first
-    validatorHandleRowValidating(e);
+    // For row validation, we should specifically validate e.data
+    // This contains the complete row data being validated (either new or existing)
+    
+    // Check if we have valid data to validate
+    if (!e.data || typeof e.data !== 'object') {
+      // Allow operation to continue if we can't validate
+      e.isValid = true;
+      return;
+    }
+    
+    // Validate the row data
+    const isValid = validateProject(e.data);
+    
+    // Set validation result on the event
+    e.isValid = isValid;
     
     // If validation failed, we need to cancel the operation
-    if (e.isValid === false) {
+    if (!isValid) {
       e.cancel = true;
     }
-  }, [validatorHandleRowValidating]);
+  }, [validateProject]);
   
-  // Use the shared validator's row updating handler
+  // Handle row updating - validate before update
   const handleRowUpdating = useCallback((e: any) => {
-    // Let the validator handle the validation
-    validatorHandleRowUpdating(e);
+    // Create a combined object with the changes applied
+    const updatedProject = {
+      ...e.oldData,
+      ...e.newData
+    };
+    
+    // Validate the combined object
+    const isValid = validateProject(updatedProject);
+    
+    // Update the event with validation result
+    e.isValid = isValid;
+    
+    // If validation failed, cancel the operation
+    if (!isValid) {
+      e.cancel = true;
+    }
     
     // Grid will handle the update through its OData endpoint after validation
-  }, [validatorHandleRowUpdating]);
+  }, [validateProject]);
   
   // Handle row inserting - let the grid handle the API call directly
   const handleRowInserting = useCallback((e: any) => {
     if (e.data) {
-      // If a GUID is needed, we can add it here
-      if (!e.data.guid) {
-        e.data.guid = uuidv4();
-      }
-      // Set default status if not provided
-      if (!e.data.projectStatus) {
-        e.data.projectStatus = 'TenderInProgress';
-      }
-
-      // Set projectNumber if not already set
-      if (!e.data.projectNumber && nextProjectNumber) {
-        e.data.projectNumber = nextProjectNumber;
-      }
+      // Apply default values using context's business logic
+      e.data = setProjectDefaults(e.data, nextProjectNumber);
 
       // Watch for completion using native DataGrid CUD event pipeline
       if (refreshNextNumber) {
@@ -91,7 +111,7 @@ export function useProjectGridHandlers({
         };
       }
     }
-  }, [nextProjectNumber, refreshNextNumber]);
+  }, [nextProjectNumber, refreshNextNumber, setProjectDefaults]);
   
   // Handle row removing - let the grid handle the API call directly
   const handleRowRemoving = useCallback((e: any) => {
@@ -130,15 +150,10 @@ export function useProjectGridHandlers({
   // Handle initializing new row
   const handleInitNewRow = useCallback((e: any) => {
     if (e && e.data) {
-      // Set default values for new project
-      e.data = {
-        ...e.data,
-        guid: e.data.guid || uuidv4(),
-        projectNumber: e.data.projectNumber || nextProjectNumber || '',
-        projectStatus: e.data.projectStatus || 'TenderInProgress' // Default status
-      };
+      // Set default values using the context's business logic
+      e.data = setProjectDefaults(e.data, nextProjectNumber);
     }
-  }, [nextProjectNumber]);
+  }, [nextProjectNumber, setProjectDefaults]);
   
   return {
     handleRowValidating,
@@ -146,6 +161,7 @@ export function useProjectGridHandlers({
     handleRowInserting,
     handleRowRemoving,
     handleInitNewRow,
+    // Expose the context's validateProject directly for external use
     validateProject
   };
 }

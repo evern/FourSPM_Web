@@ -1,9 +1,11 @@
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useVariationGridValidator } from './useVariationGridValidator';
 import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { alert, confirm } from 'devextreme/ui/dialog';
+import { useVariations } from '../../contexts/variations/variations-context';
+import { Variation } from '../../types/odata-types';
+import { EditorEvent } from '../../contexts/variations/variations-types';
 
 /**
  * Hook for variation grid event handlers
@@ -16,6 +18,24 @@ export function useVariationGridHandlers({
   projectId?: string;
   userToken?: string;
 }) {
+  // Get the variations context for validation, operations, and cache invalidation
+  const { 
+    // Validation methods
+    handleRowValidating: contextHandleRowValidating,
+    validateRowUpdating,
+    validateVariation,
+    // Data operations
+    addVariation, 
+    updateVariation: updateVariationFunc, 
+    deleteVariation: removeVariation, 
+    changeVariationStatus,
+    // Editor functions
+    getDefaultVariationValues: contextGetDefaultVariationValues,
+    handleVariationEditorPreparing: contextHandleEditorPreparing,
+    handleVariationInitNewRow: contextHandleInitNewRow,
+    // Cache invalidation
+    invalidateAllLookups
+  } = useVariations();
   // Add auto-increment hook to get the next variation number
   const { nextNumber: nextVariationNumber, refreshNextNumber } = useAutoIncrement({
     endpoint: VARIATIONS_ENDPOINT,
@@ -25,33 +45,48 @@ export function useVariationGridHandlers({
     filter: projectId ? `projectGuid eq ${projectId}` : undefined
   });
 
-  // Use the shared entity validator for variations
-  const {
-    handleRowValidating: validatorHandleRowValidating,
-    handleRowUpdating: validatorHandleRowUpdating,
-    validateVariation
-  } = useVariationGridValidator({
-    userToken
-  });
-  
-  // Wrap the validator's handleRowValidating to keep any variation-specific behavior
+  // Use the context's row validating handler directly
   const handleRowValidating = useCallback((e: any) => {
-    // Call the validator's implementation first
-    validatorHandleRowValidating(e);
-    
-    // If validation failed, we need to cancel the operation
-    if (e.isValid === false) {
-      e.cancel = true;
-    }
-  }, [validatorHandleRowValidating]);
+    contextHandleRowValidating(e);
+  }, [contextHandleRowValidating]);
   
-  // Use the shared validator's row updating handler
-  const handleRowUpdating = useCallback((e: any) => {
-    // Let the validator handle the validation
-    validatorHandleRowUpdating(e);
+  // Use the context's validation logic for row updating
+  const handleRowUpdating = useCallback(async (e: any) => {
+    // Cancel default grid behavior
+    e.cancel = true;
     
-    // Grid will handle the update through its OData endpoint after validation
-  }, [validatorHandleRowUpdating]);
+    // Validate using context validation function
+    const validationResult = validateRowUpdating(e.oldData, e.newData);
+    e.isValid = validationResult.isValid;
+    
+    // If validation failed, show the first error
+    if (!validationResult.isValid) {
+      const firstErrorKey = Object.keys(validationResult.errors)[0];
+      e.errorText = validationResult.errors[firstErrorKey];
+      return;
+    }
+    
+    // If validation passed, proceed with updating
+    const variationId = e.key;
+    const data = { ...e.newData };
+    
+    try {
+      // Create a complete variation object with the updated data
+      const updatedVariation = {
+        ...data,
+        guid: variationId
+      };
+      
+      // Call the context method directly
+      await updateVariationFunc(updatedVariation);
+      
+      // Show success message
+      alert('Variation updated successfully', 'Success');
+    } catch (error) {
+      // Show error message
+      alert(`Error updating variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+    }
+  }, [validateRowUpdating, updateVariationFunc]);
   
   // Handle row inserting - let the grid handle the API call directly
   const handleRowInserting = useCallback((e: any) => {
@@ -71,7 +106,7 @@ export function useVariationGridHandlers({
         e.data.name = nextVariationNumber;
       }
 
-      // Add created date and user if not provided
+      // Add created date if not provided
       if (!e.data.created) {
         e.data.created = new Date();
       }
@@ -88,12 +123,19 @@ export function useVariationGridHandlers({
         // Call original insert and get the promise
         const result = originalInsert.call(this, values, ...args);
         
-        // When insert completes, refresh the next number
+        // When insert completes, refresh the next number and invalidate caches
         if (result && result.then) {
           result.then(() => {
+            // Refresh the next number for future additions
             refreshNextNumber();
             
+            // Invalidate caches to ensure related data is refreshed
+            invalidateAllLookups();
+            
             // Restore original insert method
+            store.insert = originalInsert;
+          }).catch(() => {
+            // Restore on error too
             store.insert = originalInsert;
           });
         } else {
@@ -104,79 +146,142 @@ export function useVariationGridHandlers({
         return result;
       };
     }
-  }, [projectId, nextVariationNumber, refreshNextNumber]);
+  }, [projectId, nextVariationNumber, refreshNextNumber, invalidateAllLookups]);
   
-  // Handle row removing - let the grid handle the API call directly
+  // Handle row removing using the method interception pattern
   const handleRowRemoving = useCallback((e: any) => {
-    // Grid will handle the deletion through its OData endpoint
-    // Watch for completion of delete operation
-    const dataSource = e.component.getDataSource();
-    const store = dataSource.store();
-    const originalRemove = store.remove;
+    // We'll temporarily cancel the default behavior
+    e.cancel = true;
     
-    // Override remove temporarily to know when it completes
-    store.remove = function(key, ...args) {
-      // Call original remove and get the promise
-      const result = originalRemove.call(this, key, ...args);
+    // Show confirmation dialog first
+    confirm(
+      'Are you sure you want to delete this variation?',
+      'Confirm Deletion'
+    ).then(confirmed => {
+      if (!confirmed) return;
       
-      // When remove completes, refresh the next number
-      if (result && result.then) {
-        result.then(() => {
-          refreshNextNumber();
+      try {
+        // Get data source components
+        const dataSource = e.component.getDataSource();
+        const store = dataSource.store();
+        const originalRemove = store.remove;
+        
+        // Override remove temporarily to know when it completes
+        store.remove = function(key, ...args) {
+          // Call original remove and get the promise
+          const result = originalRemove.call(this, key, ...args);
           
-          // Restore original remove method
-          store.remove = originalRemove;
-        });
-      } else {
-        // Restore immediately if no promise
-        store.remove = originalRemove;
+          // When remove completes, refresh the next number and invalidate caches
+          if (result && result.then) {
+            result.then(() => {
+              refreshNextNumber();
+              invalidateAllLookups();
+              
+              // Restore original remove method
+              store.remove = originalRemove;
+              
+              // Show success message
+              alert('Variation deleted successfully', 'Success');
+            }).catch((error) => {
+              // Show error message
+              alert(`Error deleting variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+              
+              // Restore on error too
+              store.remove = originalRemove;
+            });
+          } else {
+            // Restore immediately if no promise
+            store.remove = originalRemove;
+          }
+          
+          return result;
+        };
+        
+        // Now perform the deletion - this needs to use a mechanism that will trigger
+        // the intercepted store.remove method
+        // We need to re-create what the grid would do naturally
+        dataSource.store().remove(e.key)
+          .then(() => {
+            // Force grid to refresh after deletion
+            setTimeout(() => {
+              dataSource.reload();
+            }, 50);
+          });
+      } catch (error) {
+        // Show error message
+        alert(`Error in deletion process: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+      }
+    });
+  }, [refreshNextNumber, invalidateAllLookups]);
+  
+  // Use the context's getDefaultVariationValues directly
+  const getDefaultVariationValues = useCallback((projectIdParam: string): Record<string, any> => {
+    // Call the context function
+    return contextGetDefaultVariationValues(projectIdParam);
+  }, [contextGetDefaultVariationValues]);
+  
+  // Handle value changed events from editors
+  const onValueChanged = useCallback((args: any) => {
+    // This is a simplified handler that could be expanded based on field requirements
+    console.log('Value changed:', args);
+    // No special handling needed now that business logic is in the context
+  }, []);
+  
+  // Use the context's editor preparing handler directly
+  const handleEditorPreparing = useCallback((e: EditorEvent) => {
+    // Call the context's editor preparing handler
+    contextHandleEditorPreparing(e);
+    
+    // Add any grid-specific behavior that's not in the context
+    if (e.dataField) {
+      // Save the original onValueChanged handler if it exists
+      const originalSetValue = e.editorOptions.onValueChanged;
+      
+      // Replace with our own that will call the original after our logic
+      e.editorOptions.onValueChanged = (args: any) => {
+        onValueChanged(args);
+        
+        // Call the original handler if it existed
+        if (originalSetValue) {
+          originalSetValue(args);
+        }
+      };
+    }
+  }, [contextHandleEditorPreparing, onValueChanged]);
+  
+  // Use context handler directly for variation editor preparing
+  const handleVariationEditorPreparing = useCallback((e: EditorEvent) => {
+    contextHandleEditorPreparing(e);
+  }, [contextHandleEditorPreparing]);
+  
+  // Handle initializing new row by using context function and adding auto-increment name
+  const handleInitNewRow = useCallback((e: any) => {
+    // Call the context's init new row handler
+    contextHandleInitNewRow(e);
+    
+    // Add any grid-specific initialization that's not in the context
+    if (e?.data) {
+      // Apply auto-increment name if not already set
+      if (nextVariationNumber && !e.data.name) {
+        e.data.name = nextVariationNumber;
+        refreshNextNumber();
       }
       
-      return result;
-    };
-  }, [refreshNextNumber]);
-  
-  // Handle editor preparing - customize editors for specific fields
-  const handleEditorPreparing = useCallback((e: any) => {
-    const { dataField } = e;
-    
-    // Customize date editors
-    if (dataField === 'submitted' || dataField === 'clientApproved') {
-      e.editorName = 'dxDateBox';
-      e.editorOptions.displayFormat = 'yyyy-MM-dd';
+      // Ensure created date is set
+      if (!e.data.created) {
+        e.data.created = new Date();
+      }
     }
-  }, [userToken]);
+  }, [contextHandleInitNewRow, nextVariationNumber, refreshNextNumber]);
   
-  // Handle initializing new row
-  const handleInitNewRow = useCallback((e: any) => {
-    if (e && e.data) {
-      // Set default values for new variation
-      e.data = {
-        ...e.data,
-        guid: e.data.guid || uuidv4(),
-        projectGuid: e.data.projectGuid || projectId || '',
-        name: e.data.name || nextVariationNumber || '',
-        comments: '',
-        created: new Date()
-      };
-      
-      // Refresh the next number for subsequent additions
-      refreshNextNumber();
-    }
-  }, [projectId, nextVariationNumber, refreshNextNumber]);
+  // Enhanced initialization is now handled directly in handleInitNewRow
   
-  // Handle variation approval
+  // Handle variation approval using the context-based change status function
   const handleApproveVariation = useCallback(async (variationGuid: string, variation?: any) => {
     try {
       // Check if variation has been submitted first - this is also verified in the backend
       if (variation && !variation.submitted) {
         alert('This variation must be submitted before it can be approved', 'Validation Error');
-        return false;
-      }
-      
-      // Use token from hook parameters
-      if (!userToken) {
-        alert('User token not available. Please log in again.', 'Authentication Error');
         return false;
       }
       
@@ -190,11 +295,12 @@ export function useVariationGridHandlers({
         return false;
       }
       
-      // Import the adapter function dynamically to avoid circular dependencies
-      const { approveVariation } = await import('../../adapters/variation.adapter');
-      
-      // Call the adapter method to approve the variation
-      await approveVariation(variationGuid, userToken);
+      // Call the context method directly
+      await changeVariationStatus({ 
+        variationId: variationGuid, 
+        approve: true, 
+        projectGuid: projectId || '' 
+      });
       
       // Show success message
       alert('Variation approved successfully', 'Success');
@@ -204,16 +310,11 @@ export function useVariationGridHandlers({
       alert(`Error approving variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
       return false;
     }
-  }, [userToken]);
+  }, [changeVariationStatus, projectId]);
 
-  // Handle variation rejection
+  // Handle variation rejection using the context-based change status function
   const handleRejectVariation = useCallback(async (variationGuid: string) => {
     try {
-      // Use token from hook parameters
-      if (!userToken) {
-        alert('User token not available. Please log in again.', 'Authentication Error');
-        return false;
-      }
       // Show confirmation dialog first
       const confirmed = await confirm(
         'Are you sure you want to reject this variation? This will revert all deliverables in this variation to unapproved status.',
@@ -224,11 +325,12 @@ export function useVariationGridHandlers({
         return false;
       }
       
-      // Import the adapter function dynamically to avoid circular dependencies
-      const { rejectVariation } = await import('../../adapters/variation.adapter');
-      
-      // Call the adapter method to reject the variation
-      await rejectVariation(variationGuid, userToken);
+      // Call the context method directly
+      await changeVariationStatus({ 
+        variationId: variationGuid, 
+        approve: false, 
+        projectGuid: projectId || '' 
+      });
       
       // Show success message
       alert('Variation rejection processed successfully', 'Success');
@@ -238,18 +340,26 @@ export function useVariationGridHandlers({
       alert(`Error rejecting variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
       return false;
     }
-  }, [userToken]);
+  }, [changeVariationStatus, projectId]);
 
   return {
+    // Grid row operations
     handleRowValidating,
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
+    
+    // Editor operations
     handleEditorPreparing,
     handleInitNewRow,
-    validateVariation,
+    handleVariationEditorPreparing,
+    getDefaultVariationValues,
+    
+    // Auto-increment
     nextVariationNumber,
     refreshNextNumber,
+    
+    // Status operations
     handleApproveVariation,
     handleRejectVariation
   };

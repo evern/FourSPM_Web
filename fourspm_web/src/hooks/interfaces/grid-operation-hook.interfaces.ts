@@ -37,6 +37,18 @@ export interface GridOperationsConfig {
   onUpdateError?: (error: Error) => void;
   onInsertSuccess?: () => void;
   onInsertError?: (error: Error) => void;
+  
+  /**
+   * Optional function to invalidate React Query caches after successful operations
+   * This allows triggering cache refreshes for related data when entity data changes
+   */
+  invalidateCache?: () => void;
+  
+  /**
+   * Optional default values to apply to new rows
+   * These will be applied after the automatic UUID generation
+   */
+  defaultValues?: Record<string, any>;
 }
 
 /**
@@ -62,6 +74,10 @@ export interface GridOperationsHook<T> {
   // Validates row data before saving to ensure data integrity
   // Uses the validation rules configured in the controller
   handleRowValidating: (e: any) => void;
+  
+  // Initializes a new row with default values
+  // Automatically adds a new UUID and any entity-specific default values
+  handleInitNewRow: (e: any) => void;
 }
 
 /**

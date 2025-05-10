@@ -319,15 +319,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     onSavingProp?.(e);
   };
   
-  // Handle validation errors by showing them as popups when in form/popup editing mode
+  // Handle validation errors by showing them as popups for all screen sizes
   const handleRowValidating = (e: any) => {
     // Call the original validation handler if provided
     if (onRowValidating) {
       onRowValidating(e);
     }
     
-    // If validation failed and we're in popup/form mode, show error as popup
-    if (!e.isValid && (screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small')) {
+    // If validation failed, show error as popup regardless of screen size
+    if (!e.isValid) {
       // Use setTimeout to ensure this runs after the original handler finishes
       setTimeout(() => {
         notify({

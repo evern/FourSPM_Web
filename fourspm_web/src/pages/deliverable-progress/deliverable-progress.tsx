@@ -3,14 +3,10 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
 import './deliverable-progress.scss';
 
-// Import contexts
-import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
-
 // Import custom hooks
-import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
-import { useDeliverableGateDataProvider } from '../../hooks/data-providers/useDeliverableGateDataProvider';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { useDeliverableProgressGridHandlers } from '../../hooks/grid-handlers/useDeliverableProgressGridHandlers';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 
 // Import components
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
@@ -23,33 +19,43 @@ import { ScrollView } from 'devextreme-react/scroll-view';
 import { createDeliverableProgressColumns } from './deliverable-progress-columns';
 import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 
+// Import context
+import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
+
 // URL params interface
 interface DeliverableProgressParams {
   projectId: string;
 }
 
 /**
- * Main component that sets up the context provider
+ * Main component with Context Provider implementation
+ * This follows the Collection View Doctrine pattern with a parent provider component
  */
 export function DeliverableProgress(): React.ReactElement {
   // Extract project ID from URL params
   const { projectId } = useParams<DeliverableProgressParams>();
   const { user } = useAuth();
-
-  // Get project info to pass to the context provider
-  const { currentPeriod: initialPeriod, project } = useProjectInfo(projectId, user?.token);
-  const startDate = project?.progressStart ? String(project.progressStart) : undefined;
+  
+  // Use the centralized project info hook to get project data
+  // If projectId is undefined, it will just show loading state
+  const { project } = useProjectInfo(projectId || '', user?.token);
   
   // Validate projectId exists
   if (!projectId) {
     return <div className="error-message">Project ID is missing from the URL.</div>;
   }
   
+  // Determine the initial period and start date for the context
+  const initialPeriod = 0; // This will be recalculated based on project data
+  // Convert Date object to string if needed for the context
+  const startDate = project?.progressStart ? String(project.progressStart) : undefined;
+  
+  // Return the provider wrapper with the content component
   return (
     <DeliverableProgressProvider 
       projectId={projectId}
-      initialPeriod={initialPeriod || 0}
-      startDate={startDate}
+      initialPeriod={initialPeriod}
+      startDate={startDate || undefined}
     >
       <DeliverableProgressContent />
     </DeliverableProgressProvider>
@@ -58,36 +64,30 @@ export function DeliverableProgress(): React.ReactElement {
 
 /**
  * Internal component that consumes the context
+ * This implements the Collection View Doctrine pattern for the content component
  */
 const DeliverableProgressContent = (): React.ReactElement => {
-  // Get route parameters
-  const { projectId } = useParams<DeliverableProgressParams>();
-  const { user } = useAuth();
-  
-  // Get state and period management from the context
-  const {
-    state,
-    selectedPeriod,
-    progressDate,
-    incrementPeriod,
-    decrementPeriod,
-    setSelectedPeriod
+  // Use the context for state and data
+  const { 
+    state, 
+    selectedPeriod, 
+    progressDate, 
+    incrementPeriod, 
+    decrementPeriod, 
+    setSelectedPeriod,
+    projectId,
+    // Get deliverable gates from context following Collection View Doctrine
+    deliverableGates,
+    isGatesLoading: gatesLoading,
+    gatesError
   } = useDeliverableProgress();
   
-  // Use standardized hooks for project info
-  const { project, currentPeriod: initialPeriod, isLoading: isLoadingProject } = useProjectInfo(projectId, user?.token);
+  const { user } = useAuth();
   
-  // Get deliverable gates using the data provider hook
-  const { gates, gatesDataSource, isLoading: isLoadingGates } = useDeliverableGateDataProvider();
+  // Use the centralized project info hook to get project data
+  const { project } = useProjectInfo(projectId || '', user?.token);
   
-  // Ensure gates data is properly initialized for lookups
-  useEffect(() => {
-    if (gatesDataSource && typeof gatesDataSource.load === 'function') {
-      gatesDataSource.load();
-    }
-  }, [gatesDataSource]);
-  
-  // Get grid handlers directly from the hook - following deliverables.tsx pattern
+  // Get grid handlers directly from the hook
   const {
     handleRowUpdating,
     handleRowValidating,
@@ -98,11 +98,8 @@ const DeliverableProgressContent = (): React.ReactElement => {
     userToken: user?.token,
     getSelectedPeriod: () => selectedPeriod || 0,
     progressDate: progressDate || new Date()
+    // Note: deliverableGates is now obtained directly from context in the hook
   });
-  
-  // No longer need local period manager as we get periods from context
-  
-  // No longer need to sync with context, as context now delegates to usePeriodManager
   
   // Get screen size
   const screenClass = useScreenSizeClass();
@@ -112,36 +109,41 @@ const DeliverableProgressContent = (): React.ReactElement => {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   
-  // Track when data is fully loaded for grid display
-  const [dataLoaded, setDataLoaded] = useState(false);
+  // Create the endpoint URL with the current period
+  const endpoint = useMemo(() => {
+    if (!projectId || selectedPeriod === null) return '';
+    return getDeliverablesWithProgressUrl(projectId, selectedPeriod || 0);
+  }, [projectId, selectedPeriod]);
   
-  // Check if any data is still loading - follow staggered loading pattern
-  const isLoading = state.loading || isLoadingProject || isLoadingGates;
-  
-  // Only proceed with next loading stage when previous is complete
-  const shouldRenderGrid = !isLoading && !!project && selectedPeriod !== null;
-  
-  // Set endpoint for the grid - only when all prerequisites are loaded
-  const endpoint = shouldRenderGrid ? getDeliverablesWithProgressUrl(projectId, selectedPeriod || 0) : '';
-  
-  // Set data as loaded once all lookups are loaded
-  useEffect(() => {
-    if (!isLoadingGates) {
-      setDataLoaded(true);
-    }
-  }, [isLoadingGates]);
-  
-  // Memoize columns to prevent unnecessary re-renders
+  // Create columns with deliverable gates data source
   const columns = useMemo(() => {
-    return createDeliverableProgressColumns(gatesDataSource, isMobile);
-  }, [gatesDataSource, isMobile]);
-
-  // Use only the centralized grid handler for all grid operations
-  // This ensures a single source of truth for the grid instance
+    return createDeliverableProgressColumns(deliverableGates);
+  }, [deliverableGates]);
+  
+  // Track if grid should be rendered - based on data availability
+  const [shouldRenderGrid, setShouldRenderGrid] = useState(false);
+  
+  // Wait for endpoint and columns to be available before rendering grid
+  useEffect(() => {
+    setShouldRenderGrid(!!endpoint && columns.length > 0 && !gatesLoading);
+  }, [endpoint, columns, gatesLoading]);
+  
+  // Combine error states
+  const error = state.error || gatesError;
+  
+  // Combine loading states
+  const isLoading = state.loading || gatesLoading;
+  
+  // Pass grid initialized event to handler
   const onGridInitialized = useCallback((e: any) => {
     // Pass directly to the centralized handler
     handleGridInitialized(e);
   }, [handleGridInitialized]);
+  
+  // Show error if one occurred
+  if (error) {
+    return <div className="error-message">Error loading data: {error instanceof Error ? error.message : String(error)}</div>;
+  }
   
   return (
     <div className="progress-container" ref={containerRef}>

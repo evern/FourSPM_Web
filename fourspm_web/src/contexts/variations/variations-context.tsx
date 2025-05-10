@@ -1,12 +1,31 @@
 import React, { createContext, useContext, useReducer, useCallback, useMemo, ReactNode, useEffect } from 'react';
-import { VariationsContextType, VariationsState, VariationsAction, EditorEvent, InitNewRowEvent } from './variations-types';
+import { VariationsContextType, EditorEvent, InitNewRowEvent } from './variations-types';
 import { variationsReducer, initialVariationsState } from './variations-reducer';
 import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
-import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
-import { createVariation, updateVariation, deleteVariation, getProjectVariations } from '../../adapters/variation.adapter';
+import { createVariation, updateVariation, deleteVariation, getProjectVariations, approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
+
+/**
+ * Default validation rules for variations
+ */
+export const DEFAULT_VARIATION_VALIDATION_RULES: ValidationRule[] = [
+  { 
+    field: 'name', 
+    required: true, 
+    maxLength: 500, 
+    errorText: 'Name is required and must be less than 500 characters' 
+  },
+  { 
+    field: 'comments', 
+    required: false, 
+    maxLength: 1000, 
+    errorText: 'Comments must be less than 1000 characters' 
+  }
+];
 
 // Create the context with a default undefined value
 const VariationsContext = createContext<VariationsContextType | undefined>(undefined);
@@ -18,6 +37,18 @@ interface VariationsProviderProps {
 export function VariationsProvider({ children }: VariationsProviderProps) {
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
+  
+  // Set up the entity validator with variation-specific rules
+  const {
+    handleRowValidating: validatorHandleRowValidating,
+    validateEntity,
+    validateRowUpdate
+  } = useEntityValidator({
+    validationRules: DEFAULT_VARIATION_VALIDATION_RULES
+  });
+  
+  // Get query client for cache invalidation
+  const queryClient = useQueryClient();
   
   // CRITICAL: Track the component mount state to prevent state updates after unmounting
   const isMountedRef = React.useRef(true);
@@ -51,21 +82,29 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   }, [user?.token]);
   
   // Add a new variation
-  const addVariation = useCallback(async (variation: Variation): Promise<Variation> => {
+  const addVariation = useCallback(async (variation: Variation, skipStateUpdate = false): Promise<Variation> => {
     if (!user?.token || !isMountedRef.current) {
       throw new Error('Unable to create variation - user is not authenticated');
     }
     
     try {
-      dispatch({ type: 'ADD_VARIATION_START', payload: variation });
+      // Only dispatch start action if we're not skipping state updates
+      if (!skipStateUpdate) {
+        dispatch({ type: 'ADD_VARIATION_START', payload: variation });
+      }
+      
+      // Always call the API
       const newVariation = await createVariation(variation, user.token);
       
-      if (isMountedRef.current) {
+      // Only update state if we're not skipping state updates and component is still mounted
+      if (!skipStateUpdate && isMountedRef.current) {
         dispatch({ type: 'ADD_VARIATION_SUCCESS', payload: newVariation });
       }
+      
       return newVariation;
     } catch (error) {
-      if (isMountedRef.current) {
+      // Still report errors to state unless skipping state updates
+      if (!skipStateUpdate && isMountedRef.current) {
         dispatch({ 
           type: 'ADD_VARIATION_ERROR', 
           payload: { 
@@ -133,15 +172,16 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     }
   }, [user?.token]);
   
-  // Validate variation
-  const validateVariation = useCallback((variation: Variation, rules: ValidationRule[] = []) => {
-    if (!isMountedRef.current) return false;
+  // Validation for variations
+  // This implementation needs to be compatible with the VariationsContextType interface
+  const validateVariation = useCallback((variation: Record<string, any>, rules: ValidationRule[] = DEFAULT_VARIATION_VALIDATION_RULES): { isValid: boolean; errors: Record<string, string> } => {
+    if (!isMountedRef.current) return { isValid: false, errors: {} };
     
     const errors: Record<string, string[]> = {};
     
     // Process each validation rule
     rules.forEach(rule => {
-      const fieldValue = variation[rule.field as keyof Variation];
+      const fieldValue = variation[rule.field];
       
       if (rule.required && (!fieldValue || fieldValue === '')) {
         errors[rule.field] = errors[rule.field] || [];
@@ -154,17 +194,23 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
     });
     
+    // Convert errors from string[] to a single string message
+    const flatErrors: Record<string, string> = {};
+    Object.keys(errors).forEach(key => {
+      flatErrors[key] = errors[key][0]; // Just use the first error message
+    });
+    
     // Update validation errors state
     if (Object.keys(errors).length > 0) {
       if (isMountedRef.current) {
         dispatch({ type: 'SET_VALIDATION_ERRORS', payload: errors });
       }
-      return false;
+      return { isValid: false, errors: flatErrors };
     } else {
       if (isMountedRef.current) {
         dispatch({ type: 'CLEAR_VALIDATION_ERRORS' });
       }
-      return true;
+      return { isValid: true, errors: {} };
     }
   }, []);
   
@@ -216,30 +262,117 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       Object.assign(e.data, defaults);
     }
   }, [getDefaultVariationValues]);
+  
+  // Cache invalidation function - invalidates all related lookup data
+  // when variations data changes
+  const invalidateAllLookups = useCallback(() => {
+    // Invalidate any queries that might use variations as reference data
+    queryClient.invalidateQueries({ queryKey: ['variations'] });
+    queryClient.invalidateQueries({ queryKey: ['lookup'] });
+    queryClient.invalidateQueries({ queryKey: ['project'] });
+    
+    console.log('Invalidated all lookup data after variation change');
+  }, [queryClient]);
+  
+  // Handle row validating - can be used directly by grid handlers
+  const handleRowValidating = useCallback((e: any) => {
+    validatorHandleRowValidating(e);
+    
+    // If validation failed, we need to cancel the operation
+    if (e.isValid === false) {
+      e.cancel = true;
+    }
+  }, [validatorHandleRowValidating]);
+  
+  // Handle row update validation - can be used by grid handlers
+  const validateRowUpdating = useCallback((oldData: any, newData: any) => {
+    return validateRowUpdate(oldData, newData);
+  }, [validateRowUpdate]);
+  
+  // Change variation status (approve/reject)
+  const changeVariationStatus = useCallback(async ({ variationId, approve, projectGuid }: { variationId: string; approve: boolean; projectGuid: string }) => {
+    if (!user?.token || !isMountedRef.current) {
+      throw new Error('Unable to change variation status - user is not authenticated');
+    }
+    
+    try {
+      // Dispatch a status change start action
+      dispatch({ 
+        type: 'SET_PROCESSING', 
+        payload: true 
+      });
+      
+      // Call the appropriate adapter method based on approve flag
+      if (approve) {
+        await approveVariation(variationId, user.token);
+      } else {
+        await rejectVariation(variationId, user.token);
+      }
+      
+      // Dispatch success action if still mounted
+      if (isMountedRef.current) {
+        dispatch({ 
+          type: 'SET_PROCESSING', 
+          payload: false 
+        });
+      }
+      
+      // Invalidate caches to refresh data
+      invalidateAllLookups();
+    } catch (error) {
+      if (isMountedRef.current) {
+        dispatch({ 
+          type: 'SET_EDITOR_ERROR', 
+          payload: error instanceof Error ? error.message : 'Failed to change variation status'
+        });
+        dispatch({ 
+          type: 'SET_PROCESSING', 
+          payload: false 
+        });
+      }
+      throw error;
+    }
+  }, [user?.token, invalidateAllLookups]);
 
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
+    // Validation methods
     validateVariation,
+    handleRowValidating,
+    validateRowUpdating,
+    // Data operations
     fetchVariations,
     addVariation,
     updateVariation: updateVariationFunc,
     deleteVariation: deleteVariationFunc,
-    // Add editor functions
+    // Status change function
+    changeVariationStatus,
+    // Editor functions
     getDefaultVariationValues,
     handleVariationEditorPreparing,
-    handleVariationInitNewRow
+    handleVariationInitNewRow,
+    // Cache invalidation function
+    invalidateAllLookups
   }), [
-    state, 
+    state,
+    // Validation method dependencies
     validateVariation,
+    handleRowValidating,
+    validateRowUpdating,
+    // Data operation dependencies
     fetchVariations,
     addVariation,
     updateVariationFunc,
     deleteVariationFunc,
-    // Add editor dependencies
+    // Status change dependency
+    changeVariationStatus,
+    // Editor dependencies
     getDefaultVariationValues,
     handleVariationEditorPreparing,
-    handleVariationInitNewRow
+    handleVariationInitNewRow,
+    // Cache invalidation dependency
+    invalidateAllLookups
   ]);
   
   return (

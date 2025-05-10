@@ -1,37 +1,23 @@
-import React, { useMemo } from 'react';
+import React from 'react';
+import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createDeliverableColumns } from './deliverable-columns';
 import ScrollToTop from '../../components/scroll-to-top';
 import './deliverables.scss';
-import { DELIVERABLES_ENDPOINT, PROJECTS_ENDPOINT } from '@/config/api-endpoints';
+import { DELIVERABLES_ENDPOINT } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 import { useAuth } from '@/contexts/auth';
-import { useProjectData } from '@/hooks/queries/useProjectData';
-import { useDeliverablesQuery } from '@/hooks/queries/useDeliverablesQuery';
-import { useQuery } from '@tanstack/react-query';
-import { baseApiService } from '@/api/base-api.service';
+import { DeliverablesProvider, useDeliverables } from '@/contexts/deliverables/deliverables-context';
+import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 
 interface DeliverableParams {
   projectId: string;
 }
 
 /**
- * Fetch project details from the API
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})`);
-  const data = await response.json();
-  return data;
-};
-
-/**
- * Main Deliverables component refactored to use React Query
+ * Main Deliverables component using context with React Query
  */
 export function Deliverables(): React.ReactElement {
   // Extract project ID from URL params
@@ -42,72 +28,64 @@ export function Deliverables(): React.ReactElement {
     return <div className="error-message">Project ID is missing from the URL.</div>;
   }
   
-  return <DeliverablesContent projectId={projectId} />;
-}
-
-interface DeliverablesContentProps {
-  projectId: string;
+  return (
+    <DeliverablesProvider projectId={projectId}>
+      <DeliverablesContent />
+    </DeliverablesProvider>
+  );
 }
 
 /**
- * Internal component that uses React Query hooks for data fetching
+ * Internal component that uses the deliverables context
  */
-const DeliverablesContent = React.memo(({ projectId }: DeliverablesContentProps): React.ReactElement => {
+const DeliverablesContent = React.memo((): React.ReactElement => {
   // Get user auth token for API calls
   const { user } = useAuth();
   
-  // Use the consolidated project data hook to fetch all reference data
-  const { 
-    areasDataSource, 
-    disciplinesDataSource, 
-    documentTypesDataSource,
-    isLoading: referenceDataLoading, 
-    error: referenceDataError 
-  } = useProjectData(projectId);
-  
-  // Fetch project details
-  const { 
-    data: project, 
-    isLoading: projectLoading,
-    error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId),
-    enabled: !!projectId
-  });
-  
-  // Fetch deliverables data
+  // Get projectId from URL params directly
+  const { projectId } = useParams<DeliverableParams>();
+
+  // Use the deliverables context
   const {
-    data: deliverables = [],
-    isLoading: deliverablesLoading,
-    error: deliverablesError
-  } = useDeliverablesQuery(projectId);
+    // State
+    state,
+    
+    // Reference data
+    areasDataSource,
+    disciplinesDataSource,
+    documentTypesDataSource,
+    isLookupDataLoading,
+    
+    // Project data
+    project
+  } = useDeliverables();
   
   // Get grid handlers directly from the hook
   const {
-    handleGridInitialized,
-    handleRowUpdating,
-    handleRowInserting,
+    handleGridInitialized: hookHandleGridInitialized,
     handleRowValidating,
-    handleRowRemoving,
     handleInitNewRow,
     handleEditorPreparing
   } = useDeliverableGridHandlers({
-    projectGuid: projectId,
+    projectGuid: projectId || '',
     userToken: user?.token,
     project
   });
   
+  // Use original grid initialization handler from the hook
+  const handleGridInitialized = hookHandleGridInitialized;
 
   const screenClass = useScreenSizeClass();
   const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
   
   // Determine if we're still loading any data
-  const isLoading = referenceDataLoading || projectLoading || deliverablesLoading;
-  const error = referenceDataError || projectError || deliverablesError;
+  const isLoading = isLookupDataLoading;
+  
+  // Combine all error sources
+  const hasError = state.error !== null;
   
   // Create columns with the lookup data sources from dedicated providers
-  const columns = useMemo(() => {
+  const columns = React.useMemo(() => {
     // Only create columns when lookup data is ready
     if (isLoading || !areasDataSource || !disciplinesDataSource || !documentTypesDataSource) {
       return [];
@@ -117,46 +95,45 @@ const DeliverablesContent = React.memo(({ projectId }: DeliverablesContentProps)
   }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading]);
   
   // Adjust columns for mobile size if needed
-  const mobileAdjustedColumns = useMemo(() => {
+  const mobileAdjustedColumns = React.useMemo(() => {
     return isMobile 
       ? columns.filter(c => c.dataField !== 'description') // Example: Hide description on mobile
       : columns;
   }, [columns, isMobile]);
   
-  // Show error if one occurred
-  if (error) {
-    return <div className="error-message">Error loading data: {error.message}</div>;
-  }
-  
   return (
     <div className="deliverables-container">
       {/* Loading indicator */}
       <LoadPanel
+        position={{ of: '.app-main-content' }}
         visible={isLoading}
-        message={projectLoading ? 'Loading project details...' : 'Loading reference data...'}
-        position={{ of: '.deliverables-container' }}
-        shadingColor="rgba(0,0,0,0.1)"
         showIndicator={true}
-        showPane={true}
         shading={true}
+        shadingColor="rgba(0,0,0,0.1)"
+        showPane={true}
       />
+      
+      {/* Error message */}
+      {hasError && (
+        <ErrorMessage
+          title="Error Loading Deliverables"
+          message={state.error || 'An unknown error occurred'}
+        />
+      )}
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
           {project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}
         </div>
         
-        {!isLoading && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLES_ENDPOINT}
             columns={mobileAdjustedColumns}
             keyField="guid"
-            onRowUpdating={handleRowUpdating}
-            onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
-            onRowRemoving={handleRowRemoving}
-            onRowInserting={handleRowInserting}
+            onInitNewRow={handleInitNewRow}
             onEditorPreparing={handleEditorPreparing}
             onInitialized={handleGridInitialized}
             defaultFilter={[["projectGuid", "=", projectId]]}
@@ -172,9 +149,6 @@ const DeliverablesContent = React.memo(({ projectId }: DeliverablesContentProps)
       <ScrollToTop />
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Only re-render if projectId changes
-  return prevProps.projectId === nextProps.projectId;
 });
 
 export default Deliverables;

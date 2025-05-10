@@ -4,6 +4,15 @@ export interface DeliverableProgressState {
   error: string | null;
 }
 
+/**
+ * Interface for validation results
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  errorMessage?: string;
+  errorField?: string;
+}
+
 // Types for the deliverable progress actions
 export type DeliverableProgressAction = 
   | { type: 'SET_LOADING'; payload: boolean }
@@ -11,13 +20,28 @@ export type DeliverableProgressAction =
 
 // Type for the deliverable progress context
 export interface DeliverableProgressContextType {
+  // State management
   state: DeliverableProgressState;
-  // Keep period-related functions as core state management
+  
+  // Period management
   setSelectedPeriod: (period: number) => void;
   incrementPeriod: () => void;
   decrementPeriod: () => void;
   selectedPeriod: number | null;
   progressDate: Date;
-  // Project data (will be added if not already in context)
+  
+  // Project data
   projectId?: string;
+  
+  // Deliverable gates data
+  deliverableGates: any[];
+  isGatesLoading: boolean;
+  gatesError: any;
+  
+  // Validation functions
+  validateProgress: (progress: Record<string, any>) => ValidationResult;
+  validateGatePercentage: (event: any) => boolean;
+  
+  // Business logic functions
+  processProgressUpdate: (key: string, newData: any, oldData: any) => Promise<void>;
 }

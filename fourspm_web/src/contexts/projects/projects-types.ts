@@ -31,4 +31,6 @@ export type ProjectsAction =
 export interface ProjectsContextType {
   state: ProjectsState;
   validateProject: (project: Project, rules?: ValidationRule[]) => boolean;
+  generateProjectId: () => string;
+  setProjectDefaults: (project: Partial<Project>, nextProjectNumber?: string) => Project;
 }

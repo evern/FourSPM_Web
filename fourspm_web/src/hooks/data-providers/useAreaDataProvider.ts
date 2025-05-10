@@ -1,9 +1,7 @@
-import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useODataStore } from '../../stores/odataStores';
 import { AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { Area } from '../../types/odata-types';
-import { compareGuids } from '../../utils/guid-utils';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
 
@@ -28,29 +26,13 @@ const fetchAreas = async (projectId?: string): Promise<Area[]> => {
 };
 
 /**
- * Transform areas data to include backward compatibility fields
- * @param areas The areas data to transform
- * @returns Transformed areas data with additional fields
- */
-const transformAreas = (areas: Area[]): AreaWithAliases[] => {
-  return areas.map(area => ({
-    ...area,
-    areaNumber: area.number // Maintain backward compatibility
-  }));
-};
-
-/**
  * Result interface for the area data provider hook
  */
 export interface AreaDataProviderResult {
   areas: AreaWithAliases[];
   areasStore: ODataStore;
-  areasDataSource: any; // DataSource with filtering for lookup components
   isLoading: boolean;
   error: Error | null;
-  getAreaById: (id: string) => AreaWithAliases | undefined;
-  getAreaByNumber: (number: string) => AreaWithAliases | undefined;
-  getFilteredAreas: (projectId: string) => AreaWithAliases[];
   refetch: () => Promise<any>;
 }
 
@@ -81,92 +63,24 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     queryKey: ['areas', projectId],
     queryFn: () => fetchAreas(projectId),
     enabled: !!projectId, // Only fetch if we have a projectId
-    select: transformAreas // Transform the data after fetching
+    select: (data: Area[]) => data,
+    refetchOnWindowFocus: true, // Refetch data when the window regains focus
+    staleTime: 5 * 60 * 1000 // Consider data stale after 5 minutes
   });
   
   // Use the transformed data from React Query
   const areas = areasData as AreaWithAliases[];
   const error = queryError as Error | null;
 
-  /**
-   * Create a custom data source for DevExtreme component compatibility
-   */
-  const areasDataSource = useMemo(() => {
-    // Create a custom data source that works with the React Query data
-    return {
-      // Load method using the React Query cache
-      load: () => {
-        // If we don't have areas data yet and we're not loading, trigger a refetch
-        if (areas.length === 0 && !isLoading && projectId) {
-          refetch();
-        }
-        return Promise.resolve(areas);
-      },
-      
-      // ByKey method for efficient item lookups
-      byKey: (key: string) => {
-        const foundItem = areas.find(a => compareGuids(a.guid, key));
-        return Promise.resolve(foundItem || null);
-      },
-      
-      // Ensure consistent field mapping
-      map: (area: Area) => {
-        return {
-          ...area,
-          areaNumber: area.number
-        };
-      }
-    };
-  }, [areas, isLoading, projectId, refetch]);
 
-  /**
-   * Get an area by its ID
-   * @param id The area ID to look for
-   * @returns The area object or undefined if not found
-   */
-  const getAreaById = useCallback((id: string): AreaWithAliases | undefined => {
-    if (!id) return undefined;
-    return areas.find(area => compareGuids(area.guid, id));
-  }, [areas]);
-
-  /**
-   * Get an area by its number
-   * @param number The area number to look for
-   * @returns The area object or undefined if not found
-   */
-  const getAreaByNumber = useCallback((number: string): AreaWithAliases | undefined => {
-    if (!number) return undefined;
-    return areas.find(area => area.number === number);
-  }, [areas]);
-
-  /**
-   * Get areas filtered by project ID
-   * @param projectGuid The project ID to filter by
-   * @returns Array of areas for the specified project
-   */
-  const getFilteredAreas = useCallback((projectGuid: string): AreaWithAliases[] => {
-    if (!projectGuid) return [];
-    
-    // If the current projectId matches, return all areas (they're already filtered)
-    if (projectGuid === projectId) {
-      return areas;
-    }
-    
-    // Otherwise filter the current areas array
-    return areas.filter(area => compareGuids(area.projectGuid, projectGuid));
-  }, [areas, projectId]);
 
 
 
   return {
     areas,
     areasStore,
-    areasDataSource,
     isLoading,
     error,
-    getAreaById,
-    getAreaByNumber,
-    getFilteredAreas,
     refetch
   };
 };

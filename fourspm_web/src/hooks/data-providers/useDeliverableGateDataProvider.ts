@@ -1,9 +1,7 @@
-import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DELIVERABLE_GATES_ENDPOINT } from '../../config/api-endpoints';
 import { useODataStore } from '../../stores/odataStores';
 import { DeliverableGate } from '../../types/odata-types';
-import { compareGuids } from '../../utils/guid-utils';
 import { baseApiService } from '../../api/base-api.service';
 
 /**
@@ -23,15 +21,8 @@ export interface DeliverableGateDataProviderResult {
   // New naming pattern
   deliverableGates: DeliverableGate[];
   deliverableGatesStore: any;
-  deliverableGatesDataSource: any;
-  
-  // For backward compatibility with existing code
-  gates: DeliverableGate[];
-  gatesDataSource: any;
-  
   isLoading: boolean;
   error: Error | null;
-  getDeliverableGateById: (id: string) => DeliverableGate | undefined;
   refetch: () => Promise<any>;
 }
 
@@ -58,43 +49,12 @@ export const useDeliverableGateDataProvider = (shouldLoad: boolean | undefined =
   
   const error = queryError as Error | null;
 
-  /**
-   * Create a custom data source for DevExtreme compatibility
-   */
-  const deliverableGatesDataSource = useMemo(() => ({
-    load: () => {
-      if (deliverableGates.length === 0 && !isLoading) {
-        refetch();
-      }
-      return Promise.resolve(deliverableGates);
-    },
-    byKey: (key: string) => {
-      const foundItem = deliverableGates.find(gate => compareGuids(gate.guid, key));
-      return Promise.resolve(foundItem || null);
-    }
-  }), [deliverableGates, isLoading, refetch]);
-
-  /**
-   * Get a deliverable gate by ID
-   */
-  const getDeliverableGateById = useCallback((id: string): DeliverableGate | undefined => {
-    if (!id) return undefined;
-    return deliverableGates.find(gate => compareGuids(gate.guid, id));
-  }, [deliverableGates]);
-
   return {
     // New naming pattern
     deliverableGates,
     deliverableGatesStore,
-    deliverableGatesDataSource,
-    
-    // For backward compatibility with existing code
-    gates: deliverableGates,
-    gatesDataSource: deliverableGatesDataSource,
-    
     isLoading,
     error,
-    getDeliverableGateById,
     refetch
   };
 };

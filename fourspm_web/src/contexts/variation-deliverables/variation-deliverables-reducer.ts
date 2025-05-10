@@ -1,4 +1,4 @@
-import { Deliverable } from '@/types/odata-types';
+// Variation deliverables reducer
 import { VariationDeliverablesAction, VariationDeliverablesState } from './variation-deliverables-types';
 
 /**
@@ -8,7 +8,8 @@ export const initialVariationDeliverablesState: VariationDeliverablesState = {
   deliverables: [],
   loading: false,
   error: null,
-  isReadOnly: false
+  isReadOnly: false,
+  lookupDataLoaded: false
 };
 
 /**
@@ -20,6 +21,7 @@ export const variationDeliverablesReducer = (
   action: VariationDeliverablesAction
 ): VariationDeliverablesState => {
   switch (action.type) {
+    // Basic state management actions
     case 'SET_DELIVERABLES':
       return { ...state, deliverables: action.payload };
       
@@ -44,6 +46,57 @@ export const variationDeliverablesReducer = (
       
     case 'SET_READ_ONLY':
       return { ...state, isReadOnly: action.payload };
+      
+    case 'SET_LOOKUP_DATA_LOADED':
+      return { ...state, lookupDataLoaded: action.payload };
+    
+    // Fetch operations
+    case 'FETCH_DELIVERABLES_START':
+      return { ...state, loading: true, error: null };
+    
+    case 'FETCH_DELIVERABLES_SUCCESS':
+      return { ...state, loading: false, deliverables: action.payload, error: null };
+    
+    case 'FETCH_DELIVERABLES_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    
+    // Add operations
+    case 'ADD_DELIVERABLE_START':
+      return { ...state, loading: true, error: null };
+    
+    case 'ADD_DELIVERABLE_SUCCESS':
+      return { 
+        ...state, 
+        loading: false, 
+        deliverables: [...state.deliverables, action.payload],
+        error: null
+      };
+    
+    case 'ADD_DELIVERABLE_ERROR':
+      return { 
+        ...state, 
+        loading: false, 
+        error: action.payload.error 
+      };
+    
+    // Delete operations
+    case 'DELETE_DELIVERABLE_START':
+      return { ...state, loading: true, error: null };
+    
+    case 'DELETE_DELIVERABLE_SUCCESS':
+      return { 
+        ...state, 
+        loading: false, 
+        deliverables: state.deliverables.filter(d => d.guid !== action.payload),
+        error: null
+      };
+    
+    case 'DELETE_DELIVERABLE_ERROR':
+      return { 
+        ...state, 
+        loading: false, 
+        error: action.payload.error 
+      };
       
     default:
       return state;

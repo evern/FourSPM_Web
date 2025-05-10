@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { useCallback } from 'react';
 import notify from 'devextreme/ui/notify';
+import { v4 as uuidv4 } from 'uuid';
 import { 
   GridOperationsHook,
   GridOperationsConfig,
@@ -44,6 +45,11 @@ export function createGridOperationHook<T>(
       if (config.onUpdateSuccess) {
         config.onUpdateSuccess();
       }
+      
+      // Invalidate related caches if provided
+      if (config.invalidateCache) {
+        config.invalidateCache();
+      }
     } catch (error) {
       // Handle errors
       e.cancel = true;
@@ -76,6 +82,11 @@ export function createGridOperationHook<T>(
       if (config.onDeleteSuccess) {
         config.onDeleteSuccess();
       }
+      
+      // Invalidate related caches if provided
+      if (config.invalidateCache) {
+        config.invalidateCache();
+      }
     } catch (error) {
       // Handle errors
       e.cancel = true;
@@ -107,6 +118,11 @@ export function createGridOperationHook<T>(
       // Execute configuration callbacks
       if (config.onInsertSuccess) {
         config.onInsertSuccess();
+      }
+      
+      // Invalidate related caches if provided
+      if (config.invalidateCache) {
+        config.invalidateCache();
       }
     } catch (error) {
       // Handle errors
@@ -185,6 +201,30 @@ export function createGridOperationHook<T>(
   
   // Generate onRowValidating handler using the rules
   const onRowValidating = handleRowValidating();
+  
+  /**
+   * Handler for initializing a new row with default values
+   * Automatically adds UUID and ensures config.defaultValues are applied if provided
+   */
+  const handleInitNewRow = useCallback((e: any) => {
+    if (e && e.data) {
+      // Always ensure a UUID for new entities
+      e.data.guid = e.data.guid || uuidv4();
+      
+      // Apply any additional default values provided in config
+      if (config.defaultValues) {
+        e.data = {
+          ...e.data,
+          ...config.defaultValues
+        };
+      }
+      
+      // Call component's onInitNewRow callback if available
+      if (e.component?._options?.onInitNewRow) {
+        e.component._options.onInitNewRow(e);
+      }
+    }
+  }, [config.defaultValues]);
 
   // Return the hook with all grid operations handlers
   return {
@@ -192,6 +232,7 @@ export function createGridOperationHook<T>(
     handleRowRemoving,
     handleRowInserting,
     handleRowValidating: onRowValidating,
+    handleInitNewRow,
     // Backward compatibility properties (will be deprecated in future)
     collection: { items: [] },
     isCollectionLoading: false,

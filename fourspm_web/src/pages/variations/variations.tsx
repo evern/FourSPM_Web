@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { variationColumns } from './variation-columns';
@@ -41,19 +41,22 @@ const VariationsContent = (): React.ReactElement => {
   const { user } = useAuth();
   
   // Get data from our combined context
-  const { state, handleVariationEditorPreparing, handleVariationInitNewRow } = useVariations();
+  const { state } = useVariations();
   
   // Get project info for display in the title
   const { project, isLoading: projectLoading } = useProjectInfo(projectId, user?.token);
   
   // Use our custom grid handlers
   const {
+    // Row operations
     handleRowValidating,
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
+    // Editor operations
     handleEditorPreparing,
     handleInitNewRow,
+    // Status operations
     handleApproveVariation,
     handleRejectVariation
   } = useVariationGridHandlers({
@@ -72,21 +75,7 @@ const VariationsContent = (): React.ReactElement => {
   // Create project filter for grid
   const projectFilter: [string, string, any][] = projectId ? [["projectGuid", "=", projectId]] : [];
   
-  // Combined handler for editor preparing
-  const handleCombinedEditorPreparing = useCallback((e: any) => {
-    // First let the editor context prepare the editor
-    handleVariationEditorPreparing(e);
-    // Then let the grid handlers add any additional preparation
-    handleEditorPreparing(e);
-  }, [handleVariationEditorPreparing, handleEditorPreparing]);
-  
-  // Combined handler for init new row
-  const handleCombinedInitNewRow = useCallback((e: any) => {
-    // First let the editor context initialize the row
-    handleVariationInitNewRow(e);
-    // Then let the grid handlers add any additional initialization
-    handleInitNewRow(e);
-  }, [handleVariationInitNewRow, handleInitNewRow]);
+  // We now use handleEditorPreparing directly as it contains all needed customizations
 
   return (
     <div className="variations-container">
@@ -118,8 +107,8 @@ const VariationsContent = (): React.ReactElement => {
           onRowUpdating={handleRowUpdating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
-          onEditorPreparing={handleCombinedEditorPreparing}
-          onInitNewRow={handleCombinedInitNewRow}
+          onEditorPreparing={handleEditorPreparing}
+          onInitNewRow={handleInitNewRow}
           allowAdding={true}
           allowUpdating={true}
           allowDeleting={true}

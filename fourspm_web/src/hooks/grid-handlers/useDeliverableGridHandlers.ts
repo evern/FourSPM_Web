@@ -1,8 +1,19 @@
-import { useCallback } from 'react';
-import { useDeliverableGridEditor, ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
+import { useCallback, useRef } from 'react';
+import { useDeliverables } from '../../contexts/deliverables/deliverables-context';
+import { ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
 import { useGridUtils } from '../utils/useGridUtils';
-// Using the explicit validator from grid-handlers folder
-import { useDeliverableGridValidator, GridRowEvent, ValidationResult } from './useDeliverableGridValidator';
+import { v4 as uuidv4 } from 'uuid';
+
+// Define the GridRowEvent type to match DevExtreme's grid row events
+interface GridRowEvent {
+  data?: any;
+  key?: any;
+  cancel?: boolean;
+  isValid?: boolean;
+  errorText?: string;
+  oldData?: any;
+  newData?: any;
+}
 
 /**
  * Interface defining comprehensive grid event handlers for deliverables
@@ -10,113 +21,223 @@ import { useDeliverableGridValidator, GridRowEvent, ValidationResult } from './u
 export interface DeliverableGridHandlers {
   // DevExtreme grid event handlers
   handleRowValidating: (e: GridRowEvent) => void;
-  handleRowUpdating: (e: GridRowEvent) => void;
-  handleRowInserting: (e: GridRowEvent) => void;
-  handleRowRemoving: (e: GridRowEvent) => void;
   handleInitNewRow: (e: GridRowEvent) => void;
   handleEditorPreparing: (e: { component: any; element: any; model: any; editorOptions: any; editorName: string; dataField: string; row: any; parentType: string; }) => void;
   handleGridInitialized: (e: { component: any; element: any; }) => void;
   
   // Utility methods
   setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
-  validateDeliverable: (deliverable: Record<string, any>) => ValidationResult;
 }
 
 interface UseDeliverableGridHandlersProps {
   projectGuid?: string;
   userToken?: string;
-  project?: any; // Add project parameter for client/project number data
+  project?: any;
 }
 
 /**
- * Hook for managing deliverable grid event handlers
- * @param options Configuration options for grid handlers
- * @returns Object containing all grid event handlers
+ * Hook for handling deliverable grid operations
+ * Uses the deliverables context for initialization and validation
  */
-export function useDeliverableGridHandlers(options: UseDeliverableGridHandlersProps): DeliverableGridHandlers {
-  const { projectGuid, userToken, project } = options;
+export const useDeliverableGridHandlers = ({
+  projectGuid,
+  userToken,
+  project
+}: UseDeliverableGridHandlersProps) => {
+  // Track the DataGrid instance for operations
+  const gridRef = useRef<any>(null);
   
-  // Get grid utility methods
-  const { setCellValue, handleGridInitialized } = useGridUtils();
+  // Get functionality from deliverables context
+  const deliverables = useDeliverables();
+  const { 
+    initializeDeliverable, 
+    generateDocumentNumber
+  } = deliverables;
+  
+  // Function to handle grid initialized event
+  const handleGridInitialized = useCallback((e: any) => {
+    gridRef.current = e.component;
+  }, []);
+  
+  // Function to set a cell value in the grid
+  const setCellValue = useCallback((rowIndex: number, dataField: string, value: any) => {
+    if (gridRef.current) {
+      gridRef.current.cellValue(rowIndex, dataField, value);
+    }
+  }, []);
   
   /**
    * Defines which fields are editable based on the deliverable status
    */
   const isFieldEditable = useCallback((fieldName: string, uiStatus?: string) => {
     // Use the shared readonly fields list
-    if (ALWAYS_READONLY_DELIVERABLE_FIELDS.includes(fieldName)) {
+    if (['deliverableTypeId', 'internalDocumentNumber'].includes(fieldName)) {
       return false;
     }
     return true; // All other fields are editable by default
   }, []);
   
-  // Use the deliverable grid editor for document number handling and field customization
-  const { 
-    handleEditorPreparing, 
-    handleInitNewRow: baseHandleInitNewRow
-  } = useDeliverableGridEditor<string>({
-    projectGuid: projectGuid || '',
-    userToken: userToken || '',
-    isFieldEditable,
-    setCellValue,
-    enableRowInitialization: true
-  });
+  // Custom implementation of handleRowValidating that uses the deliverables context
+  const handleRowValidating = useCallback((e: GridRowEvent) => {
+    // Skip validation if no data is present
+    if (!e || !e.data) return;
+    
+    // Apply validation using the context's validateDeliverable
+    const result = deliverables.validateDeliverable(e.data);
+    
+    if (!result.isValid) {
+      e.isValid = false;
+      // Format the error messages for display
+      e.errorText = Object.values(result.errors).flat().join('\n');
+    }
+  }, [deliverables]);
   
-  // Use the shared entity validator for validation logic
-  const {
-    handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    validateDeliverable: validatorFunction
-  } = useDeliverableGridValidator({
-    projectGuid,
-    userToken
-  });
-
-  // Use the validator's validateDeliverable function directly
-  const validateDeliverable = useCallback((deliverable: any) => {
-    return validatorFunction(deliverable);
-  }, [validatorFunction]);
+  // No longer implementing handlers that aren't needed
   
-  // Handle row removal confirmation - kept the same as original
-  const handleRowRemoving = useCallback((e: any) => {
-    // No special handling for removal at this level
-    // Any confirmation dialog would be handled at the UI level
-  }, []);
-  
-  // Handle initializing a new row with project-specific data
+  // Handle initializing a new row with project-specific data using context
   const handleInitNewRow = useCallback((e: any) => {
-    // Use the base implementation from the grid editor
-    baseHandleInitNewRow(e);
-    
-    // Ensure project guid is set
-    if (projectGuid) {
-      e.data.projectGuid = projectGuid;
+    if (e && e.data && projectGuid) {
+      // Use the context's initialize method which includes all required fields
+      const defaultValues = initializeDeliverable(projectGuid, project);
+      Object.assign(e.data, defaultValues);
     }
-    
-    // Add client and project numbers if available
-    if (project) {
-      if (project.client) {
-        e.data.clientNumber = project.client.number || '';
-      }
-      if (project.projectNumber) {
-        e.data.projectNumber = project.projectNumber || '';
-      }
-    }
-  }, [baseHandleInitNewRow, projectGuid, project]);
+  }, [initializeDeliverable, projectGuid, project]);
   
-  // Keep using handleEditorPreparing directly from useDeliverableGridEditor
-  // which matches the implementation in the original deliverables.tsx
+  /**
+   * Helper function to update document number in the grid
+   */
+  const updateDocumentNumber = useCallback(async (
+    row: any,
+    deliverableTypeId: any,
+    areaNumber: string,
+    discipline: string,
+    documentType: string,
+    setCellValue: (rowIndex: number, dataField: string, value: any) => void
+  ) => {
+    // Check if we have sufficient data to generate a number
+    const isDeliverableType = 
+      deliverableTypeId === 'Deliverable' || 
+      deliverableTypeId === 3 || 
+      deliverableTypeId === '3';
+    
+    const shouldGenerateNumber = 
+      deliverableTypeId !== undefined && 
+      ((isDeliverableType && areaNumber) || !isDeliverableType) &&
+      (discipline || documentType);
+    
+    if (shouldGenerateNumber && projectGuid) {
+      try {
+        // Use the context's generateDocumentNumber method
+        const suggestedNumber = await generateDocumentNumber(
+          deliverableTypeId, 
+          areaNumber, 
+          discipline, 
+          documentType,
+          row.data?.guid,
+          false // Not a variation deliverable
+        );
+        
+        if (suggestedNumber) {
+          // Update both the row data and the grid
+          row.data.internalDocumentNumber = suggestedNumber;
+          setCellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
+          
+          // If there's an editor element, update it directly
+          const editor = row.component?.getEditor('internalDocumentNumber');
+          if (editor) {
+            try {
+              editor.option('value', suggestedNumber);
+            } catch (err) {
+              console.warn('Could not update editor directly:', err);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error generating document number:', error);
+      }
+    }
+  }, [generateDocumentNumber, projectGuid]);
+
+  /**
+   * Handles editor preparing for deliverable fields, including automatic document number generation
+   * and field enabling/disabling based on deliverable type
+   */
+  const handleEditorPreparing = useCallback((e: any) => {
+    const originalSetValue = e.editorOptions?.onValueChanged;
+    const dataField = e.dataField;
+    const editorOptions = e.editorOptions || {};
+    const row = e.row;
+    // Add document number generation to all relevant fields
+    if (['deliverableTypeId', 'areaNumber', 'discipline', 'documentType'].includes(dataField)) {
+      editorOptions.onValueChanged = async (args: any) => {
+        // Call the original setValue function if it exists
+        if (originalSetValue) {
+          originalSetValue(args);
+        }
+        
+        // Get current values, updating the changed field with args.value
+        const deliverableTypeId = dataField === 'deliverableTypeId' ? args.value : row.data.deliverableTypeId;
+        const areaNumber = dataField === 'areaNumber' ? args.value : row.data.areaNumber;
+        const discipline = dataField === 'discipline' ? args.value : row.data.discipline;
+        const documentType = dataField === 'documentType' ? args.value : row.data.documentType;
+        
+        // Use our helper method for document number updates
+        updateDocumentNumber(
+          row, 
+          deliverableTypeId, 
+          areaNumber, 
+          discipline, 
+          documentType,
+          setCellValue
+        );
+      };
+    }
+    
+    // Special handling for the document number field - add a suggest button
+    if (dataField === 'internalDocumentNumber' && !editorOptions.buttons) {
+      editorOptions.buttons = [
+        {
+          name: 'suggestNumber',
+          location: 'after',
+          options: {
+            icon: 'refresh',
+            type: 'normal',
+            hint: 'Generate document number',
+            onClick: async () => {
+              try {
+                if (row?.data) {
+                  // Get current values from the row data
+                  const deliverableTypeId = row.data.deliverableTypeId;
+                  const areaNumber = row.data.areaNumber;
+                  const discipline = row.data.discipline;
+                  const documentType = row.data.documentType;
+                  
+                  // Use context method for document number updates
+                  updateDocumentNumber(
+                    row, 
+                    deliverableTypeId, 
+                    areaNumber, 
+                    discipline, 
+                    documentType,
+                    setCellValue
+                  );
+                }
+              } catch (error) {
+                console.error('Error generating document number:', error);
+              }
+            }
+          }
+        }
+      ];
+    }
+  }, [updateDocumentNumber, setCellValue]);
   
   return {
+    handleGridInitialized,
     handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    handleRowRemoving,
     handleInitNewRow,
     handleEditorPreparing,
     setCellValue,
-    handleGridInitialized,
-    validateDeliverable
+    updateDocumentNumber
   };
-}
+};

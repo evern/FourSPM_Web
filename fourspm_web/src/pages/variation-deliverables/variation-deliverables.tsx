@@ -1,85 +1,94 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useMemo } from 'react';
+import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth';
-import { ODataGrid, ODataGridColumn } from '@/components/ODataGrid/ODataGrid';
-import { LoadPanel } from 'devextreme-react/load-panel';
+import { ODataGrid } from '@/components/ODataGrid/ODataGrid';
 import { createVariationDeliverableColumns, processVariationDeliverableColumns } from './variation-deliverable-columns';
 import ScrollToTop from '@/components/scroll-to-top/scroll-to-top';
 import './variation-deliverables.scss';
-import DataSource from 'devextreme/data/data_source';
-import ODataStore from 'devextreme/data/odata/store';
-
-import { useScreenSizeClass } from '@/utils/media-query';
-
-// Import grid handlers
-import { useVariationDeliverableGridHandlers } from '@/hooks/grid-handlers/useVariationDeliverableGridHandlers';
-
-// Import context provider that's still needed for grid handlers
-import { VariationDeliverablesProvider, useVariationDeliverables } from '@/contexts/variation-deliverables/variation-deliverables-context';
-
-// Import API endpoints
 import { getVariationDeliverablesWithParamUrl } from '@/config/api-endpoints';
+import { useScreenSizeClass } from '@/utils/media-query';
+import { LoadPanel } from 'devextreme-react/load-panel';
+import { VariationDeliverablesProvider, useVariationDeliverables } from '@/contexts/variation-deliverables/variation-deliverables-context';
+import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
+// Use the DeliverableEditor context from deliverables context
+import { useVariationDeliverableGridHandlers } from '@/hooks/grid-handlers/useVariationDeliverableGridHandlers';
+import { useVariationInfo } from '@/hooks/utils/useVariationInfo';
+import { useAuth } from '@/contexts/auth';
 
 // Type definition for route parameters
 interface VariationDeliverableParams {
   variationId: string;
-  // We don't use projectId from URL as it's not available
 }
 
 /**
- * Main component for variation deliverables
- * Following the pattern from deliverables.tsx for direct data provider usage
- * but we still need the context provider for useVariationDeliverableGridHandlers
+ * Main component that sets up context providers for Variation Deliverables
+ * Following the Collection View Implementation Doctrine with two-layer architecture
  */
 export function VariationDeliverables(): React.ReactElement {
-  // Get route parameters
+  // Get route parameters - ALWAYS call hooks at the top level
   const { variationId } = useParams<VariationDeliverableParams>();
+  const { user } = useAuth();
   
-  // We still need the context provider for useVariationDeliverableGridHandlers
+  // Get the variation info to retrieve the correct project ID
+  // Always call hooks before any conditional returns
+  const { projectGuid, loading } = useVariationInfo(variationId || '', user?.token);
+  
+  // Validate variationId exists
+  if (!variationId) {
+    return <div className="error-message">Variation ID is missing from the URL.</div>;
+  }
+  
+  // Show loading state while we fetch the variation data
+  if (loading) {
+    return <div className="loading-message">Loading variation data...</div>;
+  }
+  
+  // Validate that we got a project ID from the variation
+  if (!projectGuid) {
+    return <div className="error-message">Cannot load project for this variation.</div>;
+  }
+  
   return (
-    <VariationDeliverablesProvider variationId={variationId}>
-      <VariationDeliverablesContent />
-    </VariationDeliverablesProvider>
+    <DeliverablesProvider projectId={projectGuid}>
+      <VariationDeliverablesProvider variationId={variationId}>
+        <VariationDeliverablesContent />
+      </VariationDeliverablesProvider>
+    </DeliverablesProvider>
   );
 }
 
 /**
- * Main content component that handles data providers and UI
- * Follows the pattern from deliverables.tsx with direct data provider usage
+ * Nested component that consumes both contexts
+ * This pattern prevents using context before initialization
  */
-const VariationDeliverablesContent = (): React.ReactElement => {
-  // Get authentication token and screen size
-  const { user } = useAuth();
-  const screenClass = useScreenSizeClass();
-  const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
-  
-  // Get route parameter for variation ID
+const VariationDeliverablesContent = React.memo((): React.ReactElement => {
+  // Get variation ID from URL params
   const { variationId } = useParams<VariationDeliverableParams>();
   
-  /**
-   * Get data from sequential loading context:
-   * 1. Variation is loaded first by useVariationInfo in the context
-   * 2. Project is loaded using projectGuid from variation
-   * 3. Data providers are loaded in the context after project and variation are available
-   * 4. All data is provided through the context with combined loading states
-   */
-  const { 
-    variation, 
-    project, 
-    projectGuid, 
-    state, 
-    // Get data providers from context instead of initializing them here
+  // Use the variation deliverables context
+  const {
+    // State
+    state,
+    
+    // Reference data
     areasDataSource,
     disciplinesDataSource,
     documentTypesDataSource,
-    isLookupDataLoading
+    isLookupDataLoading,
+    
+    // Project and variation data
+    project,
+    variation,
+    projectGuid,
+    
+    // Field management functions
+    isFieldEditable
   } = useVariationDeliverables();
   
-  // Combined loading state (variation + project)
-  const isLoading = state.loading; 
-  const contextError = state.error;
+  // We'll use the variation deliverables context for validation
+  // In a future step, this would use a dedicated deliverable editor context
   
-  // Get grid handlers from the hook - passing project and projectGuid directly
+  // Get grid handlers with both context dependencies
   const {
     handleGridInitialized,
     handleRowUpdating,
@@ -87,72 +96,30 @@ const VariationDeliverablesContent = (): React.ReactElement => {
     handleRowValidating,
     handleInitNewRow,
     handleEditorPreparing,
-    handleCancellationClick
+    handleCancellationClick,
+    dataGridRef
   } = useVariationDeliverableGridHandlers({
-    project, // Pass project directly for client/project info
+    project,
     projectGuid
   });
-  
-  /**
-   * Sequential data readiness check:
-   * 1. First verify we have variation and project data from context
-   * 2. Then check if lookup data providers are ready
-   * This ensures we follow the exact loading sequence needed
-   */
-  const dataReady = useMemo(() => {
-    // Step 1: Check if context data is loaded and available
-    const hasContextData = !!variation && !!project && !!projectGuid && !isLoading;
-    if (!hasContextData) return false;
-    
-    // Step 2: Check if lookup data providers are ready
-    return !isLookupDataLoading;
-  }, [variation, project, projectGuid, isLoading, isLookupDataLoading]);
-  
 
+  const screenClass = useScreenSizeClass();
+  const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
   
-  // Create a memoized data store to prevent new instances on re-renders
-  const store = useMemo(() => {
-    if (!variationId || !user?.token) return null;
-    
-    return new ODataStore({
-      url: getVariationDeliverablesWithParamUrl(variationId),
-      version: 4,
-      key: 'guid',
-      keyType: 'Guid',
-      beforeSend: (options) => {
-        options.headers = {
-          ...options.headers,
-          'Authorization': `Bearer ${user.token}`
-        };
-      },
-      fieldTypes: {
-        variationGuid: 'Guid',
-        projectGuid: 'Guid',
-        originalDeliverableGuid: 'Guid'
-      }
-    });
-  }, [variationId, user?.token]);
+  // Determine if we're still loading any data
+  const isLoading = state.loading || isLookupDataLoading;
   
-  // Create a memoized data source to prevent new instances on re-renders
-  const dataSource = useMemo(() => {
-    if (!store) return null;
-    
-    return new DataSource({
-      store,
-      sort: [{ selector: 'internalDocumentNumber', desc: true }]
-    });
-  }, [store]);
+  // Combine all error sources
+  const hasError = state.error !== null;
   
-  // Use error state from context
-  const error = contextError;
   // Set the grid to read-only if the variation has been submitted
   const isReadOnly = variation?.submitted !== null && variation?.submitted !== undefined;
-
+  
   // Create columns with the lookup data sources from dedicated providers
   const columns = useMemo(() => {
-    // Only create columns when data is ready to prevent issues with undefined datasources
-    if (!dataReady) {
-      return [] as ODataGridColumn[];
+    // Only create columns when lookup data is ready
+    if (isLoading || !areasDataSource || !disciplinesDataSource || !documentTypesDataSource) {
+      return [];
     }
     
     const baseColumns = createVariationDeliverableColumns(
@@ -165,68 +132,78 @@ const VariationDeliverablesContent = (): React.ReactElement => {
     );
     
     // Process columns to ensure all have a dataField property for ODataGrid compatibility
-    return processVariationDeliverableColumns(baseColumns) as ODataGridColumn[];
-  }, [dataReady, areasDataSource, disciplinesDataSource, documentTypesDataSource, isMobile, handleCancellationClick, isReadOnly]);
-
+    return processVariationDeliverableColumns(baseColumns);
+  }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading, isMobile, handleCancellationClick, isReadOnly]);
+  
+  // Adjust columns for mobile size if needed
+  const mobileAdjustedColumns = useMemo(() => {
+    if (!columns || columns.length === 0) return [];
+    return isMobile 
+      ? columns.filter(c => c.dataField !== 'description') // Example: Hide description on mobile
+      : columns;
+  }, [columns, isMobile]);
+  
   return (
     <div className="variation-deliverables-container">
-      {/* Display errors */}
-      {error && (
-        <div className="alert alert-danger">
-          Error: {error}
-        </div>
+      {/* Loading indicator */}
+      <LoadPanel
+        position={{ of: '.app-main-content' }}
+        visible={isLoading}
+        showIndicator={true}
+        shading={true}
+        shadingColor="rgba(0,0,0,0.1)"
+        showPane={true}
+      />
+      
+      {/* Error message */}
+      {hasError && (
+        <ErrorMessage
+          title="Error Loading Variation Deliverables"
+          message={state.error || 'An unknown error occurred'}
+        />
       )}
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {project && variation ? `${project.name} - ${variation.name} Variations` : `Variation: ${variation?.name || 'Unknown'}`}
+          {project && variation 
+            ? `${project.name} - ${variation.name} Deliverables` 
+            : 'Variation Deliverables'}
         </div>
         
-        {/* ODataGrid container - always present for LoadPanel targeting */}
-        <div className="odatagrid-container" style={{ position: 'relative', minHeight: '400px' }}>
-          {/* Sequential loading with DevExtreme LoadPanel */}
-          <LoadPanel
-            shadingColor="rgba(0,0,0,0.1)"
-            position={{ of: ".odatagrid-container" }}
-            visible={!dataReady}
-            showIndicator={true}
-            showPane={true}
-            message={isLoading ? 'Loading variation and project data...' : 'Loading lookup data...'}
-          />
-        
-          {/* Only render the grid once data is loaded */}
-          {dataReady && dataSource && (
+        {!isLoading && !hasError && variation && variationId && (
           <ODataGrid
             title=" "
-            onInitialized={handleGridInitialized}
-            // Grid CRUD event handlers - all from useVariationDeliverableGridHandlers
-            onRowUpdating={handleRowUpdating}
-            onRowInserting={handleRowInserting}
-            onRowValidating={handleRowValidating}
-            onInitNewRow={handleInitNewRow}
-            onEditorPreparing={handleEditorPreparing}
-            // Use the memoized data source instead of an endpoint
-            dataSource={dataSource}
-            loading={false}
-            columns={columns}
+            endpoint={getVariationDeliverablesWithParamUrl(variationId)}
+            columns={mobileAdjustedColumns.length > 0 ? mobileAdjustedColumns : []}
             keyField="guid"
-            defaultPageSize={20}
+            onRowUpdating={handleRowUpdating}
+            onInitNewRow={handleInitNewRow}
+            onRowValidating={handleRowValidating}
+            onRowInserting={handleRowInserting}
+            onEditorPreparing={handleEditorPreparing}
+            onInitialized={handleGridInitialized}
             countColumn="guid"
-            allowUpdating={!isReadOnly}
+            defaultSort={[{ selector: 'internalDocumentNumber', desc: false }]}
             allowAdding={!isReadOnly}
+            allowUpdating={!isReadOnly}
             allowDeleting={false}
-            showRecordCount={true}
             customGridHeight={900}
+            // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
-              // Additional store config if needed
+              fieldTypes: {
+                variationGuid: 'Guid',
+                projectGuid: 'Guid',
+                originalDeliverableGuid: 'Guid'
+              }
             }}
+            // Note: Add virtual scrolling in a subsequent ticket
+            // The ODataGrid component needs to be updated to support these advanced features
           />
-          )}
-        </div>
+        )}
       </div>
       <ScrollToTop />
     </div>
   );
-};
+});
 
 export default VariationDeliverables;

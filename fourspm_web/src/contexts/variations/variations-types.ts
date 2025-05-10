@@ -2,46 +2,25 @@ import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import React from 'react';
 
-// Editor event interfaces for DevExtreme components
+// Simplified editor event interface with only the properties we actually use
 export interface EditorEvent {
-  component: any;
-  element: any;
-  model: any;
+  // Only keep what we actually use in handleVariationEditorPreparing
+  dataField: string;
   editorOptions: {
     onValueChanged?: (args: any) => void;
-    buttons?: Array<{
-      name: string;
-      location: string;
-      options: {
-        icon: string;
-        type: string;
-        hint: string;
-        onClick: () => void;
-      }
-    }>;
+    maxLength?: number;
+    height?: number;
     [key: string]: any;
   };
-  editorName: string;
-  dataField: string;
-  row: {
-    data: Record<string, any>;
-    key: any;
-    rowIndex: number;
-    isNewRow?: boolean;
-    values: any[];
-  };
-  data: Record<string, any>;
-  key: any;
-  rowIndex: number;
-  isNewRow?: boolean;
-  values: any[];
-  parentType: string;
 }
 
+// Simplified initialization event interface
 export interface InitNewRowEvent {
-  component: any;
-  element: any;
-  data: Record<string, any>;
+  // Only the properties used in handleInitNewRow
+  component?: {
+    option: (name: string) => any;
+  };
+  data?: Record<string, any>;
 }
 
 // Combined state interface
@@ -83,14 +62,24 @@ export type VariationsAction =
 export interface VariationsContextType {
   // Data state and operations
   state: VariationsState;
-  validateVariation: (variation: Variation, rules?: ValidationRule[]) => boolean;
+  
+  // Validation methods
+  validateVariation: (variation: Record<string, any>) => { isValid: boolean; errors: Record<string, string> };
+  handleRowValidating: (e: any) => void;
+  validateRowUpdating: (oldData: any, newData: any) => { isValid: boolean; errors: Record<string, string> };
+  
+  // Data operations
   fetchVariations: (projectId: string) => Promise<void>;
-  addVariation: (variation: Variation) => Promise<Variation>;
+  addVariation: (variation: Variation, skipStateUpdate?: boolean) => Promise<Variation>;
   updateVariation: (variation: Variation) => Promise<Variation>;
   deleteVariation: (id: string) => Promise<void>;
+  changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string }) => Promise<void>;
   
-  // Editor operations
-  getDefaultVariationValues: (projectId?: string) => Partial<Variation>;
+  // Editor functions
+  getDefaultVariationValues: (projectId: string) => Record<string, any>;
   handleVariationEditorPreparing: (e: EditorEvent) => void;
   handleVariationInitNewRow: (e: InitNewRowEvent) => void;
+  
+  // Cache invalidation
+  invalidateAllLookups: () => void;
 }

@@ -6,6 +6,17 @@ import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.inter
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../auth';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
+
+/**
+ * Default validation rules for projects
+ */
+export const PROJECT_VALIDATION_RULES: ValidationRule[] = [
+  { field: 'projectNumber', required: true, maxLength: 50, errorText: 'Project Number is required' },
+  { field: 'name', required: true, maxLength: 200, errorText: 'Project Name is required and must be at most 200 characters' },
+  { field: 'projectStatus', required: true, errorText: 'Project Status is required' },
+  { field: 'clientGuid', required: true, errorText: 'Client is required' }
+];
 
 // Create the context with a default undefined value
 const ProjectsContext = createContext<ProjectsContextType | undefined>(undefined);
@@ -36,25 +47,22 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   
   // deleteProject function removed as ODataGrid now handles deletion directly
   
-  // Validate project
-  const validateProject = useCallback((project: Project, rules: ValidationRule[] = []) => {
+  // Use the entity validator for project validation
+  const { validateEntity } = useEntityValidator({
+    validationRules: PROJECT_VALIDATION_RULES,
+  });
+  
+  // Validate project - enhanced with proper rules
+  const validateProject = useCallback((project: Project, rules: ValidationRule[] = PROJECT_VALIDATION_RULES) => {
     if (!isMountedRef.current) return false;
     
-    const errors: Record<string, string[]> = {};
+    // Use the entity validator to validate the project
+    const validationResult = validateEntity(project);
     
-    // Process each validation rule
-    rules.forEach(rule => {
-      const fieldValue = project[rule.field as keyof Project];
-      
-      if (rule.required && (!fieldValue || fieldValue === '')) {
-        errors[rule.field] = errors[rule.field] || [];
-        errors[rule.field].push(rule.errorText || `${rule.field} is required`);
-      }
-      
-      if (rule.maxLength && typeof fieldValue === 'string' && fieldValue.length > rule.maxLength) {
-        errors[rule.field] = errors[rule.field] || [];
-        errors[rule.field].push(rule.errorText || `${rule.field} must be at most ${rule.maxLength} characters`);
-      }
+    // Format errors for the state
+    const errors: Record<string, string[]> = {};
+    Object.entries(validationResult.errors).forEach(([key, value]) => {
+      errors[key] = [value];
     });
     
     // Update validation errors state
@@ -69,15 +77,34 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
       }
       return true;
     }
+  }, [validateEntity]);
+  
+  // Generate a new UUID for a project
+  const generateProjectId = useCallback(() => {
+    return uuidv4();
   }, []);
+  
+  // Set default values for a new project
+  const setProjectDefaults = useCallback((project: Partial<Project>, nextProjectNumber?: string) => {
+    return {
+      ...project,
+      guid: project.guid || generateProjectId(),
+      projectNumber: project.projectNumber || nextProjectNumber || '',
+      projectStatus: project.projectStatus || 'TenderInProgress'
+    } as Project;
+  }, [generateProjectId]);
   
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
-    validateProject
+    validateProject,
+    generateProjectId,
+    setProjectDefaults
   }), [
     state, 
-    validateProject
+    validateProject,
+    generateProjectId,
+    setProjectDefaults
   ]);
   
   return (
