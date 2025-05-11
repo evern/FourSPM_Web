@@ -7,11 +7,11 @@ const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly
 
 /**
  * Creates column definitions for the Projects grid with client information
- * @param clientsDataSource - The data source for clients lookup
+ * @param clientsStore - The OData store for clients lookup from useClientDataProvider
  * @param nextProjectNumber - The next auto-incremented project number to use for new projects
  * @returns Array of column definitions for the projects grid
  */
-export const createProjectColumns = (clientsDataSource: any, nextProjectNumber?: string): ODataGridColumn[] => [
+export const createProjectColumns = (clientsStore: any, nextProjectNumber?: string): ODataGridColumn[] => [
     { 
       dataField: 'projectNumber', 
       caption: 'Project #', 
@@ -25,7 +25,7 @@ export const createProjectColumns = (clientsDataSource: any, nextProjectNumber?:
       caption: 'Client', 
       hidingPriority: 7,
       lookup: {
-        dataSource: clientsDataSource,
+        dataSource: clientsStore,
         valueExpr: 'guid',
         displayExpr: (item: any) => item ? `${item.number} - ${item.description}` : ''
       }

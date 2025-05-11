@@ -1,4 +1,4 @@
-import { Project } from '../../types/index';
+import { Project, Client } from '../../types/index';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import ODataStore from 'devextreme/data/odata/store';
 
@@ -30,7 +30,16 @@ export type ProjectsAction =
 // Context interface including both state and actions
 export interface ProjectsContextType {
   state: ProjectsState;
+  // Core operations
   validateProject: (project: Project, rules?: ValidationRule[]) => boolean;
   generateProjectId: () => string;
   setProjectDefaults: (project: Partial<Project>, nextProjectNumber?: string) => Project;
+  
+  // Client data - ODataStore from useClientDataProvider
+  clientDataSource: ODataStore;
+  clientDataLoaded: boolean;
+  
+  // Auto-increment
+  nextProjectNumber: string;
+  refreshNextNumber: () => void;
 }

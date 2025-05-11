@@ -1,8 +1,5 @@
 import { useCallback, useRef } from 'react';
 import { useDeliverables } from '../../contexts/deliverables/deliverables-context';
-import { ALWAYS_READONLY_DELIVERABLE_FIELDS } from '../grid-editors/useDeliverableGridEditor';
-import { useGridUtils } from '../utils/useGridUtils';
-import { v4 as uuidv4 } from 'uuid';
 
 // Define the GridRowEvent type to match DevExtreme's grid row events
 interface GridRowEvent {
@@ -59,23 +56,8 @@ export const useDeliverableGridHandlers = ({
     gridRef.current = e.component;
   }, []);
   
-  // Function to set a cell value in the grid
-  const setCellValue = useCallback((rowIndex: number, dataField: string, value: any) => {
-    if (gridRef.current) {
-      gridRef.current.cellValue(rowIndex, dataField, value);
-    }
-  }, []);
   
-  /**
-   * Defines which fields are editable based on the deliverable status
-   */
-  const isFieldEditable = useCallback((fieldName: string, uiStatus?: string) => {
-    // Use the shared readonly fields list
-    if (['deliverableTypeId', 'internalDocumentNumber'].includes(fieldName)) {
-      return false;
-    }
-    return true; // All other fields are editable by default
-  }, []);
+  // Removed unused isFieldEditable function
   
   // Custom implementation of handleRowValidating that uses the deliverables context
   const handleRowValidating = useCallback((e: GridRowEvent) => {
@@ -111,8 +93,7 @@ export const useDeliverableGridHandlers = ({
     deliverableTypeId: any,
     areaNumber: string,
     discipline: string,
-    documentType: string,
-    setCellValue: (rowIndex: number, dataField: string, value: any) => void
+    documentType: string
   ) => {
     // Check if we have sufficient data to generate a number
     const isDeliverableType = 
@@ -140,17 +121,9 @@ export const useDeliverableGridHandlers = ({
         if (suggestedNumber) {
           // Update both the row data and the grid
           row.data.internalDocumentNumber = suggestedNumber;
-          setCellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
           
-          // If there's an editor element, update it directly
-          const editor = row.component?.getEditor('internalDocumentNumber');
-          if (editor) {
-            try {
-              editor.option('value', suggestedNumber);
-            } catch (err) {
-              console.warn('Could not update editor directly:', err);
-            }
-          }
+          // Use the gridRef since it's more reliable with virtual scrolling
+          gridRef.current?.cellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
         }
       } catch (error) {
         console.error('Error generating document number:', error);
@@ -187,8 +160,7 @@ export const useDeliverableGridHandlers = ({
           deliverableTypeId, 
           areaNumber, 
           discipline, 
-          documentType,
-          setCellValue
+          documentType
         );
       };
     }
@@ -218,8 +190,7 @@ export const useDeliverableGridHandlers = ({
                     deliverableTypeId, 
                     areaNumber, 
                     discipline, 
-                    documentType,
-                    setCellValue
+                    documentType
                   );
                 }
               } catch (error) {
@@ -230,14 +201,13 @@ export const useDeliverableGridHandlers = ({
         }
       ];
     }
-  }, [updateDocumentNumber, setCellValue]);
+  }, [updateDocumentNumber]);
   
   return {
     handleGridInitialized,
     handleRowValidating,
     handleInitNewRow,
     handleEditorPreparing,
-    setCellValue,
     updateDocumentNumber
   };
 };

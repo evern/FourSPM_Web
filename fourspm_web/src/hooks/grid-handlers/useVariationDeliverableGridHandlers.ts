@@ -1,9 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useVariationDeliverables } from '../../contexts/variation-deliverables/variation-deliverables-context';
 import { useDeliverables } from '../../contexts/deliverables/deliverables-context';
-import { useGridUtils } from '../utils/useGridUtils';
 import { confirm, alert } from 'devextreme/ui/dialog';
-import { Deliverable } from '../../types/odata-types';
 import { VariationDeliverableUiStatus } from '../../contexts/variation-deliverables/variation-deliverables-types';
 
 export const useVariationDeliverableGridHandlers = (props?: {
@@ -17,19 +15,15 @@ export const useVariationDeliverableGridHandlers = (props?: {
   // We'll use the project object directly from the parent component instead of accessing through variation
   const project = props?.project;
   
-  const gridUtils = useGridUtils();
-  const { setCellValue, cancelEditData } = gridUtils;
-  
-  const requestInProgressRef = useRef<boolean>(false);
-  
+  // Single ref for grid component
   const gridRef = useRef<any>(null);
-  const dataGridRef = useRef<any>(null);
   
+  /**
+   * Handles the grid initialization event
+   */
   const handleGridInitialized = useCallback((e: any) => {
-    dataGridRef.current = e.component;
     gridRef.current = e.component;
-    gridUtils.handleGridInitialized(e);
-  }, [gridUtils]);
+  }, []);
   
   /**
    * Enhanced row validation handler that uses context's validation function
@@ -103,8 +97,8 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
           }
           
           // Use the stored grid reference which is more stable than e.component
-          if (dataGridRef.current) {
-            dataGridRef.current.refresh();
+          if (gridRef.current) {
+            gridRef.current.refresh();
           }
         }, 50);
         
@@ -134,8 +128,8 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
           }
           
           // Use the stored grid reference which is more stable than e.component
-          if (dataGridRef.current) {
-            dataGridRef.current.refresh();
+          if (gridRef.current) {
+            gridRef.current.refresh();
           }
         }, 50);
         
@@ -213,7 +207,7 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
             if (suggestedNumber) {
               // Update the row data and grid
               row.data.internalDocumentNumber = suggestedNumber;
-              setCellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
+              gridRef.current?.cellValue(row.rowIndex, 'internalDocumentNumber', suggestedNumber);
             }
           } catch (error) {
             console.error('Error generating document number:', error);
@@ -257,7 +251,7 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
         };
       }
     }
-  }, [variationDeliverables, deliverables, setCellValue]);
+  }, [variationDeliverables, deliverables]);
   
   // Removed cancelVariationDeliverable function - now using the context's function directly
 
@@ -294,8 +288,8 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
       // Refresh the grid after successful cancellation
       setTimeout(() => {
         // Use the stored grid reference which is more stable
-        if (dataGridRef.current) {
-          dataGridRef.current.refresh();
+        if (gridRef.current) {
+          gridRef.current.refresh();
         }
       }, 50);
     } catch (error) {
@@ -316,8 +310,6 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
     handleRowUpdating, 
     handleInitNewRow,
     handleEditorPreparing,
-    handleCancellationClick,
-    dataGridRef,
-    cancelEditData
+    handleCancellationClick
   };
 };

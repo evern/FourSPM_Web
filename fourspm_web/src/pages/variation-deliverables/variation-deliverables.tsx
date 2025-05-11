@@ -79,10 +79,9 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     // Project and variation data
     project,
     variation,
-    projectGuid,
+    projectGuid
     
-    // Field management functions
-    isFieldEditable
+    // Field management functions are handled in grid handlers
   } = useVariationDeliverables();
   
   // We'll use the variation deliverables context for validation
@@ -96,8 +95,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     handleRowValidating,
     handleInitNewRow,
     handleEditorPreparing,
-    handleCancellationClick,
-    dataGridRef
+    handleCancellationClick
   } = useVariationDeliverableGridHandlers({
     project,
     projectGuid

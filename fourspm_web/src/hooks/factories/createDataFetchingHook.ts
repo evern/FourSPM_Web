@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * Interface for the data fetching hook result
@@ -26,10 +26,18 @@ export function createDataFetchingHook<T, P extends any[]>(
     const [data, setData] = useState<T | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
+    // Use a ref to store the latest params
+    const paramsRef = useRef<P>(params);
+    
+    // Update the ref whenever params change
+    useEffect(() => {
+      paramsRef.current = params;
+    }, [params]);
 
+    // Trigger fetch whenever params change
     useEffect(() => {
       // Skip fetching if dependencies aren't ready
-      if (dependencyFn && !dependencyFn(...params)) {
+      if (dependencyFn && !dependencyFn(...paramsRef.current)) {
         return;
       }
       
@@ -38,7 +46,7 @@ export function createDataFetchingHook<T, P extends any[]>(
         setError(null);
         
         try {
-          const result = await fetchFn(...params);
+          const result = await fetchFn(...paramsRef.current);
           setData(result);
         } catch (err) {
           console.error(`Error fetching data:`, err);
@@ -49,7 +57,8 @@ export function createDataFetchingHook<T, P extends any[]>(
       };
       
       loadData();
-    }, params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(params)]); // Use JSON.stringify as a stable dependency
 
     return {
       data,

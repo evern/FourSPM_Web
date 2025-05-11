@@ -1,12 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { createProjectColumns } from './project-columns';
 import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-context';
-import { useClientDataSource } from '../../stores/clientDataSource';
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 import { useAuth } from '../../contexts/auth';
 import './projects.scss';
 
@@ -30,20 +28,14 @@ function Projects(): React.ReactElement {
  */
 const ProjectsContent = (): React.ReactElement => {
   // Get everything we need from the projects context and auth
-  const { state } = useProjects();
+  const { 
+    state, 
+    clientDataSource,
+    clientDataLoaded,
+    nextProjectNumber,
+    refreshNextNumber
+  } = useProjects();
   const { user } = useAuth();
-  
-  // Use the singleton client data source with loading tracking
-  const clientsDataSource = useClientDataSource();
-  const [clientDataLoaded, setClientDataLoaded] = useState(false);
-  
-  // Use auto-increment for project number
-  const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
-    endpoint: PROJECTS_ENDPOINT,
-    field: 'projectNumber',
-    padLength: 2,
-    startFrom: '01'
-  });
   
   // Get the grid event handlers from our custom hook
   const { 
@@ -51,21 +43,33 @@ const ProjectsContent = (): React.ReactElement => {
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
-    handleInitNewRow  } = useProjectGridHandlers({
+    handleInitNewRow,
+    handleGridInitialized, // Grid initialization handler
+    resetGridState       // Reset grid state for virtual scrolling
+  } = useProjectGridHandlers({
     nextProjectNumber,
     refreshNextNumber,
     userToken: user?.token // Pass user token from auth context for API calls if needed
   });
 
-  // Wait for client data to load before initializing the grid
-  useEffect(() => {
-    clientsDataSource.waitForData()
-      .then(() => setClientDataLoaded(true))
-      .catch(() => setClientDataLoaded(true)); // Allow UI to proceed even on error
-  }, [clientsDataSource]);
+  // Client data loading is now handled by the context
   
-
-
+  // Set up window focus handler to reset grid state when switching tabs
+  React.useEffect(() => {
+    const handleFocus = () => {
+      // Reset grid state when switching back to this tab
+      resetGridState();
+    };
+    
+    // Add event listener
+    window.addEventListener('focus', handleFocus);
+    
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [resetGridState]);
+  
   return (
     <div className="projects-container">
       {/* Display error message if there is one */}
@@ -89,12 +93,13 @@ const ProjectsContent = (): React.ReactElement => {
         {clientDataLoaded && (
           <ODataGrid
             endpoint={PROJECTS_ENDPOINT}
-            columns={createProjectColumns(clientsDataSource, nextProjectNumber)}
+            columns={createProjectColumns(clientDataSource, nextProjectNumber)}
             onRowValidating={handleRowValidating}
             onRowUpdating={handleRowUpdating}
             onRowInserting={handleRowInserting} 
             onRowRemoving={handleRowRemoving}
             onInitNewRow={handleInitNewRow}
+            onInitialized={handleGridInitialized}
             keyField="guid"
             allowAdding={true}
             allowUpdating={true}
@@ -103,6 +108,8 @@ const ProjectsContent = (): React.ReactElement => {
             expand={['Client']}
             // Add default sort to ensure consistent query parameters
             defaultSort={[{ selector: 'created', desc: true }]}
+            // Set countColumn for proper record counting - memory #96c469d2
+            countColumn="guid"
           />
         )}
       </div>

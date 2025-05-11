@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useMemo, ReactNode } from 'react';
-import { ProjectsContextType, ProjectsState, ProjectsAction } from './projects-types';
+import { ProjectsContextType } from './projects-types';
 import { projectsReducer, initialProjectsState } from './projects-reducer';
 import { Project } from '../../types/index';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
@@ -7,6 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../auth';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
+import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
+import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
 /**
  * Default validation rules for projects
@@ -27,10 +29,22 @@ interface ProjectsProviderProps {
 
 export function ProjectsProvider({ children }: ProjectsProviderProps) {
   const [state, dispatch] = useReducer(projectsReducer, initialProjectsState);
-  const { user } = useAuth();
   
   // CRITICAL: Track the component mount state to prevent state updates after unmounting
   const isMountedRef = React.useRef(true);
+  
+  // Use the client data provider hook from React Query instead of singleton
+  const { clientsStore, isLoading: clientsLoading } = useClientDataProvider();
+  // Treat client data as loaded when it's not loading anymore
+  const clientDataLoaded = !clientsLoading;
+  
+  // Use auto-increment for project number
+  const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
+    endpoint: PROJECTS_ENDPOINT,
+    field: 'projectNumber',
+    padLength: 2,
+    startFrom: '01'
+  });
   
   React.useEffect(() => {
     // Set mounted flag to true when component mounts
@@ -96,15 +110,28 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
+    // State and core functions
     state,
     validateProject,
     generateProjectId,
-    setProjectDefaults
+    setProjectDefaults,
+    
+    // Client data
+    clientDataSource: clientsStore, // Using clientsStore from useClientDataProvider
+    clientDataLoaded,
+    
+    // Auto-increment
+    nextProjectNumber,
+    refreshNextNumber
   }), [
     state, 
     validateProject,
     generateProjectId,
-    setProjectDefaults
+    setProjectDefaults,
+    clientsStore,
+    clientDataLoaded,
+    nextProjectNumber,
+    refreshNextNumber
   ]);
   
   return (

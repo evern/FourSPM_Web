@@ -1,5 +1,4 @@
-import { useCallback } from 'react';
-import { useGridUtils } from '../utils/useGridUtils';
+import { useCallback, useRef } from 'react';
 import { useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
 import { ValidationResult } from '../../contexts/deliverable-progress/deliverable-progress-types';
 
@@ -14,7 +13,6 @@ export interface DeliverableProgressGridHandlers {
   handleGridInitialized: (e: any) => void;
   
   // Utility methods
-  setCellValue: (rowIndex: number, fieldName: string, value: any) => boolean;
   validateProgress: (progress: Record<string, any>) => ValidationResult;
   validateGatePercentage: (e: any) => boolean;
 }
@@ -39,8 +37,15 @@ export function useDeliverableProgressGridHandlers(options: {
     deliverableGates
   } = useDeliverableProgress();
   
-  // Get grid utility methods
-  const { setCellValue, handleGridInitialized } = useGridUtils();
+  // Grid reference for operations
+  const gridRef = useRef<any>(null);
+  
+  /**
+   * Handles the grid initialization event
+   */
+  const handleGridInitialized = useCallback((e: any) => {
+    gridRef.current = e.component;
+  }, []);
   
   // Note: processProgressUpdate is now obtained from the context
 
@@ -158,14 +163,14 @@ export function useDeliverableProgressGridHandlers(options: {
           
           // Only update if the auto percentage is higher than current value
           if (selectedGate.autoPercentage > currentValue) {
-            // Use the grid utils to set the cell value
-            e.component.cellValue(e.row.rowIndex, 'cumulativeEarntPercentage', selectedGate.autoPercentage);
+            // Use gridRef which is more reliable with virtual scrolling
+            gridRef.current?.cellValue(e.row.rowIndex, 'cumulativeEarntPercentage', selectedGate.autoPercentage);
           }
           
           // This ensures we save the changes when ending edit mode
           setTimeout(() => {
-            // Get the grid instance
-            const grid = e.component;
+            // Use gridRef for more reliable operation with virtual scrolling
+            const grid = gridRef.current;
             
             // Belt-and-suspenders approach to ensure edit operation is complete
             if (grid && grid.hasEditData && grid.hasEditData()) {
@@ -174,7 +179,7 @@ export function useDeliverableProgressGridHandlers(options: {
               
               // After saving, end edit mode for a clean state
               setTimeout(() => {
-                if (grid.hasEditData && grid.hasEditData()) {
+                if (grid && grid.hasEditData && grid.hasEditData()) {
                   grid.cancelEditData();
                 }
               }, 100);
@@ -190,7 +195,6 @@ export function useDeliverableProgressGridHandlers(options: {
     handleRowValidating,
     handleEditorPreparing,
     handleGridInitialized,
-    setCellValue,
     validateProgress,
     validateGatePercentage
   };

@@ -22,7 +22,6 @@ export const useAutoIncrement = ({
   // Use refs to track hook initialization and request count
   const initCountRef = useRef(0);
   const requestCountRef = useRef(0);
-  const hookIdRef = useRef(`${endpoint}_${field}_${Math.random().toString(36).substring(2, 9)}`);
   
   // Initialize hook
   useEffect(() => {
@@ -100,15 +99,8 @@ export const useAutoIncrement = ({
         });
         
         if (!response.ok) {
-          // Get more details about the error
-          const errorText = await response.text();
-
-
           throw new Error(`Failed to fetch latest ${field}`);
         }
-
-        // Print out raw response for debugging
-        const rawText = await response.clone().text();
 
         
         const data = await response.json();
@@ -156,7 +148,7 @@ export const useAutoIncrement = ({
         setNextNumber(number);
       });
     }
-  }, [user?.token]);
+  }, [user?.token, getNextNumber]);
 
   const refreshNextNumber = () => {
     if (user?.token) {
