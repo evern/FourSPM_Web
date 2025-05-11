@@ -63,18 +63,13 @@ export const createProjectFormItems = (
           text: 'Progress Start',
           hint: PROGRESS_START_TOOLTIP
         },
-        editorType: isEditing ? 'dxDateBox' : 'dxTextBox',
-        editorOptions: isEditing ? {
+        editorType: 'dxDateBox',
+        editorOptions: {
           type: 'date',
-          // Format the date exactly as it is in the grid view
-          displayFormat: function(date) {
-            return date ? new Date(date).toLocaleDateString() : '';
-          },
+          displayFormat: 'dd-MMM-yyyy',  // Format like: 03-Feb-2025
           useMaskBehavior: true,
-          pickerType: 'calendar'
-        } : {
-          readOnly: true,
-          value: projectData.progressStart ? new Date(projectData.progressStart).toLocaleDateString() : ''
+          pickerType: 'calendar',
+          readOnly: !isEditing
         }
       },
       {
@@ -114,7 +109,7 @@ export const createProjectFormItems = (
         itemType: 'empty',
         cssClass: 'loading-indicator-text'
       } : null,
-      // Client contact fields
+      // Client contact fields - using nested structure
       {
         itemType: 'simple',
         dataField: 'client.clientContactName',

@@ -1,134 +1,139 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useMemo, useEffect } from 'react';
 import './project-profile.scss';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/auth';
 import { ScrollView } from 'devextreme-react/scroll-view';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import Form from 'devextreme-react/form';
-import { useProjectEntityController } from '../../hooks/controllers/useProjectEntityController';
 import { useScreenSize } from '../../utils/media-query';
-import { useNavigation } from '../../contexts/navigation';
 import { createProjectFormItems } from './project-profile-items';
 import { Project } from '../../types/index';
 import Button from 'devextreme-react/button';
-import notify from 'devextreme/ui/notify';
-import { updateProject } from '../../adapters/project.adapter';
 import { createPortal } from 'react-dom';
+import { ProjectProfileProvider, useProjectProfile } from '../../contexts/project-profile/project-profile-context';
+import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
 
 // Define URL parameters interface
 export interface ProjectProfileParams {
   projectId?: string;
 }
 
+// Main component that provides the context
 const ProjectProfile: React.FC = () => {
   // Get projectId from URL parameters
   const { projectId = '' } = useParams<ProjectProfileParams>();
-  const { user } = useAuth();
-  const { refreshNavigation } = useNavigation();
+  
+  return (
+    <ProjectProfileProvider projectId={projectId}>
+      <ProjectProfileContent />
+    </ProjectProfileProvider>
+  );
+};
+
+// Content component that uses the context
+const ProjectProfileContent: React.FC = () => {
+  const { 
+    state: { project, isLoading, isSaving, isEditing, error },
+    formRef, 
+    setFormRef, 
+    startEditing, 
+    cancelEditing, 
+    saveProject,
+    handleClientSelectionChange
+  } = useProjectProfile();
+  
   const { isXSmall, isSmall } = useScreenSize();
   const isMobile = isXSmall || isSmall;
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // Use enhanced project entity controller with integrated form operations
-  const { 
-    // Entity state and operations
-    entity,
-    
-    // Form operations
-    setFormRef,
-    isEditing,
-    isSaving,
-    startEditing,
-    cancelEditing,
-    saveForm,
-    loadEntity,
-    silentlyUpdateEntity,
-    
-    // Client data and operations
-    clients,
-    isClientLoading,
-    handleClientSelectionChange
-  } = useProjectEntityController(projectId, {
-    onUpdateSuccess: () => {
-      // Update navigation to reflect changes
-      if (refreshNavigation) refreshNavigation();
-    }
-  });
+  
+  // Use the client data provider for client selection options
+  const { clients, isLoading: isClientLoading } = useClientDataProvider();
   
   /**
-   * Custom save handler that uses the form operations
-   * 
-   * NOTE: DevExtreme SelectBox components with async data sources (like the client field)
-   * have a known issue with not maintaining proper state after form operations.
-   * 
-   * Issues addressed:
-   * 1. When client data is changed, related fields (contacts, etc.) need updating
-   * 2. When clearing the client (setting to null), the old client data persists in the UI
-   * 3. The client lookup control requires complete entity refresh to display properly
-   * 
-   * Solution: Reload the entire entity after saving to ensure all data displays correctly,
-   * including properly clearing client data when it's been set to null
+   * Custom save handler that uses the context saveProject method
    */
   const handleSave = useCallback(async () => {
-    if (!projectId) return;
-    
     try {
-      // Directly use the saveForm method from our controller
-      const result = await saveForm(projectId, 
-        (id, data) => updateProject(id, data, user?.token || ''));
-        
-      if (result) {
-        // Refresh navigation if needed
-        if (refreshNavigation) refreshNavigation();
-        
-        // Silently update the entity data without triggering loading state
-        // This prevents the form from flickering while still displaying the updated values
-        if (silentlyUpdateEntity) {
-          silentlyUpdateEntity(result);
-        }
+      if (project) {
+        // Use the form instance to get the updated data
+        const formData = formRef.current?.instance?.option('formData');
+        await saveProject(formData);
       }
     } catch (error) {
-      notify('Error saving project', 'error', 3000);
+      // Error handling is done inside the context
     }
-  }, [projectId, saveForm, user?.token, refreshNavigation]);
+  }, [project, saveProject, formRef]);
   
   /**
    * Custom cancel handler that ensures proper form reset
-   * 
-   * This uses the enhanced cancelEditing from our form operations hook that properly
-   * handles complex fields with async data sources like client selection
    */
   const handleCancel = useCallback(() => {
-    // Call the enhanced cancelEditing function which handles form reset with original data
     cancelEditing();
+    
+    // Make sure scrollview is at the top after cancel
+    if (scrollViewRef.current) {
+      scrollViewRef.current.instance.scrollTo(0);
+    }
   }, [cancelEditing]);
+  
+  // Effect to ensure client contact fields are updated after project load
+  // This is critical to solve the issue with empty client fields on initial load
+  useEffect(() => {
+    if (project && formRef.current?.instance && !isEditing && !isLoading) {
+      // Update the form with client data to ensure fields are displayed correctly
+      // This ensures the form reflects all the loaded data
+      formRef.current.instance.updateData(project);
+    }
+  }, [project, isEditing, isLoading]);
 
   // Ensure we have a proper project data object with all fields, even during loading
   // This prevents layout shifts that cause flickering
-  const projectData = entity.data ? { ...entity.data } : {} as Project;
-
-  // Create form items for the current project data, passing entity and loading state
-  const formItems = createProjectFormItems(
-    projectData, 
-    Boolean(isEditing), 
+  const projectData = useMemo(() => {
+    return project || { 
+      guid: '',
+      projectNumber: '',
+      name: '',
+      clientGuid: '',
+      clientName: '',
+      // Nested client object structure for the form fields
+      client: {
+        guid: '',
+        description: '',
+        name: '',
+        number: '',
+        clientContactName: '',
+        clientContactEmail: '',
+        clientContactNumber: ''
+      },
+      projectStatus: 'TenderInProgress',
+      // Adding the missing required fields from Project type
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      description: '',
+      progressStart: null,
+      purchaseOrderNumber: ''
+    } as Project;
+  }, [project]); // Re-create when project changes
+  
+  const formItems = useMemo(() => createProjectFormItems(
+    projectData,
+    isEditing,
     handleClientSelectionChange,
     isClientLoading,
     clients
-  );
-
-  // Prepare the title text based on available data
+  ), [projectData, isEditing, handleClientSelectionChange, isClientLoading, clients]);
+  
   const titleText = projectData && projectData.projectNumber && projectData.name
     ? `${projectData.projectNumber} - ${projectData.name}` 
-    : projectId 
-      ? `Project ${projectId}` 
+    : project?.guid 
+      ? `Project ${project.guid}` 
       : 'New Project';
 
   // If an error occurred while loading project, show error message
-  if (entity.error) {
+  if (error) {
     // Safely extract error message regardless of type
-    const errorMessage = typeof entity.error === 'object' && entity.error !== null
-      ? (entity.error as any).message || 'An unknown error occurred'
-      : String(entity.error);
+    const errorMessage = typeof error === 'object' && error !== null
+      ? (error as any).message || 'An unknown error occurred'
+      : String(error);
       
     return (
       <div className="error-message">
@@ -138,12 +143,27 @@ const ProjectProfile: React.FC = () => {
     );
   }
 
+  // If we're loading, show only the loading panel without content to avoid flash of unloaded content
+  if (isLoading) {
+    return (
+      <div className="profile-container profile-loading-container">
+        <LoadPanel
+          visible={true}
+          message="Loading project..."
+          position={{ of: window, my: 'center', at: 'center' }}
+          showIndicator={true}
+          shading={true}
+        />
+      </div>
+    );
+  }
+  
   return (
     <div className="profile-container">
-      {/* Show loading panel as overlay instead of replacing content */}
+      {/* Show loading panel only when saving to avoid UI flicker */}
       <LoadPanel 
-        visible={entity.isLoading || isSaving} 
-        message={isSaving ? "Saving..." : "Loading..."} 
+        visible={isSaving} 
+        message="Saving..."
         position={{ of: window, my: 'center', at: 'center' }}
         showIndicator={true}
         shading={true}
@@ -184,10 +204,8 @@ const ProjectProfile: React.FC = () => {
         document.body
       )}
 
-      <div className="grid-header-container">
-        <div className="grid-custom-title">
-          {titleText}
-        </div>
+      <div className="page-header">
+        <h1 className="project-title">{titleText}</h1>
       </div>
 
       <ScrollView 
@@ -233,7 +251,9 @@ const ProjectProfile: React.FC = () => {
             </div>
           )}
           
+          {/* Use a key prop to force Form to completely re-render when editing state changes */}
           <Form
+            key={`project-form-${isEditing ? 'edit' : 'view'}-${project?.guid || 'new'}`}
             formData={projectData}
             readOnly={!isEditing}
             showValidationSummary={true}
@@ -248,3 +268,4 @@ const ProjectProfile: React.FC = () => {
 };
 
 export default ProjectProfile;
+

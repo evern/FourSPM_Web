@@ -336,6 +336,25 @@
       color: var(--base-text-color);
     }
   }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    margin-bottom: 10px;
+    width: 100%;
+    
+    .project-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 15px 0 15px 20px;
+      padding: 0;
+      line-height: 1.2;
+      letter-spacing: 0.5px;
+    }
+  }
 }
 
 .grid-header-container {
