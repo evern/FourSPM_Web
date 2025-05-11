@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/auth';
 
 interface UseAutoIncrementProps {
@@ -32,7 +32,7 @@ export const useAutoIncrement = ({
     };
   }, [endpoint, field]);
 
-  const getNextNumber = async () => {
+  const getNextNumber = useCallback(async () => {
     // Track API request count
     requestCountRef.current += 1;
     
@@ -139,7 +139,7 @@ export const useAutoIncrement = ({
 
       return startFrom;
     }
-  };
+  }, [endpoint, field, filter, padLength, startFrom, user?.token]);
 
   useEffect(() => {
     // Only fetch if we have a token

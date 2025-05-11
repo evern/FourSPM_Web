@@ -6,3 +6,10 @@ export { default as CreateAccountForm } from './create-account-form/create-accou
 export { default as ChangePasswordForm } from './change-password-form/change-password-form';
 export { default as SideNavigationMenu } from './side-navigation-menu/side-navigation-menu';
 export { ErrorMessage } from './error-message/error-message';
+
+// Additional components
+export { ODataGrid } from './ODataGrid/ODataGrid';
+export type { ODataGridColumn } from './ODataGrid/ODataGrid';
+export { default as ScrollToTop } from './scroll-to-top';
+export { ThemeSwitcher } from './theme-switcher/ThemeSwitcher';
+export { default as UserPanel } from './user-panel/user-panel';

@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
-import ScrollToTop from '../../components/scroll-to-top';
+import { ScrollToTop } from '../../components';
 // Removed useProjectInfo import as we now get project from context
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './areas.scss';

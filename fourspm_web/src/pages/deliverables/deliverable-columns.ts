@@ -1,4 +1,4 @@
-import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
+import type { ODataGridColumn } from '../../components';
 import { departmentEnum, deliverableTypeEnum } from '../../types/enums';
 // No need to import entity types directly
 

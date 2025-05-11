@@ -1,18 +1,26 @@
 import { ComponentType } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { withNavigationWatcher } from './contexts/navigation';
-import { HomePage, ProfilePage } from './pages';
-import Deliverables from './pages/deliverables/deliverables';
-import Areas from './pages/areas/areas';
-import ProjectProfile from './pages/project/project-profile';
-import { DeliverableProgress } from './pages/deliverable-progress/deliverable-progress';
-import Projects from './pages/projects/projects';
-import Clients from './pages/clients/clients';
-import Disciplines from './pages/disciplines/disciplines';
-import DocumentTypes from './pages/document-types/document-types';
-import DeliverableGates from './pages/deliverable-gates/deliverable-gates';
-import Variations from './pages/variations/variations';
-import VariationDeliverables from './pages/variation-deliverables/variation-deliverables';
+import { 
+  // Main pages
+  HomePage, 
+  ProfilePage,
+  
+  // Collection pages
+  ProjectsPage as Projects,
+  DeliverablesPage as Deliverables,
+  AreasPage as Areas,
+  ClientsPage as Clients,
+  DisciplinesPage as Disciplines,
+  DocumentTypesPage as DocumentTypes,
+  DeliverableGatesPage as DeliverableGates,
+  VariationsPage as Variations,
+  
+  // Profile & detail pages
+  ProjectProfilePage as ProjectProfile,
+  DeliverableProgressPage as DeliverableProgress,
+  VariationDeliverablesPage as VariationDeliverables
+} from './pages';
 
 interface RouteConfig {
   path: string;

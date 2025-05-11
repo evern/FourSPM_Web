@@ -1,4 +1,4 @@
-import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
+import type { ODataGridColumn } from '../../components';
 import { departmentEnum } from '../../types/enums';
 
 // Generic progress tracking columns configuration

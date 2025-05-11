@@ -1,5 +1,5 @@
 import React from 'react';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
 import { useAuth } from '../../contexts/auth';
 import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
@@ -32,8 +32,6 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     state,
     documentTypesLoading,
     documentTypesError,
-    // Get project data from context - anti-flickering pattern
-    project,
     isLookupDataLoading
   } = useDocumentTypes();
 

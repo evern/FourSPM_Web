@@ -1,4 +1,4 @@
-import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
+import type { ODataGridColumn } from '../../components';
 
 export const disciplineColumns: ODataGridColumn[] = [
   {

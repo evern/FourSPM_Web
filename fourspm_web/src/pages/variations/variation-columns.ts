@@ -1,4 +1,4 @@
-import { ODataGridColumn } from '../../components/ODataGrid/ODataGrid';
+import type { ODataGridColumn } from '../../components';
 
 // Define the configuration type for variation columns
 type VariationColumnsConfig = {

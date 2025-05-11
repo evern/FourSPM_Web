@@ -1,9 +1,9 @@
 import React from 'react';
 import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { createDeliverableColumns } from './deliverable-columns';
-import ScrollToTop from '../../components/scroll-to-top';
+import { ScrollToTop } from '../../components';
 import './deliverables.scss';
 import { DELIVERABLES_ENDPOINT } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '../../utils/media-query';

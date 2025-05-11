@@ -4,7 +4,7 @@ import { projectsReducer, initialProjectsState } from './projects-reducer';
 import { Project } from '../../types/index';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
-import { useAuth } from '../auth';
+
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';

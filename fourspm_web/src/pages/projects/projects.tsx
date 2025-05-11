@@ -1,5 +1,5 @@
 import React from 'react';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { createProjectColumns } from './project-columns';
 import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-context';
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';

@@ -1,6 +1,5 @@
 import ODataStore from 'devextreme/data/odata/store';
 import { useAuth } from '../contexts/auth';
-import { AREAS_ENDPOINT } from '../config/api-endpoints';
 import { useMemo } from 'react';
 
 /**
@@ -27,15 +26,13 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid', s
       },
       ...storeOptions,
       beforeSend: (options: any) => {
-        const token = user?.token;
-        
-        if (!token) {
+        if (!user?.token) {
           console.error('No token available');
           return false;
         }
 
         options.headers = {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${user?.token}`,
           'Accept': 'application/json'
         };
 
@@ -56,29 +53,5 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid', s
         return false;
       }
     });
-  }, [endpointPath, keyField, user?.token, JSON.stringify(storeOptions)]); // Only recreate the store when these dependencies change
-};
-
-/**
- * Custom hook to create an Area store with project filtering
- * @param projectId Project GUID to filter areas by
- * @returns DataSource configured for the areas or null if projectId is not provided
- */
-export const useAreaStoreForProject = (projectId: string | null | undefined) => {
-  // Always call hooks at the top level, before any conditionals
-  const store = useODataStore(AREAS_ENDPOINT);
-  
-  // Use useMemo before any conditional returns
-  const dataSource = useMemo(() => {
-    if (!projectId) {
-      return null;
-    }
-    
-    return {
-      store,
-      filter: ['projectGuid', '=', projectId]
-    };
-  }, [store, projectId]); // Only recreate when store or projectId changes
-  
-  return dataSource;
+  }, [endpointPath, keyField, user?.token, storeOptions]); // Only recreate the store when these dependencies change
 };

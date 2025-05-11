@@ -1,5 +1,5 @@
 import React from 'react';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { deliverableGateColumns } from './deliverable-gate-columns';
 import { useAuth } from '../../contexts/auth';
 import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';

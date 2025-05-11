@@ -1,5 +1,5 @@
 import React from 'react';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { disciplineColumns } from './discipline-columns';
 import { useAuth } from '../../contexts/auth';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';

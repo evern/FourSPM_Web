@@ -1,5 +1,5 @@
 import React from 'react';
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import { clientColumns } from './client-columns';
 import { useAuth } from '../../contexts/auth';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';

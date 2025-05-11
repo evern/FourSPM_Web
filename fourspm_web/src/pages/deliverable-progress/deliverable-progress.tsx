@@ -9,7 +9,7 @@ import { useDeliverableProgressGridHandlers } from '../../hooks/grid-handlers/us
 // We no longer need useProjectInfo as we get project from context
 
 // Import components
-import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
+import { ODataGrid } from '../../components';
 import LoadPanel from 'devextreme-react/load-panel';
 import Button from 'devextreme-react/button';
 import NumberBox from 'devextreme-react/number-box';
