@@ -16,9 +16,8 @@ export const createProjectColumns = (clientsStore: any, nextProjectNumber?: stri
       dataField: 'projectNumber', 
       caption: 'Project #', 
       hidingPriority: 10,
-      editorOptions: {
-        placeholder: nextProjectNumber ? `Suggested: ${nextProjectNumber}` : undefined
-      }
+      showSummary: true,
+      summaryType: 'count'
     },
     { 
       dataField: 'clientGuid', 

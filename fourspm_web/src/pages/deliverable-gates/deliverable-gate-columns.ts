@@ -5,7 +5,9 @@ export const deliverableGateColumns: ODataGridColumn[] = [
     dataField: 'name',
     caption: 'Name',
     hidingPriority: 2,
-    allowEditing: true
+    allowEditing: true,
+    showSummary: true,
+    summaryType: 'count'
   },
   {
     dataField: 'autoPercentage',

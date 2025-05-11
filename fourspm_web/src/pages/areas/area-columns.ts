@@ -9,7 +9,9 @@ export const areaColumns: ODataGridColumn[] = [
     editorOptions: {
       mask: '00',
       maskRules: { '0': /[0-9]/ }
-    }
+    },
+    showSummary: true,
+    summaryType: 'count'
   },
   {
     dataField: 'description',

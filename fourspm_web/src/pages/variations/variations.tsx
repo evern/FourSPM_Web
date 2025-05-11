@@ -110,6 +110,7 @@ const VariationsContent = (): React.ReactElement => {
           defaultFilter={projectFilter}
           // Add default sort to ensure consistent query parameters
           defaultSort={[{ selector: 'created', desc: true }]}
+          customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
         />

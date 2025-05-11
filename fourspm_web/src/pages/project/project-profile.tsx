@@ -73,7 +73,7 @@ const ProjectProfileContent: React.FC = () => {
     if (scrollViewRef.current) {
       scrollViewRef.current.instance.scrollTo(0);
     }
-  }, [cancelEditing]);
+  }, [cancelEditing, scrollViewRef]);
   
   // Effect to ensure client contact fields are updated after project load
   // This is critical to solve the issue with empty client fields on initial load
@@ -83,7 +83,7 @@ const ProjectProfileContent: React.FC = () => {
       // This ensures the form reflects all the loaded data
       formRef.current.instance.updateData(project);
     }
-  }, [project, isEditing, isLoading]);
+  }, [project, isEditing, isLoading, formRef]);
 
   // Ensure we have a proper project data object with all fields, even during loading
   // This prevents layout shifts that cause flickering

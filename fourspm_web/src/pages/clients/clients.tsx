@@ -65,6 +65,7 @@ const ClientsContent = React.memo((): React.ReactElement => {
             onRowInserting={handleRowInserting}
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'number', desc: false }]}
+            customGridHeight={900}
           />
         )}
       </div>

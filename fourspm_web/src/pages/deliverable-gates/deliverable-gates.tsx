@@ -65,6 +65,7 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             onRowInserting={handleRowInserting}
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'maxPercentage', desc: false }]}
+            customGridHeight={900}
           />
         )}
       </div>

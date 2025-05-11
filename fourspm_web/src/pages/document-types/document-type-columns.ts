@@ -7,7 +7,9 @@ export const documentTypeColumns: ODataGridColumn[] = [
     hidingPriority: 2,
     editorOptions: {
       maxLength: 3
-    }
+    },
+    showSummary: true,
+    summaryType: 'count'
   },
   {
     dataField: 'name',

@@ -4,7 +4,6 @@ import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { alert, confirm } from 'devextreme/ui/dialog';
 import { useVariations } from '../../contexts/variations/variations-context';
-import { Variation } from '../../types/odata-types';
 import { EditorEvent } from '../../contexts/variations/variations-types';
 
 /**
@@ -22,12 +21,7 @@ export function useVariationGridHandlers({
   const { 
     // Validation methods
     handleRowValidating: contextHandleRowValidating,
-    validateRowUpdating,
-    validateVariation,
-    // Data operations
-    addVariation, 
-    updateVariation: updateVariationFunc, 
-    deleteVariation: removeVariation, 
+    // Data operations (removed unused ones)
     changeVariationStatus,
     // Editor functions
     getDefaultVariationValues: contextGetDefaultVariationValues,

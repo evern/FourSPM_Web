@@ -4,7 +4,9 @@ export const clientColumns: ODataGridColumn[] = [
   { 
     dataField: 'number', 
     caption: 'Client #', 
-    hidingPriority: 8 
+    hidingPriority: 8,
+    showSummary: true,
+    summaryType: 'count' 
   },
   { 
     dataField: 'description', 

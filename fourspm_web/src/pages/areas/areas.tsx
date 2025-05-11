@@ -110,6 +110,8 @@ const AreasContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultFilter={projectFilter}
             defaultSort={[{ selector: 'areaNumber', desc: false }]}
+            customGridHeight={900}
+            countColumn="guid"
           />
         )}
       </div>

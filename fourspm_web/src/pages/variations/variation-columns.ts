@@ -14,7 +14,9 @@ export const variationColumns = (config: VariationColumnsConfig): ODataGridColum
     dataField: 'name',
     caption: 'Name',
     allowEditing: true,
-    hidingPriority: 3 // Keep visible even on smaller screens
+    hidingPriority: 3, // Keep visible even on smaller screens
+    showSummary: true,
+    summaryType: 'count'
   },
   {
     dataField: 'comments',

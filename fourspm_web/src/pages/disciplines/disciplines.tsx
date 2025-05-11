@@ -87,6 +87,7 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             onRowInserting={handleRowInserting}
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
+            customGridHeight={900}
           />
         )}
       </div>

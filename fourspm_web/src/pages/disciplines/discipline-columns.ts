@@ -7,7 +7,9 @@ export const disciplineColumns: ODataGridColumn[] = [
     hidingPriority: 2, // Identifier - hide last
     editorOptions: {
       maxLength: 2
-    }
+    },
+    showSummary: true,
+    summaryType: 'count'
   },
   {
     dataField: 'name',

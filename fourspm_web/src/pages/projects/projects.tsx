@@ -110,6 +110,7 @@ const ProjectsContent = (): React.ReactElement => {
             defaultSort={[{ selector: 'created', desc: true }]}
             // Set countColumn for proper record counting - memory #96c469d2
             countColumn="guid"
+            customGridHeight={900}
           />
         )}
       </div>
