@@ -29,10 +29,10 @@ async function getNextAreaNumber(projectId: string, token?: string): Promise<str
     }
     
     const data = await response.json();
-    return data.nextNumber || 'A001'; // Default if not available
+    return data.nextNumber || '01'; // Default if not available
   } catch (error) {
     // Error handled with fallback return
-    return 'A001'; // Default fallback
+    return '01'; // Default fallback
   }
 }
 

@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef, useEffect, ReactNode, useState } from 'react';
-import { ProjectProfileContextType, ProjectProfileState } from './project-profile-types';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef, useEffect, ReactNode } from 'react';
+import { ProjectProfileContextType } from './project-profile-types';
 import { projectProfileReducer, initialProjectProfileState } from './project-profile-reducer';
-import { Project, Client } from '../../types/index';
+import { Project } from '../../types/index';
 import { useAuth } from '../auth';
 import { useNavigation } from '../navigation';
 // We don't directly import useProjects as it requires ProjectsProvider
@@ -84,8 +84,8 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     };
   }, []);
 
-  // Extract state properties for easier access
-  const { project, isLoading, isSaving, isEditing, error } = state;
+  // Extract project from state
+  const { project } = state;
 
   // Load project data from the server and reset state when projectId changes
   useEffect(() => {
@@ -338,15 +338,15 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     startEditing,
     cancelEditing,
     saveProject,
-    // Client operations
     handleClientSelectionChange,
     updateProjectClient,
-    // Validation
     validateProject
   }), [
     state,
     clients,
     isClientLoading,
+    formRef,
+    setFormRef,
     startEditing,
     cancelEditing,
     saveProject,
