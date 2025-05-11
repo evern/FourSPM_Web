@@ -114,60 +114,66 @@ const ProjectProfileContent: React.FC = () => {
     } as Project;
   }, [project]); // Re-create when project changes
   
-  const formItems = useMemo(() => createProjectFormItems(
-    projectData,
-    isEditing,
-    handleClientSelectionChange,
-    isClientLoading,
-    clients
-  ), [projectData, isEditing, handleClientSelectionChange, isClientLoading, clients]);
+  // Create the form items with necessary client selection options
+  const formItems = useMemo(() => {
+    return createProjectFormItems(
+      projectData,
+      isEditing,
+      handleClientSelectionChange,
+      isClientLoading,
+      clients || []
+    );
+  }, [projectData, isEditing, handleClientSelectionChange, isClientLoading, clients]);
   
-  const titleText = projectData && projectData.projectNumber && projectData.name
-    ? `${projectData.projectNumber} - ${projectData.name}` 
-    : project?.guid 
-      ? `Project ${project.guid}` 
-      : 'New Project';
-
-  // If an error occurred while loading project, show error message
-  if (error) {
-    // Safely extract error message regardless of type
-    const errorMessage = typeof error === 'object' && error !== null
-      ? (error as any).message || 'An unknown error occurred'
-      : String(error);
-      
-    return (
-      <div className="error-message">
-        <h3>Error Loading Project</h3>
-        <p>{errorMessage}</p>
-      </div>
-    );
-  }
-
-  // If we're loading, show only the loading panel without content to avoid flash of unloaded content
-  if (isLoading) {
-    return (
-      <div className="profile-container profile-loading-container">
-        <LoadPanel
-          visible={true}
-          message="Loading project..."
-          position={{ of: window, my: 'center', at: 'center' }}
-          showIndicator={true}
-          shading={true}
-        />
-      </div>
-    );
-  }
+  // Formatted title text with project number when available
+  const titleText = project?.projectNumber 
+    ? `${project.projectNumber} - ${project.name}` 
+    : 'Project Profile';
+  
+  // Handle error display
+  const hasError = error !== null && error !== undefined;
+  const errorMessage = useMemo(() => {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    if (error instanceof Error) return error.message;
+    return 'An unknown error occurred';
+  }, [error]);
+  
+  // Use a stable key for the form to prevent unnecessary re-renders
+  // Only force re-render when editing state changes
+  const formKey = useMemo(() => {
+    return `project-form-${isEditing ? 'edit' : 'view'}-${project?.guid || 'new'}`;
+  }, [isEditing, project?.guid]);
   
   return (
     <div className="profile-container">
-      {/* Show loading panel only when saving to avoid UI flicker */}
+      {/* Loading panel shown as overlay during loading */}
+      <LoadPanel 
+        visible={isLoading} 
+        message="Loading project..."
+        position={{ of: '.profile-container', my: 'center', at: 'center' }}
+        showIndicator={true}
+        shading={true}
+        shadingColor="rgba(0,0,0,0.1)"
+      />
+      
+      {/* Saving panel shown as overlay during save operations */}
       <LoadPanel 
         visible={isSaving} 
         message="Saving..."
-        position={{ of: window, my: 'center', at: 'center' }}
+        position={{ of: '.profile-container', my: 'center', at: 'center' }}
         showIndicator={true}
         shading={true}
+        shadingColor="rgba(0,0,0,0.1)"
       />
+      
+      {/* Error message shown when there's an error */}
+      {hasError && (
+        <div className="error-message">
+          <h3>Error Loading Project</h3>
+          <p>{errorMessage}</p>
+        </div>
+      )}
       
       {/* Conditionally render floating action buttons only on mobile */}
       {isMobile && createPortal(
@@ -179,6 +185,7 @@ const ProjectProfileContent: React.FC = () => {
               type="default"
               stylingMode="contained"
               onClick={startEditing}
+              disabled={isLoading}
             />
           ) : (
             <div className="action-button-group">
@@ -188,7 +195,7 @@ const ProjectProfileContent: React.FC = () => {
                 type="success"
                 stylingMode="contained"
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || isLoading}
               />
               <Button
                 text=""
@@ -196,14 +203,14 @@ const ProjectProfileContent: React.FC = () => {
                 type="normal"
                 stylingMode="contained"
                 onClick={handleCancel}
-                disabled={isSaving}
+                disabled={isSaving || isLoading}
               />
             </div>
           )}
         </div>,
         document.body
       )}
-
+      
       <div className="page-header">
         <h1 className="project-title">{titleText}</h1>
       </div>
@@ -223,6 +230,7 @@ const ProjectProfileContent: React.FC = () => {
                 stylingMode="contained"
                 onClick={startEditing}
                 icon="edit"
+                disabled={isLoading}
               />
             </div>
           )}
@@ -237,7 +245,7 @@ const ProjectProfileContent: React.FC = () => {
                   type="success"
                   stylingMode="contained"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || isLoading}
                 />
                 <Button
                   text="Cancel"
@@ -245,15 +253,15 @@ const ProjectProfileContent: React.FC = () => {
                   type="normal"
                   stylingMode="contained"
                   onClick={handleCancel}
-                  disabled={isSaving}
+                  disabled={isSaving || isLoading}
                 />
               </div>
             </div>
           )}
           
-          {/* Use a key prop to force Form to completely re-render when editing state changes */}
+          {/* Always render the form regardless of loading state */}
           <Form
-            key={`project-form-${isEditing ? 'edit' : 'view'}-${project?.guid || 'new'}`}
+            key={formKey}
             formData={projectData}
             readOnly={!isEditing}
             showValidationSummary={true}
