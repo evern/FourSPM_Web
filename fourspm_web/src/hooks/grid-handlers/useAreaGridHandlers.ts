@@ -31,7 +31,7 @@ async function getNextAreaNumber(projectId: string, token?: string): Promise<str
     const data = await response.json();
     return data.nextNumber || 'A001'; // Default if not available
   } catch (error) {
-    console.error('Error getting next area number:', error);
+    // Error handled with fallback return
     return 'A001'; // Default fallback
   }
 }
@@ -71,15 +71,15 @@ export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
     
     // Error handlers
     onUpdateError: (error) => {
-      console.error('Failed to update area:', error);
+
       setError('Failed to update area: ' + error.message);
     },
     onDeleteError: (error) => {
-      console.error('Failed to delete area:', error);
+
       setError('Failed to delete area: ' + error.message);
     },
     onInsertError: (error) => {
-      console.error('Failed to create area:', error);
+
       setError('Failed to create area: ' + error.message);
     },
     invalidateCache: invalidateAllLookups,
@@ -108,7 +108,7 @@ export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
         setNextAreaNumber(nextNumber);
         return nextNumber;
       } catch (error) {
-        console.error('Failed to refresh next area number:', error);
+        // Error handled silently
       }
     }
     return null;
@@ -116,7 +116,7 @@ export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
   
   // Handle grid initialization
   const handleGridInitialized = useCallback((e: any) => {
-    console.log('Area grid initialized');
+
     // Refresh next number when grid initializes
     refreshNextNumber();
   }, [refreshNextNumber]);

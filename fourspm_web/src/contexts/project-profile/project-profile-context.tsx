@@ -115,9 +115,9 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         // After loading the project, also load the client details if a client is selected
         if (projectData && projectData.clientGuid && isMountedRef.current) {
           try {
-            console.log('Loading client details for GUID:', projectData.clientGuid);
+    
             const clientData = await getClientDetails(projectData.clientGuid, user.token);
-            console.log('Client data loaded:', clientData);
+    
             
             // Check if we have the data we need
             if (clientData) {
@@ -130,22 +130,22 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
               // Also keep the flat fields for backward compatibility
               projectData.clientName = clientData.description || '';
               
-              console.log('Project data with client details:', projectData);
+    
             } else {
-              console.warn('Client data loaded but was empty');
+    
             }
           } catch (clientError) {
-            console.error('Error loading client details:', clientError);
+    
             // Continue with project load even if client details fail
           }
         } else {
-          console.log('No client GUID found or component unmounted');
+    
         }
         
         // Give client data a chance to be fully loaded before updating state
         // This helps ensure all data is available when the form renders
         if (isMountedRef.current) {
-          console.log('Dispatching final project data to state:', projectData);
+    
           dispatch({ type: 'SET_PROJECT', payload: { ...projectData } });  // Clone to ensure new reference
           dispatch({ type: 'SET_LOADING', payload: false });
         }
