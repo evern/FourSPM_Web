@@ -47,7 +47,6 @@ const VariationsContent = (): React.ReactElement => {
   const {
     // Row operations
     handleRowValidating,
-    handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
     // Editor operations
@@ -101,7 +100,6 @@ const VariationsContent = (): React.ReactElement => {
           columns={variationColumns(variationColumnsConfig)}
           keyField="guid"
           onRowValidating={handleRowValidating}
-          onRowUpdating={handleRowUpdating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
           onEditorPreparing={handleEditorPreparing}
@@ -112,6 +110,8 @@ const VariationsContent = (): React.ReactElement => {
           defaultFilter={projectFilter}
           // Add default sort to ensure consistent query parameters
           defaultSort={[{ selector: 'created', desc: true }]}
+          // Add countColumn for proper OData count handling
+          countColumn="guid"
         />
       </div>
       

@@ -50,43 +50,7 @@ export function useVariationGridHandlers({
     contextHandleRowValidating(e);
   }, [contextHandleRowValidating]);
   
-  // Use the context's validation logic for row updating
-  const handleRowUpdating = useCallback(async (e: any) => {
-    // Cancel default grid behavior
-    e.cancel = true;
-    
-    // Validate using context validation function
-    const validationResult = validateRowUpdating(e.oldData, e.newData);
-    e.isValid = validationResult.isValid;
-    
-    // If validation failed, show the first error
-    if (!validationResult.isValid) {
-      const firstErrorKey = Object.keys(validationResult.errors)[0];
-      e.errorText = validationResult.errors[firstErrorKey];
-      return;
-    }
-    
-    // If validation passed, proceed with updating
-    const variationId = e.key;
-    const data = { ...e.newData };
-    
-    try {
-      // Create a complete variation object with the updated data
-      const updatedVariation = {
-        ...data,
-        guid: variationId
-      };
-      
-      // Call the context method directly
-      await updateVariationFunc(updatedVariation);
-      
-      // Show success message
-      alert('Variation updated successfully', 'Success');
-    } catch (error) {
-      // Show error message
-      alert(`Error updating variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
-    }
-  }, [validateRowUpdating, updateVariationFunc]);
+
   
   // Handle row inserting - let the grid handle the API call directly
   const handleRowInserting = useCallback((e: any) => {
@@ -345,7 +309,6 @@ export function useVariationGridHandlers({
   return {
     // Grid row operations
     handleRowValidating,
-    handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
     
