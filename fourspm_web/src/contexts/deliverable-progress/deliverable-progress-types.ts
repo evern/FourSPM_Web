@@ -1,3 +1,5 @@
+import { Project } from '../../types/odata-types';
+
 // Types for the deliverable progress state and context
 export interface DeliverableProgressState {
   loading: boolean;
@@ -32,6 +34,8 @@ export interface DeliverableProgressContextType {
   
   // Project data
   projectId?: string;
+  project?: Project;
+  isLookupDataLoading: boolean;
   
   // Deliverable gates data
   deliverableGates: any[];

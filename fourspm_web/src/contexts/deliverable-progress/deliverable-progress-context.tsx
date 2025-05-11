@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useContext, useMemo, useCallback } from 'react';
+import React, { createContext, useReducer, useContext, useMemo, useCallback, useRef, useEffect } from 'react';
 import { DeliverableProgressContextType, ValidationResult } from '../../contexts/deliverable-progress/deliverable-progress-types';
 import { usePeriodManager } from '../../hooks/utils/usePeriodManager';
 import { useDeliverableGateDataProvider } from '../../hooks/data-providers/useDeliverableGateDataProvider';
@@ -7,6 +7,22 @@ import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
 import { compareGuids } from '../../utils/guid-utils';
 import { useAuth } from '../auth';
+import { useQuery } from '@tanstack/react-query';
+import { baseApiService } from '../../api/base-api.service';
+import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+
+/**
+ * Fetch project details from the API with client data expanded
+ * @param projectId Project ID to fetch details for
+ */
+const fetchProject = async (projectId: string) => {
+  if (!projectId) return null;
+  
+  // Add $expand=client to ensure the client navigation property is included
+  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
+  const data = await response.json();
+  return data;
+};
 
 // Create a context with a default undefined value
 const DeliverableProgressContext = createContext<DeliverableProgressContextType | undefined>(undefined);
@@ -25,8 +41,6 @@ export function DeliverableProgressProvider({
   initialPeriod = 0, 
   startDate = undefined 
 }: DeliverableProgressProviderProps): React.ReactElement {
-  // Get the initial period and project start date from stored settings or other source
-  // In a real implementation, this would come from the project data
   // Initialize state with reducer - without period management which is now handled by usePeriodManager
   const [state] = useReducer(deliverableProgressReducer, {
     loading: false,
@@ -35,6 +49,19 @@ export function DeliverableProgressProvider({
   
   // Get authentication token for API calls
   const { user } = useAuth();
+  
+  // Track component mounted state to prevent updates after unmounting
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    // Set mounted flag to true when component mounts
+    isMountedRef.current = true;
+    
+    // Clean up function to prevent state updates after unmounting
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Use the period manager with provided initial values from props
   // This ensures the context uses the same period state that the component receives
@@ -189,6 +216,21 @@ export function DeliverableProgressProvider({
     }
   }, [selectedPeriod, user?.token]);
 
+  // Fetch project details - key addition to prevent flickering
+  const { 
+    data: project, 
+    isLoading: projectLoading,
+    error: projectError
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId),
+    enabled: !!projectId && !!user?.token,
+    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
+  });
+  
+  // Combine loading states for lookup data - used to prevent flickering
+  const isLookupDataLoading = state.loading || projectLoading || isGatesLoading;
+
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
@@ -198,6 +240,8 @@ export function DeliverableProgressProvider({
     selectedPeriod: periodManager.selectedPeriod,
     progressDate: periodManager.progressDate,
     projectId,
+    project,
+    isLookupDataLoading,
     deliverableGates,
     isGatesLoading,
     gatesError,
@@ -212,6 +256,8 @@ export function DeliverableProgressProvider({
     periodManager.selectedPeriod,
     periodManager.progressDate,
     projectId,
+    project,
+    isLookupDataLoading,
     deliverableGates,
     isGatesLoading,
     gatesError,

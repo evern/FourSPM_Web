@@ -1,7 +1,23 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { AreasContextProps, AreasProviderProps, initialAreasState } from './areas-types';
 import { areasReducer } from './areas-reducer';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { baseApiService } from '../../api/base-api.service';
+import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { useAuth } from '../../contexts/auth';
+
+/**
+ * Fetch project details from the API with client data expanded
+ * @param projectId Project ID to fetch details for
+ */
+const fetchProject = async (projectId: string) => {
+  if (!projectId) return null;
+  
+  // Add $expand=client to ensure the client navigation property is included
+  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
+  const data = await response.json();
+  return data;
+};
 
 // Create the context
 const AreasContext = createContext<AreasContextProps | undefined>(undefined);
@@ -15,33 +31,56 @@ const AreasContext = createContext<AreasContextProps | undefined>(undefined);
  * hybrid architecture pattern where the grid connects directly to endpoints.
  */
 export function AreasProvider({ children, projectId }: AreasProviderProps): React.ReactElement {
+  // Get authentication
+  const { user } = useAuth();
+  
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
+  
+  // Track component mounted state to prevent updates after unmounting
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    // Set mounted flag to true when component mounts
+    isMountedRef.current = true;
+    
+    // Clean up function to prevent state updates after unmounting
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Initialize state with reducer
   const [state, dispatch] = useReducer(areasReducer, initialAreasState);
   
   // Action creators
   const setLoading = useCallback((loading: boolean) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_LOADING', payload: loading });
   }, []);
   
   const setError = useCallback((error: string | null) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
 
   const setDataLoaded = useCallback((loaded: boolean) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
   
   // Set data loaded to true by default since the ODataGrid manages loading state
   useEffect(() => {
-    setDataLoaded(true);
+    if (isMountedRef.current) {
+      setDataLoaded(true);
+    }
   }, [setDataLoaded]);
   
   // Reset error state - errors will be handled by grid operation hooks
   useEffect(() => {
-    setError(null);
+    if (isMountedRef.current) {
+      setError(null);
+    }
   }, [setError]);
   
   // Cache invalidation function - invalidates all related lookup data
@@ -55,6 +94,21 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     console.log('Invalidated all lookup data after areas change');
   }, [queryClient]);
   
+  // Fetch project details - this is the key addition to match Deliverables context
+  const { 
+    data: project, 
+    isLoading: projectLoading,
+    error: projectError
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId),
+    enabled: !!projectId && !!user?.token,
+    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
+  });
+  
+  // Combine loading states for lookup data - used to prevent flickering
+  const isLookupDataLoading = state.loading || projectLoading;
+  
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State
@@ -65,6 +119,8 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     
     // Project data
     projectId,
+    project,
+    isLookupDataLoading,
     
     // Cache invalidation
     invalidateAllLookups
@@ -74,6 +130,8 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setError,
     setDataLoaded,
     projectId,
+    project,
+    isLookupDataLoading,
     invalidateAllLookups
   ]);
   

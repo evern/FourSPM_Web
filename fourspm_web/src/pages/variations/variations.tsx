@@ -5,7 +5,7 @@ import { variationColumns } from './variation-columns';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { useAuth } from '../../contexts/auth';
-import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
+// Removed useProjectInfo import as we now get project from context
 import { VariationsProvider, useVariations } from '../../contexts/variations/variations-context';
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';
 import ScrollToTop from '../../components/scroll-to-top';
@@ -40,11 +40,8 @@ const VariationsContent = (): React.ReactElement => {
   const { projectId } = useParams<VariationParams>();
   const { user } = useAuth();
   
-  // Get data from our combined context
-  const { state } = useVariations();
-  
-  // Get project info for display in the title
-  const { project, isLoading: projectLoading } = useProjectInfo(projectId, user?.token);
+  // Get data from our combined context - now including project data
+  const { state, project, isLookupDataLoading } = useVariations();
   
   // Use our custom grid handlers
   const {
@@ -88,7 +85,7 @@ const VariationsContent = (): React.ReactElement => {
       
       {/* Loading indicator */}
       <LoadPanel 
-        visible={state.loading || projectLoading} 
+        visible={isLookupDataLoading} 
         message={state.loading ? 'Loading variations...' : 'Loading project data...'}
         position={{ of: '.custom-grid-wrapper' }}
       />

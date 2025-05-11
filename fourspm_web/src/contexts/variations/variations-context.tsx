@@ -6,7 +6,10 @@ import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.inter
 import { useAuth } from '../auth';
 import { createVariation, updateVariation, deleteVariation, getProjectVariations, approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { baseApiService } from '../../api/base-api.service';
+import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { useParams } from 'react-router-dom';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 
 /**
@@ -27,6 +30,19 @@ export const DEFAULT_VARIATION_VALIDATION_RULES: ValidationRule[] = [
   }
 ];
 
+/**
+ * Fetch project details from the API with client data expanded
+ * @param projectId Project ID to fetch details for
+ */
+const fetchProject = async (projectId: string) => {
+  if (!projectId) return null;
+  
+  // Add $expand=client to ensure the client navigation property is included
+  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
+  const data = await response.json();
+  return data;
+};
+
 // Create the context with a default undefined value
 const VariationsContext = createContext<VariationsContextType | undefined>(undefined);
 
@@ -35,6 +51,10 @@ interface VariationsProviderProps {
 }
 
 export function VariationsProvider({ children }: VariationsProviderProps) {
+  // Get route parameters for project ID
+  const params = useParams<{ projectId: string }>();
+  const projectId = params.projectId;
+  
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
   
@@ -334,6 +354,21 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     }
   }, [user?.token, invalidateAllLookups]);
 
+  // Fetch project details - key addition to prevent flickering
+  const { 
+    data: project, 
+    isLoading: projectLoading,
+    error: projectError
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId),
+    enabled: !!projectId && !!user?.token,
+    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
+  });
+  
+  // Combine loading states for lookup data - used to prevent flickering
+  const isLookupDataLoading = state.loading || projectLoading;
+  
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
@@ -348,6 +383,9 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     deleteVariation: deleteVariationFunc,
     // Status change function
     changeVariationStatus,
+    // Project data (for anti-flickering pattern)
+    project,
+    isLookupDataLoading,
     // Editor functions
     getDefaultVariationValues,
     handleVariationEditorPreparing,
@@ -367,6 +405,9 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     deleteVariationFunc,
     // Status change dependency
     changeVariationStatus,
+    // Project data dependencies
+    project,
+    isLookupDataLoading,
     // Editor dependencies
     getDefaultVariationValues,
     handleVariationEditorPreparing,

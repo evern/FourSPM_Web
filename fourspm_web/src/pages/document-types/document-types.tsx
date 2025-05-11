@@ -31,7 +31,10 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
   const {
     state,
     documentTypesLoading,
-    documentTypesError
+    documentTypesError,
+    // Get project data from context - anti-flickering pattern
+    project,
+    isLookupDataLoading
   } = useDocumentTypes();
 
   // Use the dedicated grid handlers hook
@@ -46,8 +49,8 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     userToken: user?.token
   });
   
-  // Determine if we're still loading - combine context and query loading states
-  const isLoading = documentTypesLoading || state.loading;
+  // Determine if we're still loading - combine all loading states including project loading
+  const isLoading = isLookupDataLoading || documentTypesLoading || state.loading;
   
   // Check for errors - account for both context and query errors
   const hasError = state.error !== null || documentTypesError !== null;

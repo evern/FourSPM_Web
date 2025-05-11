@@ -5,7 +5,7 @@ import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
 import ScrollToTop from '../../components/scroll-to-top';
-import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
+// Removed useProjectInfo import as we now get project from context
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './areas.scss';
 import { AreasProvider, useAreas } from '@/contexts/areas/areas-context';
@@ -42,14 +42,13 @@ const AreasContent = React.memo((): React.ReactElement => {
   // Get user auth token for API calls
   const { user } = useAuth();
   
-  // Use the areas context
+  // Use the areas context - now including project data
   const {
     state,
-    projectId
+    projectId,
+    project,
+    isLookupDataLoading
   } = useAreas();
-  
-  // Fetch project info directly
-  const { project, isLoading: projectLoading } = useProjectInfo(projectId, user?.token);
 
   // Define filter to only show areas for the current project
   const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];
@@ -66,8 +65,8 @@ const AreasContent = React.memo((): React.ReactElement => {
     userToken: user?.token
   });
 
-  // Determine if we're still loading - combine context and project loading states
-  const isLoading = projectLoading || state.loading;
+  // Use the combined loading state from context - prevents flickering
+  const isLoading = isLookupDataLoading;
   
   // Check for errors - account for context errors
   const hasError = state.error !== null;

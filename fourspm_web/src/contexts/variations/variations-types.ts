@@ -1,4 +1,4 @@
-import { Variation } from '../../types/odata-types';
+import { Variation, Project } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import React from 'react';
 
@@ -74,6 +74,10 @@ export interface VariationsContextType {
   updateVariation: (variation: Variation) => Promise<Variation>;
   deleteVariation: (id: string) => Promise<void>;
   changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string }) => Promise<void>;
+  
+  // Project data (for anti-flickering pattern)
+  project?: Project; 
+  isLookupDataLoading: boolean;
   
   // Editor functions
   getDefaultVariationValues: (projectId: string) => Record<string, any>;

@@ -1,9 +1,26 @@
-import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useReducer, useRef, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { DocumentTypesContextType, DocumentTypesState } from './document-types-types';
 import { documentTypesReducer, initialDocumentTypesState } from './document-types-reducer';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../auth';
+import { baseApiService } from '../../api/base-api.service';
+import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+
+/**
+ * Fetch project details from the API with client data expanded
+ * @param projectId Project ID to fetch details for
+ */
+const fetchProject = async (projectId: string) => {
+  if (!projectId) return null;
+  
+  // Add $expand=client to ensure the client navigation property is included
+  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
+  const data = await response.json();
+  return data;
+};
 
 /**
  * Default validation rules for document types
@@ -47,8 +64,27 @@ const DocumentTypesContext = createContext<DocumentTypesContextType | undefined>
  * Provider component for document types context
  */
 export function DocumentTypesProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+  // Extract project ID from URL params if available
+  const { projectId } = useParams<{ projectId?: string }>();
+  
   // Initialize state with reducer
   const [state, dispatch] = useReducer(documentTypesReducer, initialDocumentTypesState);
+  
+  // Get auth context for token
+  const { user } = useAuth();
+  
+  // Track component mounted state to prevent updates after unmounting
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    // Set mounted flag to true when component mounts
+    isMountedRef.current = true;
+    
+    // Clean up function to prevent state updates after unmounting
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Get React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -57,6 +93,21 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   // We provide minimal implementations to satisfy the interface
   const documentTypesLoading = false;
   const documentTypesError = null;
+  
+  // Fetch project details - key addition to prevent flickering
+  const { 
+    data: project, 
+    isLoading: projectLoading,
+    error: projectError
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId || ''),
+    enabled: !!projectId && !!user?.token,
+    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
+  });
+  
+  // Combine loading states for lookup data - used to prevent flickering
+  const isLookupDataLoading = state.loading || projectLoading;
   
   // Function to invalidate all lookup data caches when document types data changes
   const invalidateAllLookups = useCallback(() => {
@@ -81,9 +132,13 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
       documentTypesLoading,
       documentTypesError,
       validationRules: DOCUMENT_TYPE_VALIDATION_RULES,
-      getDefaultValues
+      getDefaultValues,
+      // Project data for title display - anti-flickering pattern
+      project,
+      projectId,
+      isLookupDataLoading
     }),
-    [state, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues]
+    [state, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
   );
   
   return (

@@ -1,4 +1,4 @@
-import { Area } from '@/types/odata-types';
+import { Area, Project } from '@/types/odata-types';
 import { RefetchOptions } from '@tanstack/react-query';
 
 /**
@@ -37,6 +37,8 @@ export interface AreasContextProps {
   setDataLoaded: (loaded: boolean) => void;
   invalidateAllLookups: () => void;
   projectId: string;
+  project?: Project;
+  isLookupDataLoading: boolean;
 }
 
 /**

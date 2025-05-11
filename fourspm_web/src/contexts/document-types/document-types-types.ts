@@ -1,6 +1,7 @@
 // Types for document types context
 import { Reducer } from 'react';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
+import { Project } from '../../types/odata-types';
 
 export interface DocumentType {
   guid: string;
@@ -24,6 +25,10 @@ export interface DocumentTypesContextType {
   documentTypesError: unknown;
   validationRules: ValidationRule[];
   getDefaultValues: () => any;
+  // Project data for title display
+  project?: Project;
+  projectId?: string;
+  isLookupDataLoading: boolean;
 }
 
 export type DocumentTypesReducer = Reducer<DocumentTypesState, DocumentTypesAction>;
