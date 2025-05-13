@@ -37,6 +37,24 @@ export class ODataService {
     });
 
     if (!response.ok) {
+      // Try to get the detailed error message from the response
+      try {
+        // Clone the response before reading it to avoid consuming the body
+        const errorClone = response.clone();
+        const errorText = await errorClone.text();
+        
+        // If there's response text, use it as the error message
+        if (errorText && errorText.length > 0) {
+          throw new Error(errorText);
+        }
+      } catch (e) {
+        // If we failed to get the error text, just fall back to the status code
+        if (e instanceof Error && e.message !== `HTTP error! status: ${response.status}`) {
+          throw e;
+        }
+      }
+      
+      // Default error if we couldn't extract a message
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 

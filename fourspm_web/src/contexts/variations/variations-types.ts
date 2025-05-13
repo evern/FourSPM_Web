@@ -73,7 +73,7 @@ export interface VariationsContextType {
   addVariation: (variation: Variation, skipStateUpdate?: boolean) => Promise<Variation>;
   updateVariation: (variation: Variation) => Promise<Variation>;
   deleteVariation: (id: string) => Promise<void>;
-  changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string }) => Promise<void>;
+  changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => Promise<void>;
   
   // Project data (for anti-flickering pattern)
   project?: Project; 

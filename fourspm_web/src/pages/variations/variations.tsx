@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components';
 import { variationColumns } from './variation-columns';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
+import notify from 'devextreme/ui/notify';
 import { useAuth } from '../../contexts/auth';
 // Removed useProjectInfo import as we now get project from context
 import { VariationsProvider, useVariations } from '../../contexts/variations/variations-context';
@@ -64,8 +65,26 @@ const VariationsContent = (): React.ReactElement => {
   const variationColumnsConfig = {
     handleApproveVariation,
     handleRejectVariation,
-    showSuccess: (message: string) => alert(`Success: ${message}`),
-    showError: (message: string) => alert(`Error: ${message}`)
+    showSuccess: (message: string) => notify({
+      message: `Success: ${message}`,
+      type: 'success',
+      displayTime: 2000,
+      position: {
+        at: 'top center',
+        my: 'top center',
+        offset: '0 10'
+      }
+    }),
+    showError: (message: string) => notify({
+      message: `Error: ${message}`,
+      type: 'error',
+      displayTime: 3500,
+      position: {
+        at: 'top center',
+        my: 'top center',
+        offset: '0 10'
+      }
+    })
   };
   
   // Create project filter for grid
@@ -73,15 +92,25 @@ const VariationsContent = (): React.ReactElement => {
   
   // We now use handleEditorPreparing directly as it contains all needed customizations
 
+  // Display error notifications whenever errors occur
+  useEffect(() => {
+    // Show error notification if there is one
+    if (state.error || state.editorError) {
+      notify({
+        message: `Error: ${state.error || state.editorError}`,
+        type: 'error',
+        displayTime: 3500,
+        position: {
+          at: 'top center',
+          my: 'top center',
+          offset: '0 10'
+        }
+      });
+    }
+  }, [state.error, state.editorError]);
+  
   return (
-    <div className="variations-container">
-      {/* Display error message if there is one */}
-      {(state.error || state.editorError) && (
-        <div className="alert alert-danger">
-          Error: {state.error || state.editorError}
-        </div>
-      )}
-      
+    <div className="variations-container">      
       {/* Loading indicator */}
       <LoadPanel 
         visible={isLookupDataLoading} 

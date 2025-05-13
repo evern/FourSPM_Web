@@ -1,10 +1,66 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
-import { alert, confirm } from 'devextreme/ui/dialog';
 import { useVariations } from '../../contexts/variations/variations-context';
+import { confirm, alert } from 'devextreme/ui/dialog';
+import notify from 'devextreme/ui/notify';
 import { EditorEvent } from '../../contexts/variations/variations-types';
+
+/**
+ * Helper function to extract and format variation error messages
+ * Used by both approve and reject operations to provide consistent error handling
+ */
+function extractVariationErrorMessage(error: any, type: 'approve' | 'reject'): string {
+  // Default error message
+  let errorMessage = type === 'approve' ? 'Error approving variation' : 'Error rejecting variation';
+  let detailedMessage = '';
+  
+  // Extract the detailed message from the error object
+  if (error instanceof Error && error.message) {
+    detailedMessage = error.message;
+  } else if (error && typeof error === 'object' && 'response' in error) {
+    // Try to get the detailed message from the server response
+    const axiosError = error as { response?: { data?: string | any } };
+    if (axiosError.response?.data) {
+      if (typeof axiosError.response.data === 'string') {
+        detailedMessage = axiosError.response.data;
+      } else {
+        detailedMessage = JSON.stringify(axiosError.response.data);
+      }
+    }
+  }
+  
+  // Format messages based on type
+  if (type === 'approve' && detailedMessage.includes('depends on unapproved variations')) {
+    // Extract variation names for approval errors
+    const variationMatch = detailedMessage.match(/Variation ([0-9]+)/g);
+    
+    if (variationMatch && variationMatch.length > 0) {
+      const variationsList = variationMatch.join(', ');
+      // Make variation numbers stand out with special formatting
+      return `Cannot approve this variation because it depends on unapproved variations: [${variationsList}]. Please approve these variations first.`;
+    } else {
+      return `Cannot approve this variation because it depends on unapproved variations.
+      Please approve dependent variations first.`;
+    }
+  } else if (type === 'reject' && detailedMessage.includes('deliverable') && detailedMessage.includes('variation')) {
+    // Extract variation names for rejection errors
+    const variationMatch = detailedMessage.match(/Variation ([0-9]+)/g);
+    
+    if (variationMatch && variationMatch.length > 0) {
+      const variationsList = variationMatch.join(', ');
+      // Make variation numbers stand out with special formatting
+      return `Cannot reject this variation because its deliverables are used by: [${variationsList}]. Please reject these variations first.`;
+    } else {
+      return `Cannot reject this variation because its deliverables are used by other variations.
+      Please reject dependent variations first.`;
+    }
+  }
+  
+  // For generic errors
+  return detailedMessage || errorMessage;
+}
 
 /**
  * Hook for variation grid event handlers
@@ -253,19 +309,27 @@ export function useVariationGridHandlers({
         return false;
       }
       
-      // Call the context method directly
+      // Call the context method directly with skipStateUpdate=true to prevent UI flickering
       await changeVariationStatus({ 
         variationId: variationGuid, 
         approve: true, 
-        projectGuid: projectId || '' 
+        projectGuid: projectId || '',
+        skipStateUpdate: true
       });
       
       // Show success message
-      alert('Variation approved successfully', 'Success');
+      notify('Variation approved successfully', 'Success');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving variation:', error);
-      alert(`Error approving variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+      
+      // Use the shared helper function to extract and format the error message
+      const errorMessage = extractVariationErrorMessage(error, 'approve');
+      
+      console.log('Extracted error message:', errorMessage);
+      
+      // Use alert dialog instead of toast notification for this specific error
+      alert(errorMessage, 'Variation Approval Failed');
       return false;
     }
   }, [changeVariationStatus, projectId]);
@@ -283,19 +347,34 @@ export function useVariationGridHandlers({
         return false;
       }
       
-      // Call the context method directly
+      // Call the context method directly with skipStateUpdate=true to prevent grid refresh
       await changeVariationStatus({ 
         variationId: variationGuid, 
         approve: false, 
-        projectGuid: projectId || '' 
+        projectGuid: projectId || '',
+        skipStateUpdate: true // Prevent automatic state updates that would cause grid refresh
       });
       
-      // Show success message
-      alert('Variation rejection processed successfully', 'Success');
+      // Show success toast notification
+      notify({
+        message: 'Variation rejection processed successfully',
+        type: 'success',
+        displayTime: 2000,
+        position: {
+          at: 'top center',
+          my: 'top center',
+          offset: '0 10'
+        }
+      });
       return true;
     } catch (error) {
       console.error('Error rejecting variation:', error);
-      alert(`Error rejecting variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+      
+      // Use the shared helper function to extract and format the error message
+      const errorMessage = extractVariationErrorMessage(error, 'reject');
+      
+      // Use alert dialog instead of toast notification for this specific error
+      alert(errorMessage, 'Variation Rejection Failed');
       return false;
     }
   }, [changeVariationStatus, projectId]);

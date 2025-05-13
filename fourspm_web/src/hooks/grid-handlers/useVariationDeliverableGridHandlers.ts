@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useVariationDeliverables } from '../../contexts/variation-deliverables/variation-deliverables-context';
 import { useDeliverables } from '../../contexts/deliverables/deliverables-context';
 import { confirm, alert } from 'devextreme/ui/dialog';
+import notify from 'devextreme/ui/notify';
 import { VariationDeliverableUiStatus } from '../../contexts/variation-deliverables/variation-deliverables-types';
 
 export const useVariationDeliverableGridHandlers = (props?: {
@@ -67,10 +68,57 @@ export const useVariationDeliverableGridHandlers = (props?: {
     e.cancel = true;
     const newData = {...e.oldData, ...e.newData};
     
+    // Check if this is a modification to variation hours specifically
+    const isVariationHoursChange = Object.keys(e.newData).length === 1 && 
+                                Object.keys(e.newData)[0] === 'variationHours';
+    
     const update = async () => {
       try {
-        // Use the context's enhanced update function with skipStateUpdate=true to prevent re-renders
+        // Check if this deliverable is from a different variation by comparing variation names
+        const isFromDifferentVariation = newData.variationName && 
+                                      variationDeliverables.variation?.name && 
+                                      newData.variationName !== variationDeliverables.variation.name;
+        
+        // If this is a variation hours change on a deliverable from another variation,
+        // calculate the difference and update only the delta
+        if (isFromDifferentVariation && isVariationHoursChange) {
+          const originalHours = e.oldData.variationHours || 0;
+          const newHours = e.newData.variationHours || 0;
+          const hoursDifference = newHours - originalHours;
+          
+          // Use the hours difference (which can be negative)
+          newData.variationHours = hoursDifference;
+        }
+        
+        // Use the context's enhanced update function
+        // Set skipStateUpdate=true to prevent triggering state updates
         const result = await variationDeliverables.updateVariationDeliverable(newData, true);
+        
+        // Show notification if a deliverable from another variation was updated
+        if (isFromDifferentVariation) {
+          // Get the current variation name
+          const currentVariationName = variationDeliverables.variation?.name || 'current variation';
+          
+          // Show toast notification about the copy created with hours information
+          const hoursDifference = isVariationHoursChange ? 
+                               (e.newData.variationHours - e.oldData.variationHours) : null;
+          
+          let message = `A copy of this deliverable has been created for ${currentVariationName}`;
+          if (isVariationHoursChange && hoursDifference) {
+            message += ` with ${hoursDifference} variation hours`;
+          }
+          
+          notify({
+            message,
+            type: 'success',
+            displayTime: 4000,
+            position: {
+              at: 'top center',
+              my: 'top center',
+              offset: '0 10'
+            }
+          });
+        }
         
         // If the update was not allowed by business rules (e.g., approved status)
         if (result === false) {
@@ -82,11 +130,11 @@ export const useVariationDeliverableGridHandlers = (props?: {
             variationName = newData.variationName;
           }
           
-          // Show an error message
-          await alert(`This deliverable belongs to ${variationName} and cannot be modified.
-
-Please make changes to the original deliverable instead.`, 'Approved Variation');
-          return false;
+          // Only show error for non-variation-hours changes
+          if (!isVariationHoursChange) {
+            await alert(`Only variation hours can be modified for deliverables from ${variationName}.`, 'Limited Modification');
+            return false;
+          }
         }
         
         // Refresh the grid after successful update
@@ -266,6 +314,17 @@ Please make changes to the original deliverable instead.`, 'Approved Variation')
     }
     
     const deliverableData = e.row ? e.row.data : e.data;
+    
+    // Check if this deliverable is from a different variation by comparing variation names
+    const isFromDifferentVariation = deliverableData.variationName && 
+                                  variationDeliverables.variation?.name && 
+                                  deliverableData.variationName !== variationDeliverables.variation.name;
+    
+    if (isFromDifferentVariation) {
+      await alert(`Deliverables from other variations cannot be cancelled. To modify this deliverable, please edit the variation hours instead.`, 
+                'Cannot Cancel');
+      return;
+    }
     
     // Use the context's business logic to determine if the deliverable can be cancelled
     const { canCancel, reason } = variationDeliverables.canDeliverableBeCancelled(deliverableData);

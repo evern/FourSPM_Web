@@ -310,17 +310,19 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   }, [validateRowUpdate]);
   
   // Change variation status (approve/reject)
-  const changeVariationStatus = useCallback(async ({ variationId, approve, projectGuid }: { variationId: string; approve: boolean; projectGuid: string }) => {
+  const changeVariationStatus = useCallback(async ({ variationId, approve, projectGuid, skipStateUpdate = false }: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => {
     if (!user?.token || !isMountedRef.current) {
       throw new Error('Unable to change variation status - user is not authenticated');
     }
     
     try {
-      // Dispatch a status change start action
-      dispatch({ 
-        type: 'SET_PROCESSING', 
-        payload: true 
-      });
+      // Dispatch a status change start action only if not skipping state updates
+      if (!skipStateUpdate) {
+        dispatch({ 
+          type: 'SET_PROCESSING', 
+          payload: true 
+        });
+      }
       
       // Call the appropriate adapter method based on approve flag
       if (approve) {
@@ -329,18 +331,21 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
         await rejectVariation(variationId, user.token);
       }
       
-      // Dispatch success action if still mounted
-      if (isMountedRef.current) {
+      // Dispatch success action if still mounted and not skipping state updates
+      if (isMountedRef.current && !skipStateUpdate) {
         dispatch({ 
           type: 'SET_PROCESSING', 
           payload: false 
         });
       }
       
-      // Invalidate caches to refresh data
-      invalidateAllLookups();
+      // Invalidate caches to refresh data only if not skipping state updates
+      if (!skipStateUpdate) {
+        invalidateAllLookups();
+      }
     } catch (error) {
-      if (isMountedRef.current) {
+      // Only update state if not skipping updates and component is still mounted
+      if (isMountedRef.current && !skipStateUpdate) {
         dispatch({ 
           type: 'SET_EDITOR_ERROR', 
           payload: error instanceof Error ? error.message : 'Failed to change variation status'
