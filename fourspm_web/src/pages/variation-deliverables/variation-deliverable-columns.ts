@@ -165,6 +165,29 @@ export const createVariationDeliverableColumns = (
       summaryType: 'sum'
     },
     {
+      dataField: 'totalCost',
+      caption: 'Total Cost',
+      hidingPriority: 2,
+      dataType: 'number',
+      editorOptions: {
+        type: 'number',
+        min: 0,
+        showSpinButtons: true,
+        showClearButton: false,
+        step: 1
+      },
+      customizeText: (cellInfo: any) => {
+        return cellInfo.value ? `$${cellInfo.value.toFixed(2)}` : '$0.00';
+      },
+      showSummary: true,
+      summaryType: 'sum',
+      summaryFormat: {
+        type: 'currency',
+        precision: 2,
+        currency: 'AUD'
+      }
+    },
+    {
       dataField: 'variationName',
       caption: 'From Variation',
       hidingPriority: 12,

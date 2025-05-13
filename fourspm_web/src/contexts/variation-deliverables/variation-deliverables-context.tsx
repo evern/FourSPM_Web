@@ -207,9 +207,8 @@ export function VariationDeliverablesProvider({
       // Prepare the deliverable for variation
       const variationDeliverable: Deliverable = {
         ...deliverable,
-        guid: uuidv4(), // Generate a new GUID for the variation copy
-        variationGuid: variationId,
-        uiStatus: 'Edit' as VariationDeliverableUiStatus
+        guid: deliverable.guid || uuidv4(), // Only generate a new GUID if one doesn't exist
+        variationGuid: variationId
       };
       
       const result = await addExistingDeliverableToVariation(variationDeliverable, user?.token);
