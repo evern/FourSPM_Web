@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { deliverableGateColumns } from './deliverable-gate-columns';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
 import './deliverable-gates.scss';
 import { DeliverableGatesProvider, useDeliverableGates } from '@/contexts/deliverable-gates/deliverable-gates-context';

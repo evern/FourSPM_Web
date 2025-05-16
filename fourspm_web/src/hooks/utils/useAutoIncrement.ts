@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 
 interface UseAutoIncrementProps {
   endpoint: string;

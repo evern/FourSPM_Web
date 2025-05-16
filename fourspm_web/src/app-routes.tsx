@@ -5,6 +5,7 @@ import {
   // Main pages
   HomePage, 
   ProfilePage,
+  AuthTestPage,
   
   // Collection pages
   ProjectsPage as Projects,
@@ -79,6 +80,10 @@ const routes: RouteConfig[] = [
   {
     path: '/home',
     component: HomePage
+  },
+  {
+    path: '/auth-test',
+    component: AuthTestPage
   }
 ];
 

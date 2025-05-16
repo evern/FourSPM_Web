@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import { ODataGrid } from '../../components';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';

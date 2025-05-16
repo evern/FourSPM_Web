@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import './deliverable-progress.scss';
 
 // Import custom hooks

@@ -293,7 +293,7 @@ export function VariationDeliverablesProvider({
         variationGuid: variationId,
         uiStatus: 'Add' as VariationDeliverableUiStatus,
         created: new Date(),
-        createdBy: user.name || 'system'
+        createdBy: user.displayName || user.email || 'system'
       };
       
       const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable, user.token);
@@ -314,7 +314,7 @@ export function VariationDeliverablesProvider({
       });
       throw error;
     }
-  }, [variationId, user?.token, user?.name, deliverablesContext, processError, queryClient]);
+  }, [variationId, user?.token, user?.displayName, user?.email, deliverablesContext, processError, queryClient]);
 
   /**
    * Cancel a deliverable in a variation

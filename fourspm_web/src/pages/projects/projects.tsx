@@ -5,7 +5,7 @@ import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import './projects.scss';
 
 /**

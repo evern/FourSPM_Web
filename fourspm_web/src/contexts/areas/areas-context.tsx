@@ -4,7 +4,7 @@ import { areasReducer } from './areas-reducer';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 
 /**
  * Fetch project details from the API with client data expanded

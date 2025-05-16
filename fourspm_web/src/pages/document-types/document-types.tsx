@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './document-types.scss';

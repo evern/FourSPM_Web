@@ -19,6 +19,8 @@ export interface ProjectNavigationItem {
 export interface ODataResponse<T> {
   value: T[];
   '@odata.count'?: number;
+  '@odata.nextLink'?: string;
+  '@odata.context'?: string;
 }
 
 // Generic lookup item interface

@@ -1,5 +1,5 @@
 import ODataStore from 'devextreme/data/odata/store';
-import { useAuth } from '../contexts/auth';
+import { useAuth } from '../auth';
 import { useMemo } from 'react';
 
 /**

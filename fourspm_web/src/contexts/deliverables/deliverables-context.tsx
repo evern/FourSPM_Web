@@ -389,7 +389,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
         ...deliverable,
         guid: deliverable.guid || uuidv4(), // Use provided GUID or generate a new one
         created: new Date(),
-        createdBy: user.name || 'system'
+        createdBy: user.displayName || user.email || 'system'
       };
       
       // Convert numeric types to string to match odata-types
@@ -488,7 +488,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       const updatedDeliverable = {
         ...deliverable,
         updated: new Date(),
-        updatedBy: user.name || 'system'
+        updatedBy: user.displayName || user.email || 'system'
       };
       
       // Convert numeric types to string to match odata-types
@@ -517,7 +517,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       });
       throw error;
     }
-  }, [user, user?.name, dispatch, validateDeliverable, generateDocumentNumber, processApiError, queryClient, projectId]);
+  }, [user, user?.displayName, user?.email, dispatch, validateDeliverable, generateDocumentNumber, processApiError, queryClient, projectId]);
   
   /**
    * Delete a deliverable with confirmation and error handling

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { disciplineColumns } from './discipline-columns';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './disciplines.scss';

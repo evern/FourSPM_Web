@@ -10,7 +10,7 @@ import Form, {
 } from 'devextreme-react/form';
 import LoadIndicator from 'devextreme-react/load-indicator';
 import notify from 'devextreme/ui/notify';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import defaultUser from '../../utils/default-user';
 
 import './login-form.scss';
@@ -43,15 +43,27 @@ export default function LoginForm(): ReactElement {
 
   const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    const { email, password } = formData.current;
     setLoading(true);
 
-    if (email && password) {
-      const result = await signIn(email, password);
-      if (!result.isOk) {
+    try {
+      // Trigger Azure AD SSO authentication popup
+      const result = await signIn();
+      
+      // Type guard to handle the union return type (boolean | { isOk: boolean, ... })
+      if (typeof result === 'object' && 'isOk' in result) {
+        // Legacy object return type with isOk property
+        if (!result.isOk) {
+          setLoading(false);
+          notify(result.message || 'Authentication failed', 'error', 2000);
+        }
+      } else if (result === false) {
+        // New boolean return type - false indicates error
         setLoading(false);
-        notify(result.message, 'error', 2000);
+        notify('Authentication failed', 'error', 2000);
       }
+    } catch (error) {
+      setLoading(false);
+      notify('Authentication failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error', 3000);
     }
   }, [signIn]);
 
@@ -61,31 +73,11 @@ export default function LoginForm(): ReactElement {
 
   return (
     <form className={'login-form'} onSubmit={onSubmit}>
+      <div className="login-header">
+        <h3>Sign in with Microsoft</h3>
+        <p>Use your Microsoft account to access FourSPM</p>
+      </div>
       <Form formData={formData.current} disabled={loading}>
-        <Item
-          dataField={'email'}
-          editorType={'dxTextBox'}
-          editorOptions={emailEditorOptions}
-        >
-          <RequiredRule message="Email is required" />
-          <EmailRule message="Email is invalid" />
-          <Label visible={false} />
-        </Item>
-        <Item
-          dataField={'password'}
-          editorType={'dxTextBox'}
-          editorOptions={passwordEditorOptions}
-        >
-          <RequiredRule message="Password is required" />
-          <Label visible={false} />
-        </Item>
-        <Item
-          dataField={'rememberMe'}
-          editorType={'dxCheckBox'}
-          editorOptions={rememberMeEditorOptions}
-        >
-          <Label visible={false} />
-        </Item>
         <ButtonItem>
           <ButtonOptions
             width={'100%'}
@@ -96,7 +88,7 @@ export default function LoginForm(): ReactElement {
               {
                 loading
                   ? <LoadIndicator width={'24px'} height={'24px'} visible={true} />
-                  : 'Sign In'
+                  : 'Sign in with Microsoft'
               }
             </span>
           </ButtonOptions>

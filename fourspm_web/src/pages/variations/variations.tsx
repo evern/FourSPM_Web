@@ -5,7 +5,7 @@ import { variationColumns } from './variation-columns';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 // Removed useProjectInfo import as we now get project from context
 import { VariationsProvider, useVariations } from '../../contexts/variations/variations-context';
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';

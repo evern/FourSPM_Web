@@ -1,6 +1,6 @@
-import defaultUser from '../utils/default-user';
 import { apiRequest } from './base-api.service';
-import { User } from '../types';
+import { User, UserClaim } from '../types';
+import { extractClaims, getParsedToken, parseJwtToken } from './auth-token.service';
 import { 
   LOGIN_ENDPOINT, 
   LOGOUT_ENDPOINT, 
@@ -18,32 +18,74 @@ export interface ApiResponse<T = any> {
 }
 
 /**
- * Signs in a user with their email and password
- * @param email User's email address
- * @param password User's password
+ * Signs in a user with their email and password or Azure AD token
+ * @param email User's email address (or empty for token authentication)
+ * @param password User's password (or empty for token authentication)
+ * @param azureToken Optional Azure AD token from MSAL authentication
  * @returns ApiResponse containing User data or error message
  */
-export async function signIn(email: string, password: string): Promise<ApiResponse<User>> {
+export async function signIn(email: string, password: string, azureToken?: string): Promise<ApiResponse<User>> {
   try {
-    const response = await apiRequest(LOGIN_ENDPOINT, {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
-    });
+    // If an Azure AD token is provided, use it directly
+    if (azureToken) {
+      // Parse the token to extract claims
+      const parsedToken = parseJwtToken(azureToken);
+      if (!parsedToken) {
+        return {
+          isOk: false,
+          message: "Invalid Azure AD token"
+        };
+      }
 
-    const data = await response.json();
-    const user: User = {
-      ...defaultUser,
-      token: data.token,
-      email
-    };
-    // Store user in localStorage
-    localStorage.setItem('user', JSON.stringify(user));
-    return {
-      isOk: true,
-      data: user,
-    };
+      // Extract user information from the token
+      const claims = extractClaims(parsedToken);
+      const payload = parsedToken.payload;
+      
+      // Create user object from token claims
+      const user: User = {
+        id: payload.oid || payload.sub || '',
+        email: payload.email || payload.upn || '',
+        name: payload.name || '',
+        token: azureToken,
+        avatarUrl: '',  // Azure AD doesn't provide avatar in token
+        claims: claims
+      };
+      
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      return {
+        isOk: true,
+        data: user,
+      };
+    } else {
+      // Normal username/password flow
+      const response = await apiRequest(LOGIN_ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+      
+      // Create a default user object
+      const user: User = {
+        id: data.id || 'user-id',
+        token: data.token,
+        email: email,
+        name: data.name || email.split('@')[0],
+        avatarUrl: data.avatarUrl || ''
+      };
+      
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      return {
+        isOk: true,
+        data: user,
+      };
+    }
   }
-  catch {
+  catch (error) {
+    console.error('Authentication error:', error);
     return {
       isOk: false,
       message: "Authentication failed"
@@ -89,13 +131,41 @@ export async function getUser(): Promise<ApiResponse<User>> {
     }
 
     const user: User = JSON.parse(userJson);
+    
+    // Check if we have a token and parse it
+    const token = user.token;
+    if (!token) {
+      localStorage.removeItem('user');
+      return {
+        isOk: false,
+        message: 'Invalid user data: no token'
+      };
+    }
+    
+    // Parse token and validate it
+    const parsedToken = parseJwtToken(token);
+    if (!parsedToken || Date.now() >= parsedToken.expiresAt) {
+      // Token is expired
+      localStorage.removeItem('user');
+      return {
+        isOk: false,
+        message: 'Token expired'
+      };
+    }
+    
+    // Ensure user has claims
+    if (!user.claims) {
+      // Extract claims from token if not already present
+      user.claims = extractClaims(parsedToken);
+      localStorage.setItem('user', JSON.stringify(user));
+    }
 
     // Validate token with a backend request
     try {
       const response = await apiRequest(PROJECTS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -105,22 +175,23 @@ export async function getUser(): Promise<ApiResponse<User>> {
           data: user
         };
       } else {
-        // Token is invalid
+        // Token is invalid (server rejected it)
         localStorage.removeItem('user');
         return {
           isOk: false,
-          message: 'Token expired'
+          message: 'Token rejected by server'
         };
       }
     } catch (error) {
       // Network or other error
-      localStorage.removeItem('user');
+      console.error('Token validation error:', error);
       return {
         isOk: false,
         message: 'Failed to validate token'
       };
     }
-  } catch {
+  } catch (error) {
+    console.error('User retrieval error:', error);
     return {
       isOk: false,
       message: 'Failed to get user'

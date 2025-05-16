@@ -1,6 +1,7 @@
 // Main pages
 export { default as HomePage } from './home/home';
 export { default as ProfilePage } from './profile/profile';
+export { default as AuthTestPage } from './auth-test';
 
 // Collection pages
 export { default as ProjectsPage } from './projects/projects';

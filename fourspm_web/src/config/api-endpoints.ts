@@ -1,27 +1,33 @@
 /**
  * API endpoint path constants
+ * 
+ * This file centralizes all endpoint URLs for the application
+ * using the environment-specific helper functions for consistent 
+ * endpoint construction across all environments.
  */
-import { API_CONFIG } from './api';
+import { API_CONFIG, getApiEndpoint, getODataEndpoint } from './api';
 
-// Authentication endpoints
-export const LOGIN_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.login}`;
-export const LOGOUT_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.logout}`;
-export const REGISTER_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.register}`;
-export const CREATE_USER_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.create}`;
-export const RESET_PASSWORD_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.resetPassword}`;
-export const CHANGE_PASSWORD_ENDPOINT = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.changePassword}`;
+// Authentication endpoints - use the API endpoint helper
+export const LOGIN_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.login);
+export const LOGOUT_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.logout);
+export const REGISTER_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.register);
+export const CREATE_USER_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.create);
+export const RESET_PASSWORD_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.resetPassword);
+export const CHANGE_PASSWORD_ENDPOINT = getApiEndpoint(API_CONFIG.endpoints.changePassword);
 
-// Fully qualified OData endpoints with base URL
-export const PROJECTS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Projects`;
-export const DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Deliverables`;
-export const AREAS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Areas`;
-export const CLIENTS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Clients`;
-export const DISCIPLINES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Disciplines`;
-export const DOCUMENT_TYPES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DocumentTypes`;
-export const DELIVERABLE_GATES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`;
-export const PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Progress`;
-export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
-export const VARIATION_DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/VariationDeliverables`;
+// Fully qualified OData endpoints - use the OData endpoint helper for consistent path construction
+export const PROJECTS_ENDPOINT = getODataEndpoint('Projects');
+export const DELIVERABLES_ENDPOINT = getODataEndpoint('Deliverables');
+export const AREAS_ENDPOINT = getODataEndpoint('Areas');
+export const CLIENTS_ENDPOINT = getODataEndpoint('Clients');
+export const DISCIPLINES_ENDPOINT = getODataEndpoint('Disciplines');
+export const DOCUMENT_TYPES_ENDPOINT = getODataEndpoint('DocumentTypes');
+export const DELIVERABLE_GATES_ENDPOINT = getODataEndpoint('DeliverableGates');
+export const PROGRESS_ENDPOINT = getODataEndpoint('Progress');
+export const VARIATIONS_ENDPOINT = getODataEndpoint('Variations');
+export const VARIATION_DELIVERABLES_ENDPOINT = getODataEndpoint('VariationDeliverables');
+export const ROLES_ENDPOINT = getODataEndpoint('Roles');
+export const ROLE_PERMISSIONS_ENDPOINT = getODataEndpoint('RolePermissions');
 
 /**
  * Note on OData Custom Function Endpoints:

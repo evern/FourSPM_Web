@@ -12,7 +12,7 @@ import DataGrid, {
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
 

@@ -18,7 +18,10 @@ const Content: React.FC = () => {
             component={Component}
           />
         ))}
-        <Redirect to={'/home'} />
+        {/* Only redirect to home if we hit a non-matching route */}
+        <Route path="*">
+          <Redirect to={'/home'} />
+        </Route>
       </Switch>
       <Footer>
         Copyright 2024-{new Date().getFullYear()} {appInfo.title} Pty Ltd.

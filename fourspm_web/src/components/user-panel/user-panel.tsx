@@ -2,7 +2,7 @@ import React, { useMemo, ReactElement } from 'react';
 import { useHistory } from "react-router-dom";
 import ContextMenu, { Position } from 'devextreme-react/context-menu';
 import List from 'devextreme-react/list';
-import { useAuth } from '../../contexts/auth';
+import { useAuth } from '../../auth';
 import './user-panel.scss';
 
 interface Props {
@@ -42,12 +42,18 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
         <div className={'image-container'}>
           <div
             style={{
-              background: `url(${user.avatarUrl || ''}) no-repeat #fff`,
-              backgroundSize: 'cover'
+              background: `#007bff`, // Use a solid background color instead
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px'
             }}
-            className={'user-image'} />
+            className={'user-image'}>
+            {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'A'}
+          </div>
         </div>
-        <div className={'user-name'}>{user.email || 'Anonymous'}</div>
+        <div className={'user-name'}>{user.displayName || user.email || 'Anonymous'}</div>
       </div>
 
       {menuMode === 'context' && (

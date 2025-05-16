@@ -1,0 +1,15 @@
+/**
+ * Loading state styles
+ * Following FourSPM UI Development Guidelines
+ */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--dx-surface-color);
+  color: var(--dx-base-text-color);
+  font-size: 18px;
+  font-weight: 500;
+  font-family: var(--dx-font-family, "Segoe UI", "Helvetica Neue", sans-serif);
+}
