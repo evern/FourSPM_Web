@@ -1,0 +1,78 @@
+# Task ID: 6
+# Title: Implement API Service with Token Authentication
+# Status: pending
+# Dependencies: 4
+# Priority: high
+# Description: Update the API service to include authentication tokens in requests and handle authentication-related errors.
+# Details:
+1. Create or update the API service to include authentication tokens (src/services/api.ts):
+```typescript
+import { useAuth } from '../auth/AuthContext';
+
+export const useApiService = () => {
+  const { getAccessToken } = useAuth();
+  
+  const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
+    const token = await getAccessToken();
+    
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+    
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+    
+    if (response.status === 401) {
+      // Token might be expired or invalid
+      throw new Error('Authentication failed. Please log in again.');
+    }
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    
+    return response.json();
+  };
+  
+  const get = <T>(url: string): Promise<T> => {
+    return apiRequest<T>(url, { method: 'GET' });
+  };
+  
+  const post = <T>(url: string, data: any): Promise<T> => {
+    return apiRequest<T>(url, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  };
+  
+  const put = <T>(url: string, data: any): Promise<T> => {
+    return apiRequest<T>(url, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  };
+  
+  const del = <T>(url: string): Promise<T> => {
+    return apiRequest<T>(url, { method: 'DELETE' });
+  };
+  
+  return { get, post, put, del };
+};
+```
+2. Update existing API calls to use the new service
+3. Implement error handling for authentication failures
+
+# Test Strategy:
+1. Test API requests with valid authentication tokens
+2. Test API requests with invalid or expired tokens
+3. Verify error handling for authentication failures
+4. Test token refresh during API requests
+5. Verify all HTTP methods (GET, POST, PUT, DELETE) work correctly with authentication

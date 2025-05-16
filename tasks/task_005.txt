@@ -1,0 +1,182 @@
+# Task ID: 5
+# Title: Configure Backend Authentication Middleware
+# Status: pending
+# Dependencies: 3
+# Priority: high
+# Description: Configure ASP.NET Core authentication middleware to validate Azure AD tokens and enforce permission-based authentication for API endpoints.
+# Details:
+1. Update Program.cs or Startup.cs to configure authentication:
+```csharp
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Identity.Web;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+builder.Services.AddAuthorization(options =>
+{
+    // Create policies for different permissions
+    options.AddPolicy("CanViewProjects", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.View"));
+    
+    options.AddPolicy("CanEditProjects", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.Edit"));
+        
+    options.AddPolicy("CanDeleteProjects", policy =>
+        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.Delete"));
+        
+    // Add more granular permission policies as needed
+});
+
+// Configure CORS for the SPA
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("default", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "https://app.4spm.org")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddControllers();
+
+// Register permission service
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("default");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+2. Update existing controller classes to require authentication:
+```csharp
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class ProjectsController : ControllerBase
+{
+    private readonly IPermissionService _permissionService;
+    
+    public ProjectsController(IPermissionService permissionService)
+    {
+        _permissionService = permissionService;
+    }
+    
+    // Controller implementation
+}
+```
+3. Add permission-based authorization to specific endpoints:
+```csharp
+[Authorize(Policy = "CanDeleteProjects")]
+[HttpDelete("{id}")]
+public async Task<IActionResult> DeleteProject(int id)
+{
+    // Implementation
+}
+```
+4. Implement a custom permission handler for more complex permission checks:
+```csharp
+public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
+{
+    private readonly IPermissionService _permissionService;
+    
+    public PermissionAuthorizationHandler(IPermissionService permissionService)
+    {
+        _permissionService = permissionService;
+    }
+    
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PermissionRequirement requirement)
+    {
+        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+        
+        var hasPermission = await _permissionService.UserHasPermissionAsync(
+            userId, requirement.Permission);
+            
+        if (hasPermission)
+        {
+            context.Succeed(requirement);
+        }
+    }
+}
+```
+5. Note that the RolesController and permission-based infrastructure has been implemented in the backend. The IPermissionService interface has been implemented and integrated with the RolePermissionsController.
+
+# Test Strategy:
+1. Verify authentication middleware is correctly configured
+2. Test token validation with valid and invalid tokens
+3. Verify CORS configuration works for allowed origins
+4. Test permission-based authorization policies with different token scopes
+5. Ensure unauthenticated requests are properly rejected
+6. Test the custom permission handler with various permission scenarios
+7. Verify integration with the RolePermissionsController
+8. Test granular permissions for different operations (view, edit, delete, etc.)
+9. Verify permission inheritance and hierarchies work correctly
+10. Test the RolesController endpoints for managing roles and permissions
+
+# Subtasks:
+## 5.1. Implement IPermissionService interface [completed]
+### Dependencies: None
+### Description: Create an interface and implementation for the permission service that will handle checking user permissions
+### Details:
+
+
+## 5.2. Create permission requirements and handlers [pending]
+### Dependencies: None
+### Description: Implement custom authorization requirements and handlers for permission-based access control
+### Details:
+
+
+## 5.3. Integrate with RolePermissionsController [completed]
+### Dependencies: None
+### Description: Ensure the authentication middleware works with the existing RolePermissionsController to fetch and validate user permissions
+### Details:
+
+
+## 5.4. Update API endpoints with permission-based policies [pending]
+### Dependencies: None
+### Description: Replace role-based policies with permission-based policies across all API endpoints
+### Details:
+
+
+## 5.5. Implement permission caching [pending]
+### Dependencies: None
+### Description: Add caching for permission checks to improve performance and reduce database queries
+### Details:
+
+
+## 5.6. Implement Role Management UI [pending]
+### Dependencies: None
+### Description: Create a user interface for managing roles that will interact with the new RolesController endpoints
+### Details:
+
+

@@ -1,0 +1,66 @@
+# Task ID: 2
+# Title: Install Required Frontend Packages
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Install and configure the necessary frontend packages for Azure AD authentication, including MSAL libraries for React.
+# Details:
+1. Add the following packages to the React application:
+```bash
+npm install @azure/msal-browser @azure/msal-react --save
+```
+2. Update package.json to ensure compatibility with existing dependencies
+3. Create a configuration file for MSAL settings (src/auth/msalConfig.ts):
+```typescript
+import { Configuration, LogLevel } from '@azure/msal-browser';
+
+export const msalConfig: Configuration = {
+  auth: {
+    clientId: 'YOUR_CLIENT_ID', // From Azure AD registration
+    authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID',
+    redirectUri: window.location.origin, // Will be http://localhost:3000 or https://app.4spm.org
+    postLogoutRedirectUri: window.location.origin
+  },
+  cache: {
+    cacheLocation: 'sessionStorage',
+    storeAuthStateInCookie: false
+  },
+  system: {
+    loggerOptions: {
+      loggerCallback: (level, message, containsPii) => {
+        if (containsPii) return;
+        switch (level) {
+          case LogLevel.Error:
+            console.error(message);
+            break;
+          case LogLevel.Warning:
+            console.warn(message);
+            break;
+          case LogLevel.Info:
+            console.info(message);
+            break;
+          case LogLevel.Verbose:
+            console.debug(message);
+            break;
+        }
+      },
+      logLevel: LogLevel.Info
+    }
+  }
+};
+
+export const loginRequest = {
+  scopes: ['User.Read', 'api://YOUR_CLIENT_ID/Application.User']
+};
+
+export const adminRequest = {
+  scopes: ['api://YOUR_CLIENT_ID/Application.Admin']
+};
+```
+4. Create environment-specific configuration files for development and production
+
+# Test Strategy:
+1. Verify all packages install without conflicts
+2. Check that TypeScript types are correctly resolved
+3. Validate MSAL configuration file syntax
+4. Ensure environment-specific configurations load correctly

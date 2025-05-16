@@ -1,0 +1,158 @@
+# Task ID: 4
+# Title: Create Authentication Context Provider
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Implement an authentication context provider using React Context API to manage authentication state across the application.
+# Details:
+1. Create an authentication context file (src/auth/AuthContext.tsx):
+```typescript
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useMsal, useAccount, MsalProvider } from '@azure/msal-react';
+import { PublicClientApplication, AccountInfo, InteractionRequiredAuthError } from '@azure/msal-browser';
+import { msalConfig, loginRequest } from './msalConfig';
+
+interface AuthContextProps {
+  isAuthenticated: boolean;
+  user: AccountInfo | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
+  error: string | null;
+}
+
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+export const msalInstance = new PublicClientApplication(msalConfig);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { instance, accounts, inProgress } = useMsal();
+  const account = useAccount(accounts[0] || {});
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<AccountInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (account) {
+      setIsAuthenticated(true);
+      setUser(account);
+    } else {
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+  }, [account]);
+
+  const login = async (): Promise<void> => {
+    try {
+      await instance.loginPopup(loginRequest);
+    } catch (error) {
+      setError('Login failed: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('Login error:', error);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await instance.logoutPopup();
+    } catch (error) {
+      setError('Logout failed: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('Logout error:', error);
+    }
+  };
+
+  const getAccessToken = async (): Promise<string | null> => {
+    if (!account) return null;
+    
+    try {
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: account
+      });
+      return response.accessToken;
+    } catch (error) {
+      if (error instanceof InteractionRequiredAuthError) {
+        try {
+          const response = await instance.acquireTokenPopup(loginRequest);
+          return response.accessToken;
+        } catch (err) {
+          setError('Token acquisition failed: ' + (err instanceof Error ? err.message : String(err)));
+          console.error('Token acquisition error:', err);
+          return null;
+        }
+      }
+      setError('Silent token acquisition failed: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('Silent token acquisition error:', error);
+      return null;
+    }
+  };
+
+  const contextValue: AuthContextProps = {
+    isAuthenticated,
+    user,
+    login,
+    logout,
+    getAccessToken,
+    error
+  };
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+};
+
+export const MsalAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <MsalProvider instance={msalInstance}>
+      <AuthProvider>{children}</AuthProvider>
+    </MsalProvider>
+  );
+};
+
+export const useAuth = (): AuthContextProps => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+```
+2. Update the main application component to use the MsalAuthProvider
+3. Create custom hooks for authentication-related functionality
+
+# Test Strategy:
+1. Test AuthContext initialization
+2. Verify context values are correctly provided
+3. Test login functionality with mock MSAL instance
+4. Test logout functionality with mock MSAL instance
+5. Test token acquisition with mock MSAL instance
+6. Verify error handling for authentication failures
+
+# Subtasks:
+## 1. Set up Authentication Context Structure [done]
+### Dependencies: None
+### Description: Create the basic structure for the Authentication Context using React's Context API
+### Details:
+Create AuthContext.tsx file with createContext(), define interface for auth state and context values, and set up initial default values. Include proper TypeScript typing for the context.
+
+## 2. Implement Authentication State Management [done]
+### Dependencies: 4.1
+### Description: Set up state management within the AuthProvider component
+### Details:
+Create the AuthProvider component that will wrap the application, implement useState hooks for user data, authentication status, and loading states. Include proper state initialization from localStorage if available.
+
+## 3. Develop Authentication Methods [done]
+### Dependencies: 4.2
+### Description: Implement core authentication functions within the provider
+### Details:
+Create login, logout, and register functions that will handle API calls to authentication endpoints. Include proper error handling and loading state management during authentication processes.
+
+## 4. Implement Token Management [done]
+### Dependencies: 4.3
+### Description: Add functionality to handle authentication tokens
+### Details:
+Create methods to store, retrieve, and refresh authentication tokens. Implement token expiration checking and automatic refresh functionality. Set up secure storage of tokens in localStorage or sessionStorage.
+
+## 5. Create Custom Authentication Hook [done]
+### Dependencies: 4.1, 4.2, 4.3, 4.4
+### Description: Develop a custom hook for consuming the Authentication Context
+### Details:
+Create a useAuth custom hook that will provide easy access to authentication state and methods throughout the application. Include TypeScript typing and error handling if the hook is used outside of the AuthProvider.
+

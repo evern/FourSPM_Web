@@ -1,0 +1,65 @@
+# Task ID: 7
+# Title: Create Login and Logout Components
+# Status: pending
+# Dependencies: 4
+# Priority: medium
+# Description: Implement React components for login and logout functionality using MSAL.
+# Details:
+1. Create a login button component (src/components/LoginButton.tsx):
+```typescript
+import React from 'react';
+import { useAuth } from '../auth/AuthContext';
+
+export const LoginButton: React.FC = () => {
+  const { isAuthenticated, login, logout } = useAuth();
+
+  const handleAuthClick = async () => {
+    if (isAuthenticated) {
+      await logout();
+    } else {
+      await login();
+    }
+  };
+
+  return (
+    <button 
+      onClick={handleAuthClick}
+      className="auth-button"
+    >
+      {isAuthenticated ? 'Sign Out' : 'Sign in with Microsoft'}
+    </button>
+  );
+};
+```
+
+2. Create a user profile component (src/components/UserProfile.tsx):
+```typescript
+import React from 'react';
+import { useAuth } from '../auth/AuthContext';
+
+export const UserProfile: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
+  return (
+    <div className="user-profile">
+      <span className="user-name">{user.name}</span>
+      <span className="user-email">{user.username}</span>
+    </div>
+  );
+};
+```
+
+3. Update the application header to include these components
+4. Style the components to match the application design
+5. Add loading indicators for authentication processes
+
+# Test Strategy:
+1. Test login button in authenticated and unauthenticated states
+2. Verify login flow works correctly
+3. Verify logout flow works correctly
+4. Test user profile display with mock user data
+5. Verify components are responsive on different screen sizes

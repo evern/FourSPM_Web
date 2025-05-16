@@ -1,0 +1,57 @@
+# Task ID: 1
+# Title: Configure Azure AD Application Registration
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create and configure the Azure AD application registration for both SPA and API within the same registration, with appropriate scopes and redirect URIs.
+# Details:
+1. Log in to Azure Portal
+2. Navigate to Azure Active Directory > App registrations
+3. Create a new registration for FourSPM_Web
+4. Configure application as a single-tenant or multi-tenant app
+5. Add redirect URIs for both environments:
+   - http://localhost:3000 (development)
+   - https://app.4spm.org (production)
+6. Configure Authentication settings to enable implicit flow and allow access tokens
+7. Create API scopes:
+   - Application.User (for regular users)
+   - Application.Admin (for administrators)
+8. Configure app to have self-permissions to access its own API
+9. Note down the following values for later use:
+   - Application (client) ID
+   - Directory (tenant) ID
+   - Client secret (generate a new one)
+   - API scope identifiers
+
+# Test Strategy:
+1. Verify application registration is visible in Azure Portal
+2. Confirm redirect URIs are correctly configured
+3. Validate that API scopes are properly defined
+4. Test that the application can request its own API scopes
+5. Ensure client secret is generated and accessible
+
+# Subtasks:
+## 1. Initial Registration Setup [done]
+### Dependencies: None
+### Description: Sign in to the Azure portal, navigate to Microsoft Entra ID, and register a new application by providing a name and selecting supported account types.
+### Details:
+Access the Azure portal with appropriate permissions. Go to Microsoft Entra ID > App registrations > New registration. Enter a meaningful application name and choose the supported account types (e.g., single tenant or multi-tenant).
+
+## 2. Authentication Configuration and Redirect URIs [done]
+### Dependencies: 1.1
+### Description: Configure authentication settings, including specifying redirect URIs and selecting the appropriate client type (confidential or public).
+### Details:
+After registration, go to the Authentication section. Add required redirect URIs for your application (e.g., web, mobile, or SPA). Set the client type and configure advanced settings such as enabling ID tokens if needed.
+
+## 3. API Scope Definition and Permissions [done]
+### Dependencies: 1.2
+### Description: Define API scopes and configure permissions required by the application to access Microsoft Graph or other APIs.
+### Details:
+Navigate to the API permissions section. Add delegated or application permissions as needed. Define custom scopes if the app exposes an API. Grant admin consent if required.
+
+## 4. Secret Management and Documentation [done]
+### Dependencies: 1.3
+### Description: Create and securely store client secrets or certificates, and document all registration details for future reference.
+### Details:
+In the Certificates & secrets section, generate a new client secret or upload a certificate. Record the secret value securely, as it will not be shown again. Document the application (client) ID, tenant ID, redirect URIs, and secret/certificate details.
+

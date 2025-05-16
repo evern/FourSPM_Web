@@ -1,0 +1,76 @@
+# Task ID: 9
+# Title: Implement Token Refresh Logic
+# Status: pending
+# Dependencies: 4, 6
+# Priority: medium
+# Description: Create logic to automatically refresh authentication tokens before they expire to maintain user sessions.
+# Details:
+1. Enhance the AuthContext to include token refresh logic:
+```typescript
+// Add to AuthContext.tsx
+import { useEffect, useCallback } from 'react';
+
+// Inside the AuthProvider component
+const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(null);
+
+const acquireTokenSilently = useCallback(async (): Promise<string | null> => {
+  if (!account) return null;
+  
+  try {
+    const response = await instance.acquireTokenSilent({
+      ...loginRequest,
+      account: account
+    });
+    
+    // Calculate token expiration time (typically in seconds)
+    // MSAL doesn't directly provide expiration, so we need to decode the JWT
+    const tokenClaims = JSON.parse(atob(response.accessToken.split('.')[1]));
+    if (tokenClaims.exp) {
+      setTokenExpiresAt(tokenClaims.exp * 1000); // Convert to milliseconds
+    }
+    
+    return response.accessToken;
+  } catch (error) {
+    if (error instanceof InteractionRequiredAuthError) {
+      // User interaction required, handle accordingly
+      setError('Interactive login required');
+      return null;
+    }
+    
+    setError('Silent token acquisition failed: ' + (error instanceof Error ? error.message : String(error)));
+    console.error('Silent token acquisition error:', error);
+    return null;
+  }
+}, [account, instance]);
+
+// Set up token refresh timer
+useEffect(() => {
+  if (!isAuthenticated || !tokenExpiresAt) return;
+  
+  // Refresh token 5 minutes before expiration
+  const timeUntilRefresh = tokenExpiresAt - Date.now() - (5 * 60 * 1000);
+  
+  // Don't set a timer if the token is already expired or about to expire
+  if (timeUntilRefresh <= 0) {
+    acquireTokenSilently();
+    return;
+  }
+  
+  const refreshTimer = setTimeout(() => {
+    acquireTokenSilently();
+  }, timeUntilRefresh);
+  
+  return () => clearTimeout(refreshTimer);
+}, [isAuthenticated, tokenExpiresAt, acquireTokenSilently]);
+```
+
+2. Update the getAccessToken method to use the acquireTokenSilently function
+3. Add error handling for token refresh failures
+4. Implement retry logic for failed token refreshes
+
+# Test Strategy:
+1. Test token refresh before expiration
+2. Verify token expiration calculation
+3. Test error handling for refresh failures
+4. Verify automatic refresh works without user interaction
+5. Test retry logic for failed refreshes

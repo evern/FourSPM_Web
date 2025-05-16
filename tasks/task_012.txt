@@ -1,0 +1,150 @@
+# Task ID: 12
+# Title: Implement Error Handling for Authentication
+# Status: pending
+# Dependencies: 4, 6, 7
+# Priority: medium
+# Description: Create comprehensive error handling for authentication-related errors, including clear user messages and logging.
+# Details:
+1. Create an authentication error component (src/components/AuthError.tsx):
+```typescript
+import React from 'react';
+import { useAuth } from '../auth/AuthContext';
+
+export const AuthError: React.FC = () => {
+  const { error } = useAuth();
+
+  if (!error) {
+    return null;
+  }
+
+  return (
+    <div className="auth-error-container">
+      <div className="auth-error-message">
+        <h3>Authentication Error</h3>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    </div>
+  );
+};
+```
+
+2. Update the API service to handle specific authentication errors:
+```typescript
+// Add to api.ts
+const handleApiError = (error: any) => {
+  // Check if it's an authentication error
+  if (error.message && (
+    error.message.includes('authentication') ||
+    error.message.includes('token') ||
+    error.message.includes('401')
+  )) {
+    // Log the error
+    console.error('Authentication error:', error);
+    
+    // You might want to trigger a re-authentication here
+    // or redirect to login page
+    window.location.href = '/login?error=session_expired';
+    
+    return new Error('Your session has expired. Please log in again.');
+  }
+  
+  // Handle other API errors
+  console.error('API error:', error);
+  return error;
+};
+
+// Update the apiRequest function to use the error handler
+const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
+  try {
+    // Existing code...
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+```
+
+3. Create a login page that handles error parameters:
+```typescript
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { LoginButton } from '../components/LoginButton';
+
+export const Login: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Check for error parameters in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const error = params.get('error');
+    
+    if (error === 'session_expired') {
+      setErrorMessage('Your session has expired. Please log in again.');
+    } else if (error) {
+      setErrorMessage('An authentication error occurred. Please try again.');
+    }
+  }, [location]);
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, location.state, navigate]);
+  
+  return (
+    <div className="login-container">
+      <h1>Welcome to FourSPM</h1>
+      
+      {errorMessage && (
+        <div className="error-message">{errorMessage}</div>
+      )}
+      
+      <div className="login-box">
+        <p>Please sign in to continue:</p>
+        <LoginButton />
+      </div>
+    </div>
+  );
+};
+```
+
+4. Implement server-side error logging for authentication failures:
+```csharp
+// Add to Program.cs or a middleware
+app.Use(async (context, next) => {
+    try
+    {
+        await next();
+        
+        // Log authentication failures
+        if (context.Response.StatusCode == 401)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(
+                "Authentication failure for request {Method} {Path}", 
+                context.Request.Method, 
+                context.Request.Path);
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An unhandled exception occurred");
+        throw;
+    }
+});
+```
+
+# Test Strategy:
+1. Test error display for various authentication errors
+2. Verify error handling for expired tokens
+3. Test error handling for invalid tokens
+4. Verify error messages are user-friendly
+5. Test server-side error logging
+6. Verify redirect to login page with error parameters works correctly
