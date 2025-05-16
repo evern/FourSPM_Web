@@ -1,88 +1,371 @@
 # Task ID: 8
-# Title: Implement Protected Routes
-# Status: pending
-# Dependencies: 4
+# Title: Error Handling and Feedback
+# Status: done
+# Dependencies: 2, 3, 5
 # Priority: medium
-# Description: Create a higher-order component or route guard to protect routes that require authentication.
+# Description: Implement comprehensive error handling for authentication failures and provide user-friendly feedback throughout the authentication flow.
 # Details:
-1. Create a protected route component (src/components/ProtectedRoute.tsx):
+1. Create a Toast notification component (src/components/Toast.tsx):
 ```typescript
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import React, { useState, useEffect } from 'react';
+import '../styles/toast.css';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRole?: 'user' | 'admin';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+interface ToastProps {
+  message: string;
+  type: ToastType;
+  duration?: number;
+  onClose?: () => void;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requiredRole = 'user' 
+const Toast: React.FC<ToastProps> = ({ 
+  message, 
+  type, 
+  duration = 5000, 
+  onClose 
 }) => {
-  const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
-
-  // Check if user is authenticated
-  if (!isAuthenticated) {
-    // Redirect to login page, but save the current location they were trying to go to
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  // For role-based access control (if implemented)
-  if (requiredRole === 'admin' && !user?.roles?.includes('admin')) {
-    // User is authenticated but doesn't have the required role
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  // User is authenticated and has the required role (if specified)
-  return <>{children}</>;
-};
-```
-
-2. Update the application routes to use the protected route component:
-```typescript
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Dashboard } from './pages/Dashboard';
-import { AdminPanel } from './pages/AdminPanel';
-import { Login } from './pages/Login';
-import { Unauthorized } from './pages/Unauthorized';
-
-export const AppRoutes = () => {
+  const [visible, setVisible] = useState(true);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false);
+      if (onClose) onClose();
+    }, duration);
+    
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
+  
+  const handleClose = () => {
+    setVisible(false);
+    if (onClose) onClose();
+  };
+  
+  if (!visible) return null;
+  
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminPanel />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <div className={`toast toast-${type}`}>
+      <div className="toast-content">
+        <span className="toast-message">{message}</span>
+      </div>
+      <button className="toast-close" onClick={handleClose}>
+        ×
+      </button>
+    </div>
   );
 };
+
+export default Toast;
 ```
 
-3. Create login, unauthorized, and other necessary pages
-4. Implement redirect logic to return users to their intended destination after login
+2. Create a Toast container to manage multiple toasts (src/components/ToastContainer.tsx):
+```typescript
+import React, { useState, useCallback } from 'react';
+import Toast, { ToastType } from './Toast';
+import '../styles/toast-container.css';
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: ToastType;
+  duration?: number;
+}
+
+interface ToastContextType {
+  showToast: (message: string, type: ToastType, duration?: number) => void;
+}
+
+export const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
+
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  
+  const showToast = useCallback((message: string, type: ToastType, duration = 5000) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+  }, []);
+  
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
+  
+  return (
+    <ToastContext.Provider value={{ showToast }}>
+      {children}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+};
+
+export const useToast = (): ToastContextType => {
+  const context = React.useContext(ToastContext);
+  if (context === undefined) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
+  return context;
+};
+```
+
+3. Create styles for toasts (src/styles/toast.css):
+```css
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: toast-in 0.3s ease-out;
+  max-width: 350px;
+  width: 100%;
+}
+
+.toast-success {
+  background-color: #e6f7e6;
+  color: #107c10;
+  border-left: 4px solid #107c10;
+}
+
+.toast-error {
+  background-color: #fde7e9;
+  color: #d83b01;
+  border-left: 4px solid #d83b01;
+}
+
+.toast-info {
+  background-color: #e5f0fd;
+  color: #0078d4;
+  border-left: 4px solid #0078d4;
+}
+
+.toast-warning {
+  background-color: #fff4ce;
+  color: #9d5d00;
+  border-left: 4px solid #9d5d00;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-message {
+  font-size: 0.875rem;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+```
+
+4. Create styles for the toast container (src/styles/toast-container.css):
+```css
+.toast-container {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+```
+
+5. Update the AuthContext to use toast notifications (src/auth/AuthContext.tsx):
+```typescript
+import { useToast } from '../components/ToastContainer';
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ... existing code
+  
+  const { showToast } = useToast();
+  
+  const login = async () => {
+    try {
+      await instance.loginPopup(loginRequest);
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
+      
+      // Show appropriate error message based on error type
+      if (error.message.includes('user_cancelled')) {
+        showToast('Login was cancelled.', 'info');
+      } else if (error.message.includes('interaction_in_progress')) {
+        showToast('Another login attempt is in progress.', 'warning');
+      } else {
+        showToast(`Login failed: ${error.message}`, 'error');
+      }
+    }
+  };
+  
+  const logout = async () => {
+    try {
+      await instance.logoutPopup();
+      showToast('You have been successfully logged out.', 'success');
+    } catch (err) {
+      const error = err as Error;
+      setError(error);
+      showToast(`Logout failed: ${error.message}`, 'error');
+    }
+  };
+  
+  // ... rest of the component
+};
+```
+
+6. Create an error boundary component (src/components/ErrorBoundary.tsx):
+```typescript
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('Error caught by boundary:', error, errorInfo);
+    // You could also log to an error reporting service here
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      
+      return (
+        <div className="error-boundary">
+          <h2>Something went wrong</h2>
+          <p>We apologize for the inconvenience. Please try refreshing the page.</p>
+          <details>
+            <summary>Error details</summary>
+            <pre>{this.state.error?.toString()}</pre>
+          </details>
+          <button onClick={() => window.location.reload()}>Refresh Page</button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+```
+
+7. Add the ErrorBoundary and ToastProvider to the App component:
+```typescript
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/ToastContainer';
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        {/* Rest of your application */}
+      </ToastProvider>
+    </ErrorBoundary>
+  );
+}
+```
 
 # Test Strategy:
-1. Test protected routes with authenticated and unauthenticated users
-2. Verify redirect to login page works correctly
-3. Test role-based route protection
-4. Verify redirect back to original destination after login
-5. Test edge cases like direct URL access to protected routes
+1. Create unit tests for the Toast and ToastContainer components
+2. Test different toast types (success, error, info, warning)
+3. Verify that toasts automatically disappear after the specified duration
+4. Test the ErrorBoundary component by intentionally causing errors
+5. Verify that authentication errors are properly caught and displayed
+6. Test error handling in the API service
+7. Verify that appropriate error messages are shown for different authentication failure scenarios
+8. Test accessibility of error messages and notifications
+
+# Subtasks:
+## 1. Implement Toast Component [done]
+### Dependencies: None
+### Description: Create a reusable Toast notification component with support for different types (success, error, warning, info)
+### Details:
+Create a Toast.js file in the components folder with styling support for different notification types. Include icons, message display, and auto-dismiss functionality using useState and useEffect hooks. Support customizable duration and animation effects.
+
+## 2. Build ToastContainer and Context [done]
+### Dependencies: 8.1
+### Description: Develop a container component and context to manage multiple toast notifications
+### Details:
+Create a ToastContext using React Context API to manage the state of all active notifications. Implement methods for adding, removing, and updating toasts. Build a ToastContainer component that renders all active toast notifications with proper positioning and stacking.
+
+## 3. Implement NetworkDetector Service [done]
+### Dependencies: None
+### Description: Create a service to detect and handle network connectivity changes
+### Details:
+Develop a NetworkDetector that uses the browser's online/offline events to monitor connectivity. Implement debouncing to prevent rapid state changes. Create hooks or context to expose network status to components that need this information.
+
+## 4. Enhance AuthContext for Token Refresh [done]
+### Dependencies: 8.2
+### Description: Update authentication context to handle token expiration and refresh
+### Details:
+Modify the existing AuthContext to include token refresh logic. Implement interceptors to catch 401 errors and attempt token refresh before retrying the original request. Integrate with ToastContext to show appropriate notifications for authentication issues.
+
+## 5. Update API Service for Error Handling [done]
+### Dependencies: 8.3, 8.4
+### Description: Enhance API service layer to handle various error types and network issues
+### Details:
+Implement comprehensive error handling in the API service layer. Create error categorization (network, authentication, permission, validation, server). Add retry logic for transient errors and integrate with NetworkDetector to handle offline scenarios.
+
+## 6. Integrate Providers in App Component [done]
+### Dependencies: 8.2, 8.3, 8.4, 8.5
+### Description: Connect all context providers in the main App component
+### Details:
+Update the App component to properly nest all context providers (Toast, Auth, Network) in the correct order. Ensure proper dependency flow and test the integration of all providers together.
+
+## 7. Style Toast Notifications [done]
+### Dependencies: 8.1, 8.2
+### Description: Create comprehensive styles for toast notifications with animations
+### Details:
+Develop CSS/SCSS styles for toast notifications with proper animations for entry and exit. Support different positions (top-right, bottom-left, etc.). Ensure responsive design and accessibility compliance including proper contrast and keyboard navigation.
+

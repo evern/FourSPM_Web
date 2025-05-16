@@ -11,6 +11,8 @@ export { default as DisciplinesPage } from './disciplines/disciplines';
 export { default as DocumentTypesPage } from './document-types/document-types';
 export { default as DeliverableGatesPage } from './deliverable-gates/deliverable-gates';
 export { default as VariationsPage } from './variations/variations';
+export { default as RoleManagementPage } from './role-management';
+export { default as PermissionManagementPage } from './permission-management/permission-management';
 
 // Profile & detail pages
 export { default as ProjectProfilePage } from './project/project-profile';

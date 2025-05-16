@@ -1,105 +1,207 @@
 # Task ID: 10
-# Title: Update User Database Model
-# Status: pending
-# Dependencies: 5
+# Title: Silent Authentication Implementation
+# Status: done
+# Dependencies: 2, 5
 # Priority: medium
-# Description: Update the database model to integrate with Azure AD user identities and store necessary user information.
+# Description: Implement silent authentication for returning users to provide a seamless experience without requiring explicit login.
 # Details:
-1. Update the User entity model to include Azure AD identifiers:
-```csharp
-public class User
-{
-    public int Id { get; set; }
+1. Create a silent authentication handler (src/auth/SilentAuth.tsx):
+```typescript
+import React, { useEffect, useState } from 'react';
+import { useMsal } from '@azure/msal-react';
+import { loginRequest } from './msalConfig';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+interface SilentAuthProps {
+  children: React.ReactNode;
+}
+
+const SilentAuth: React.FC<SilentAuthProps> = ({ children }) => {
+  const { instance, accounts } = useMsal();
+  const [isAttemptingLogin, setIsAttemptingLogin] = useState(true);
+  
+  useEffect(() => {
+    const attemptSilentLogin = async () => {
+      // Only attempt silent login if there's an account
+      if (accounts.length > 0) {
+        try {
+          await instance.acquireTokenSilent({
+            ...loginRequest,
+            account: accounts[0]
+          });
+        } catch (error) {
+          console.log('Silent token acquisition failed', error);
+          // We don't need to do anything here, as the user will be prompted to login
+          // when they try to access a protected resource
+        }
+      }
+      
+      setIsAttemptingLogin(false);
+    };
     
-    // Azure AD specific fields
-    public string AzureAdObjectId { get; set; } // The unique identifier from Azure AD
-    public string Email { get; set; }
-    public string DisplayName { get; set; }
-    
-    // Existing application-specific fields
-    public DateTime CreatedAt { get; set; }
-    public DateTime? LastLoginAt { get; set; }
-    public bool IsActive { get; set; }
-    
-    // Navigation properties
-    public virtual ICollection<UserRole> UserRoles { get; set; }
-    // Other navigation properties as needed
+    attemptSilentLogin();
+  }, [instance, accounts]);
+  
+  if (isAttemptingLogin) {
+    return <LoadingSpinner message="Checking authentication status..." />;
+  }
+  
+  return <>{children}</>;
+};
+
+export default SilentAuth;
+```
+
+2. Update the App component to use SilentAuth (src/App.tsx):
+```typescript
+import SilentAuth from './auth/SilentAuth';
+
+function App() {
+  return (
+    <SilentAuth>
+      {/* Rest of your application */}
+    </SilentAuth>
+  );
 }
 ```
 
-2. Create or update database migration:
-```csharp
-public partial class AddAzureAdFields : Migration
-{
-    protected override void Up(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.AddColumn<string>(
-            name: "AzureAdObjectId",
-            table: "Users",
-            type: "nvarchar(128)",
-            maxLength: 128,
-            nullable: true);
+3. Create a hook to check if a user is returning (src/hooks/useReturningUser.ts):
+```typescript
+import { useState, useEffect } from 'react';
 
-        migrationBuilder.AddColumn<string>(
-            name: "Email",
-            table: "Users",
-            type: "nvarchar(256)",
-            maxLength: 256,
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "DisplayName",
-            table: "Users",
-            type: "nvarchar(256)",
-            maxLength: 256,
-            nullable: true);
-
-        // Create a unique index on AzureAdObjectId
-        migrationBuilder.CreateIndex(
-            name: "IX_Users_AzureAdObjectId",
-            table: "Users",
-            column: "AzureAdObjectId",
-            unique: true,
-            filter: "[AzureAdObjectId] IS NOT NULL");
+export function useReturningUser() {
+  const [isReturningUser, setIsReturningUser] = useState(false);
+  
+  useEffect(() => {
+    // Check if user has visited before
+    const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+    
+    if (hasVisitedBefore) {
+      setIsReturningUser(true);
+    } else {
+      // Set flag for future visits
+      localStorage.setItem('hasVisitedBefore', 'true');
     }
+  }, []);
+  
+  return isReturningUser;
+}
+```
 
-    protected override void Down(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.DropIndex(
-            name: "IX_Users_AzureAdObjectId",
-            table: "Users");
+4. Enhance the Login page to show different messages for returning users (src/pages/Login.tsx):
+```typescript
+import { useReturningUser } from '../hooks/useReturningUser';
 
-        migrationBuilder.DropColumn(
-            name: "AzureAdObjectId",
-            table: "Users");
+const Login: React.FC = () => {
+  // ... existing code
+  
+  const isReturningUser = useReturningUser();
+  
+  // ... rest of the component
+  
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <img src="/logo.png" alt="FourSPM Logo" className="login-logo" />
+        
+        {isReturningUser ? (
+          <>
+            <h1>Welcome Back!</h1>
+            <p>We're attempting to sign you in automatically...</p>
+          </>
+        ) : (
+          <>
+            <h1>Welcome to FourSPM</h1>
+            <p>Please sign in with your Microsoft account to continue.</p>
+          </>
+        )}
+        
+        {/* Rest of the login form */}
+      </div>
+    </div>
+  );
+};
+```
 
-        migrationBuilder.DropColumn(
-            name: "Email",
-            table: "Users");
+5. Create a session persistence utility (src/utils/sessionPersistence.ts):
+```typescript
+// Constants for storage keys
+const STORAGE_PREFIX = 'fourspm_';
+const AUTH_STATE_KEY = `${STORAGE_PREFIX}auth_state`;
 
-        migrationBuilder.DropColumn(
-            name: "DisplayName",
-            table: "Users");
+// Save authentication state to localStorage
+export const saveAuthState = (account: any) => {
+  if (!account) return;
+  
+  const authState = {
+    username: account.username,
+    name: account.name,
+    lastLogin: new Date().toISOString()
+  };
+  
+  try {
+    localStorage.setItem(AUTH_STATE_KEY, JSON.stringify(authState));
+  } catch (error) {
+    console.error('Failed to save auth state to localStorage', error);
+  }
+};
+
+// Get saved authentication state
+export const getSavedAuthState = () => {
+  try {
+    const savedState = localStorage.getItem(AUTH_STATE_KEY);
+    return savedState ? JSON.parse(savedState) : null;
+  } catch (error) {
+    console.error('Failed to retrieve auth state from localStorage', error);
+    return null;
+  }
+};
+
+// Clear saved authentication state
+export const clearAuthState = () => {
+  try {
+    localStorage.removeItem(AUTH_STATE_KEY);
+  } catch (error) {
+    console.error('Failed to clear auth state from localStorage', error);
+  }
+};
+```
+
+6. Update the AuthContext to use session persistence (src/auth/AuthContext.tsx):
+```typescript
+import { saveAuthState, clearAuthState, getSavedAuthState } from '../utils/sessionPersistence';
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ... existing code
+  
+  // Save account info when it changes
+  useEffect(() => {
+    if (account) {
+      saveAuthState(account);
     }
-}
+  }, [account]);
+  
+  // Clear saved state on logout
+  const logout = async () => {
+    try {
+      clearAuthState();
+      await instance.logoutPopup();
+      // ... rest of logout logic
+    } catch (err) {
+      // ... error handling
+    }
+  };
+  
+  // ... rest of the component
+};
 ```
-
-3. Update the user repository to find users by Azure AD Object ID:
-```csharp
-public async Task<User> GetUserByAzureAdObjectIdAsync(string azureAdObjectId)
-{
-    return await _context.Users
-        .Include(u => u.UserRoles)
-        .ThenInclude(ur => ur.Role)
-        .FirstOrDefaultAsync(u => u.AzureAdObjectId == azureAdObjectId);
-}
-```
-
-4. Implement logic to create or update user records based on Azure AD information
 
 # Test Strategy:
-1. Test database migrations
-2. Verify user lookup by Azure AD Object ID
-3. Test user creation with Azure AD information
-4. Verify existing user data is preserved during migration
-5. Test database queries with the updated model
+1. Test silent authentication for returning users
+2. Verify that the loading spinner is shown during silent authentication
+3. Test the behavior when silent authentication succeeds
+4. Test the behavior when silent authentication fails
+5. Verify that different messages are shown for new vs. returning users
+6. Test session persistence across browser refreshes
+7. Verify that authentication state is properly saved and retrieved from localStorage
+8. Test the complete flow from initial login to returning user experience

@@ -1,0 +1,122 @@
+@import '../../theme/variables.scss';
+
+.permission-management-page {
+  // Loading container styles
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 15px;
+    
+    .loading-text {
+      font-size: 16px;
+      color: $base-text-color;
+      margin-top: 5px;
+    }
+  }
+
+  padding: $content-padding;
+
+  .content-block {
+    background-color: white;
+    padding: 20px;
+    box-shadow: $content-shadow;
+    border-radius: $content-border-radius;
+  }
+
+  .content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    
+    .content-header-left {
+      flex: 1;
+      
+      .content-header-title {
+        margin: 0 0 10px 0;
+        font-size: 1.8rem;
+        color: $base-accent;
+      }
+
+      .role-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        
+        .role-name {
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: $base-text-color;
+          margin-right: 10px;
+        }
+        
+        .system-role-badge {
+          background-color: $warning-bg;
+          color: $warning-color;
+          font-size: 0.8rem;
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-weight: 500;
+        }
+      }
+      
+      .role-description {
+        margin: 0;
+        font-size: 0.9rem;
+        color: $base-text-color;
+        opacity: 0.8;
+      }
+    }
+    
+    .content-header-right {
+      display: flex;
+      gap: 10px;
+      
+      .save-button {
+        margin-right: 10px;
+      }
+    }
+  }
+
+  .system-role-warning {
+    background-color: $warning-bg;
+    color: $warning-color;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+  }
+
+  .permission-grid-container {
+    height: calc(100vh - 250px);
+  }
+  
+  .dx-datagrid-checkbox-size .dx-checkbox-icon {
+    height: 18px;
+    width: 18px;
+  }
+
+  .dx-datagrid-checkbox-size .dx-checkbox-icon::before {
+    height: 18px;
+    width: 18px;
+  }
+  
+  // Responsive adjustments
+  @media screen and (max-width: 768px) {
+    .content-header {
+      flex-direction: column;
+      
+      .content-header-right {
+        margin-top: 15px;
+        width: 100%;
+        
+        .dx-button {
+          flex: 1;
+        }
+      }
+    }
+  }
+}

@@ -1,123 +1,75 @@
 {
   "meta": {
-    "generatedAt": "2025-05-15T08:45:03.037Z",
-    "tasksAnalyzed": 14,
-    "thresholdScore": 7,
+    "generatedAt": "2025-05-16T12:36:39.451Z",
+    "tasksAnalyzed": 8,
+    "thresholdScore": 5,
     "projectName": "Taskmaster",
     "usedResearch": true
   },
   "complexityAnalysis": [
     {
+      "taskId": 1,
+      "taskTitle": "MSAL Library Integration and Configuration",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the MSAL integration into subtasks such as: installing packages, creating the configuration file, updating environment variables, setting up the provider in the app root, and verifying configuration in different environments.",
+      "reasoning": "This task involves standard library integration and configuration steps, which are well-documented and commonly performed in React applications using MSAL. While it requires attention to detail for environment-specific settings and correct provider setup, it does not involve complex logic or custom flows. The work is modular and can be split into clear subtasks for installation, configuration, environment setup, provider integration, and verification.[1][3][5]"
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Authentication Context Refactoring",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Expand this task into subtasks such as: defining the new User type, implementing the AuthContext with MSAL hooks, handling authentication state and user info, implementing role-based access, updating the App component to use the new provider, and writing unit tests for context behaviors.",
+      "reasoning": "Refactoring authentication context to use MSAL and support role-based access introduces moderate complexity. It requires careful state management, integration with MSAL hooks, error handling, and ensuring compatibility with the rest of the app. Testing and migration from the old provider add to the complexity, making it more involved than a simple integration."
+    },
+    {
       "taskId": 3,
-      "taskTitle": "Install Required Backend Packages",
-      "complexityScore": 3,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down the 'Install Required Backend Packages' task into subtasks covering package installation, configuration file setup, environment-specific configurations, and verification steps.",
-      "reasoning": "This task involves straightforward package installation and configuration. The steps are well-defined with specific packages and configuration snippets provided. The complexity is low as it follows standard .NET package management practices with minimal dependencies."
+      "taskTitle": "API Integration with MSAL Tokens",
+      "complexityScore": 8,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Decompose this task into subtasks such as: implementing token acquisition logic, updating API service methods for token injection, handling token refresh and errors, creating the API hook, integrating with AuthContext, testing all HTTP methods, and verifying error/refresh flows.",
+      "reasoning": "This task requires secure handling of access tokens, robust error and refresh logic, and seamless integration with both MSAL and the app's API layer. It must handle edge cases like token expiry and network errors, and ensure all API calls are authenticated. The need for comprehensive testing and error handling increases its complexity."
     },
     {
       "taskId": 4,
-      "taskTitle": "Create Authentication Context Provider",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Divide the 'Create Authentication Context Provider' task into subtasks covering context structure setup, state management implementation, authentication methods, token management, and custom hook creation.",
-      "reasoning": "This task involves complex React context implementation with MSAL integration. It requires managing authentication state, token acquisition, error handling, and creating a comprehensive API. The code is substantial and handles multiple authentication scenarios."
+      "taskTitle": "Route Protection and Authorization",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Expand into subtasks such as: implementing the RequireAuth component, creating the Unauthorized page, updating route definitions for protection, building the navigation with permission checks, testing role-based access, and verifying redirects and loading states.",
+      "reasoning": "Implementing route protection and role-based authorization involves conditional rendering, navigation logic, and integration with authentication state. Ensuring correct access control, user feedback, and seamless user experience across different roles and states adds to the complexity."
     },
     {
       "taskId": 5,
-      "taskTitle": "Configure Backend Authentication Middleware",
-      "complexityScore": 7,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down the 'Configure Backend Authentication Middleware' task into subtasks covering middleware configuration, policy definition, custom authorization handlers, controller integration, permission service implementation, and testing.",
-      "reasoning": "This task involves configuring ASP.NET Core authentication middleware with Azure AD integration. It requires implementing permission-based policies, custom authorization handlers, and integrating with existing controllers. The task has dependencies and requires understanding of both Azure AD and ASP.NET Core security concepts."
+      "taskTitle": "Login Experience Implementation",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down into subtasks such as: creating the login component with MSAL button, implementing silent authentication, updating the App to include silent auth, styling the login page, and testing login flows and error handling.",
+      "reasoning": "Replacing the login flow with MSAL and supporting silent authentication requires understanding MSAL's authentication flows, handling UI/UX for login states, and ensuring accessibility and responsiveness. While not highly complex, it involves several moving parts and integration points."
     },
     {
       "taskId": 6,
-      "taskTitle": "Implement API Service with Token Authentication",
-      "complexityScore": 5,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the 'Implement API Service with Token Authentication' task into subtasks covering token acquisition, request interceptor implementation, error handling, and integration with existing API calls.",
-      "reasoning": "This task involves creating a TypeScript API service that handles authentication tokens. It requires implementing token acquisition, HTTP methods with proper headers, and error handling. The complexity is moderate as it builds on the authentication context but requires careful error handling."
+      "taskTitle": "Role Management Interface",
+      "complexityScore": 7,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Expand into subtasks such as: defining the Role type, implementing the role service, building the management UI with grid and forms, handling add/edit/delete logic, integrating with API, adding navigation to permission management, and writing UI tests.",
+      "reasoning": "Building a full-featured admin interface for roles involves both frontend UI complexity (data grid, forms, modals) and backend integration (CRUD operations, error handling). Ensuring a smooth UX and robust error handling increases the complexity."
     },
     {
       "taskId": 7,
-      "taskTitle": "Create Login and Logout Components",
-      "complexityScore": 4,
-      "recommendedSubtasks": 3,
-      "expansionPrompt": "Break down the 'Create Login and Logout Components' task into subtasks covering login button implementation, user profile display, and integration with the application header.",
-      "reasoning": "This task involves creating React components for authentication UI. The components are relatively simple, leveraging the authentication context for functionality. The complexity is moderate-low as it primarily involves UI implementation with minimal business logic."
+      "taskTitle": "Permission Management Interface",
+      "complexityScore": 8,
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Decompose into subtasks such as: defining permission types, implementing the permission service, building the permission management UI (tree view), handling selection and updates, integrating with role management, managing loading/saving states, error handling, and writing tests.",
+      "reasoning": "This task requires complex UI (tree view with categories and selection), state management for permissions, integration with roles, and robust API interactions. Handling updates, tracking changes, and ensuring a responsive and intuitive interface make this one of the more complex tasks."
     },
     {
       "taskId": 8,
-      "taskTitle": "Implement Protected Routes",
-      "complexityScore": 5,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the 'Implement Protected Routes' task into subtasks covering route guard implementation, redirect logic, role-based access control, and integration with the router configuration.",
-      "reasoning": "This task involves creating a higher-order component for route protection. It requires implementing authentication checks, role-based access control, and redirect logic. The complexity is moderate as it integrates with React Router and the authentication context."
-    },
-    {
-      "taskId": 9,
-      "taskTitle": "Implement Token Refresh Logic",
-      "complexityScore": 7,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down the 'Implement Token Refresh Logic' task into subtasks covering token expiration calculation, silent refresh implementation, refresh timer setup, and error handling for refresh failures.",
-      "reasoning": "This task involves implementing complex token refresh logic. It requires JWT decoding, timer management, and handling various error scenarios. The complexity is high due to the need for careful timing and error handling to maintain session continuity."
-    },
-    {
-      "taskId": 10,
-      "taskTitle": "Update User Database Model",
-      "complexityScore": 5,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the 'Update User Database Model' task into subtasks covering entity model updates, migration creation, repository method implementation, and data migration testing.",
-      "reasoning": "This task involves updating the database model to support Azure AD integration. It requires modifying the User entity, creating migrations, and implementing repository methods. The complexity is moderate as it involves database schema changes and ensuring backward compatibility."
-    },
-    {
-      "taskId": 11,
-      "taskTitle": "Implement User Service Integration",
-      "complexityScore": 6,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the 'Implement User Service Integration' task into subtasks covering claim extraction, user lookup/creation, role assignment, user information updates, and controller integration.",
-      "reasoning": "This task involves creating a service to integrate Azure AD users with the application's user model. It requires extracting claims, managing user creation/updates, handling roles, and integrating with controllers. The complexity is moderate-high due to the need to handle various user scenarios and claims processing."
-    },
-    {
-      "taskId": 12,
-      "taskTitle": "Implement Error Handling for Authentication",
-      "complexityScore": 6,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the 'Implement Error Handling for Authentication' task into subtasks covering error component creation, API error handling, login page error display, and server-side error logging.",
-      "reasoning": "This task involves implementing comprehensive error handling for authentication. It requires creating UI components, handling API errors, and implementing server-side logging. The complexity is moderate-high as it needs to handle various error scenarios across the frontend and backend."
-    },
-    {
-      "taskId": 13,
-      "taskTitle": "Implement Session Persistence",
-      "complexityScore": 7,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the 'Implement Session Persistence' task into subtasks covering token storage configuration, session restoration logic, timeout handling, multi-tab coordination, and user activity monitoring.",
-      "reasoning": "This task involves implementing session persistence across page refreshes and browser sessions. It requires configuring token storage, handling session restoration, managing timeouts, and coordinating across tabs. The complexity is high due to the need to handle various browser behaviors and edge cases."
-    },
-    {
-      "taskId": 14,
-      "taskTitle": "Implement Role-Based Access Control",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Divide the 'Implement Role-Based Access Control' task into subtasks covering Azure AD role configuration, backend role extraction, authorization policy updates, frontend role handling, and role-based UI components.",
-      "reasoning": "This task involves implementing role-based access control using Azure AD roles. It requires configuring Azure AD, extracting roles from tokens, updating authorization policies, and implementing role-based UI rendering. The complexity is high due to the integration between Azure AD and the application's permission system."
-    },
-    {
-      "taskId": 15,
-      "taskTitle": "Implement Comprehensive Testing",
+      "taskTitle": "Error Handling and Edge Cases",
       "complexityScore": 9,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down the 'Implement Comprehensive Testing' task into subtasks covering unit testing, integration testing, end-to-end testing, security testing, performance testing, and test documentation.",
-      "reasoning": "This task involves creating a comprehensive testing plan for the authentication implementation. It requires unit tests, integration tests, end-to-end tests, and performance tests across multiple components. The complexity is very high due to the breadth of testing required and the need to mock authentication services."
-    },
-    {
-      "taskId": 16,
-      "taskTitle": "Implement Role Management UI",
-      "complexityScore": 7,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Divide the 'Implement Role Management UI' task into subtasks covering component structure, state management, UI component implementation, feature development, and integration with the navigation system.",
-      "reasoning": "This task involves creating a comprehensive role management UI. It requires implementing complex UI components, state management, and integration with backend services. The complexity is high due to the need for CRUD operations, permission assignment, and responsive design."
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Expand into subtasks such as: implementing the Toast component, creating the ToastContainer and context, building the NetworkDetector, enhancing AuthContext for token refresh and error handling, updating API service for network errors, integrating providers in App, styling notifications, and writing comprehensive tests.",
+      "reasoning": "Comprehensive error handling across authentication, network, and permissions requires cross-cutting changes, robust notification systems, and integration with multiple app layers. Ensuring graceful degradation, user feedback, and resilience to edge cases is challenging and critical for production readiness."
     }
   ]
 }

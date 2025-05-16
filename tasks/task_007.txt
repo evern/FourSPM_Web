@@ -1,65 +1,510 @@
 # Task ID: 7
-# Title: Create Login and Logout Components
-# Status: pending
-# Dependencies: 4
+# Title: Permission Management Interface
+# Status: done
+# Dependencies: 6
 # Priority: medium
-# Description: Implement React components for login and logout functionality using MSAL.
+# Description: Create an interface for assigning permissions to roles with a categorized list of available permissions and functionality to update and save permissions.
 # Details:
-1. Create a login button component (src/components/LoginButton.tsx):
+1. Create a Permission Management page (src/pages/PermissionManagement.tsx):
 ```typescript
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from 'devextreme-react/button';
+import { TreeView } from 'devextreme-react/tree-view';
+import { useApi } from '../hooks/useApi';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-export const LoginButton: React.FC = () => {
-  const { isAuthenticated, login, logout } = useAuth();
+interface Permission {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+}
 
-  const handleAuthClick = async () => {
-    if (isAuthenticated) {
-      await logout();
-    } else {
-      await login();
+interface Role {
+  id: number;
+  name: string;
+  description: string;
+}
+
+interface RolePermission {
+  roleId: number;
+  permissionId: number;
+}
+
+interface PermissionNode {
+  id: string;
+  text: string;
+  expanded?: boolean;
+  selected?: boolean;
+  items?: PermissionNode[];
+  permissionId?: number;
+}
+
+const PermissionManagement: React.FC = () => {
+  const { roleId } = useParams<{ roleId: string }>();
+  const navigate = useNavigate();
+  const [role, setRole] = useState<Role | null>(null);
+  const [permissionTree, setPermissionTree] = useState<PermissionNode[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  const { get: getRole, loading: loadingRole, error: roleError } = useApi<Role>();
+  const { get: getPermissions, loading: loadingPermissions, error: permissionsError } = useApi<Permission[]>();
+  const { get: getRolePermissions, loading: loadingRolePermissions, error: rolePermissionsError } = useApi<RolePermission[]>();
+  const { post: saveRolePermissions } = useApi<void>();
+  
+  // Load role data
+  useEffect(() => {
+    if (roleId) {
+      getRole(`/api/roles/${roleId}`);
+    }
+  }, [getRole, roleId]);
+  
+  // Set role when data is loaded
+  useEffect(() => {
+    if (getRole.data) {
+      setRole(getRole.data);
+    }
+  }, [getRole.data]);
+  
+  // Load permissions and role permissions
+  useEffect(() => {
+    if (roleId) {
+      getPermissions('/api/permissions');
+      getRolePermissions(`/api/roles/${roleId}/permissions`);
+    }
+  }, [getPermissions, getRolePermissions, roleId]);
+  
+  // Build permission tree and set selected permissions
+  useEffect(() => {
+    if (getPermissions.data && getRolePermissions.data) {
+      const permissions = getPermissions.data;
+      const rolePermissions = getRolePermissions.data;
+      
+      // Get selected permission IDs
+      const selectedIds = rolePermissions.map(rp => rp.permissionId);
+      setSelectedPermissions(selectedIds);
+      
+      // Group permissions by category
+      const categories = [...new Set(permissions.map(p => p.category))];
+      
+      // Build tree structure
+      const tree = categories.map(category => {
+        const categoryPermissions = permissions
+          .filter(p => p.category === category)
+          .map(p => ({
+            id: `permission-${p.id}`,
+            text: p.name,
+            selected: selectedIds.includes(p.id),
+            permissionId: p.id
+          }));
+        
+        return {
+          id: `category-${category}`,
+          text: category,
+          expanded: true,
+          items: categoryPermissions
+        };
+      });
+      
+      setPermissionTree(tree);
+    }
+  }, [getPermissions.data, getRolePermissions.data]);
+  
+  const handleSelectionChanged = (e: any) => {
+    const selectedItems = e.component.getSelectedNodes();
+    const permissionIds = selectedItems
+      .filter((node: any) => node.itemData.permissionId)
+      .map((node: any) => node.itemData.permissionId);
+    
+    setSelectedPermissions(permissionIds);
+  };
+  
+  const handleSave = async () => {
+    if (!roleId) return;
+    
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    
+    try {
+      await saveRolePermissions(`/api/roles/${roleId}/permissions`, { permissionIds: selectedPermissions });
+      setSaveSuccess(true);
+      
+      // Reset success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setSaveError('Failed to save permissions. Please try again.');
+      console.error('Error saving permissions:', error);
+    } finally {
+      setSaving(false);
     }
   };
-
-  return (
-    <button 
-      onClick={handleAuthClick}
-      className="auth-button"
-    >
-      {isAuthenticated ? 'Sign Out' : 'Sign in with Microsoft'}
-    </button>
-  );
-};
-```
-
-2. Create a user profile component (src/components/UserProfile.tsx):
-```typescript
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
-
-export const UserProfile: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-
-  if (!isAuthenticated || !user) {
-    return null;
+  
+  const handleCancel = () => {
+    navigate('/roles');
+  };
+  
+  const isLoading = loadingRole || loadingPermissions || loadingRolePermissions;
+  const error = roleError || permissionsError || rolePermissionsError;
+  
+  if (isLoading && (!role || permissionTree.length === 0)) {
+    return <LoadingSpinner message="Loading permissions..." />;
   }
-
+  
+  if (error) {
+    return (
+      <div className="error-container">
+        <h2>Error loading permissions</h2>
+        <p>{error.message}</p>
+        <Button text="Back to Roles" onClick={handleCancel} />
+      </div>
+    );
+  }
+  
   return (
-    <div className="user-profile">
-      <span className="user-name">{user.name}</span>
-      <span className="user-email">{user.username}</span>
+    <div className="permission-management-container">
+      <h1>Manage Permissions for {role?.name}</h1>
+      <p className="role-description">{role?.description}</p>
+      
+      {saveSuccess && (
+        <div className="success-message">Permissions saved successfully!</div>
+      )}
+      
+      {saveError && (
+        <div className="error-message">{saveError}</div>
+      )}
+      
+      <div className="permission-tree-container">
+        <TreeView
+          items={permissionTree}
+          width="100%"
+          height={500}
+          showCheckBoxesMode="normal"
+          onSelectionChanged={handleSelectionChanged}
+          selectNodesRecursive={false}
+          selectByClick={true}
+        />
+      </div>
+      
+      <div className="action-buttons">
+        <Button
+          text="Save"
+          type="success"
+          onClick={handleSave}
+          disabled={saving}
+        />
+        <Button
+          text="Cancel"
+          onClick={handleCancel}
+          disabled={saving}
+        />
+      </div>
     </div>
   );
 };
+
+export default PermissionManagement;
 ```
 
-3. Update the application header to include these components
-4. Style the components to match the application design
-5. Add loading indicators for authentication processes
+2. Create styles for the Permission Management page (src/styles/permission-management.css):
+```css
+.permission-management-container {
+  padding: 1.5rem;
+}
+
+.permission-management-container h1 {
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.role-description {
+  margin-bottom: 1.5rem;
+  color: #666;
+}
+
+.permission-tree-container {
+  margin: 1.5rem 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: #f9f9f9;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.success-message {
+  background-color: #e6f7e6;
+  color: #107c10;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.error-message {
+  background-color: #fde7e9;
+  color: #d83b01;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+```
+
+3. Create a service for permission management (src/services/permissionService.ts):
+```typescript
+import apiService from './apiService';
+
+export interface Permission {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+}
+
+export interface RolePermission {
+  roleId: number;
+  permissionId: number;
+}
+
+class PermissionService {
+  async getPermissions(): Promise<Permission[]> {
+    return apiService.get<Permission[]>('/api/permissions');
+  }
+  
+  async getRolePermissions(roleId: number): Promise<RolePermission[]> {
+    return apiService.get<RolePermission[]>(`/api/roles/${roleId}/permissions`);
+  }
+  
+  async saveRolePermissions(roleId: number, permissionIds: number[]): Promise<void> {
+    return apiService.post<void>(`/api/roles/${roleId}/permissions`, { permissionIds });
+  }
+}
+
+export const permissionService = new PermissionService();
+```
+
+4. Add a permission management button to the role grid (src/components/RoleGrid.tsx):
+```typescript
+// Add this to the imports
+import { Button } from 'devextreme-react/button';
+import { useNavigate } from 'react-router-dom';
+
+// Add this to the RoleGrid component
+const navigate = useNavigate();
+
+const handleManagePermissions = (roleId: number) => {
+  navigate(`/roles/${roleId}/permissions`);
+};
+
+// Add this to the grid columns configuration
+{
+  type: 'buttons',
+  width: 110,
+  buttons: [
+    {
+      hint: 'Manage Permissions',
+      icon: 'key',
+      onClick: (e: any) => handleManagePermissions(e.row.data.id)
+    },
+    // ... other existing buttons
+  ]
+}
+```
+
+5. Update the routes configuration to include the permission management page (src/routes.tsx):
+```typescript
+import PermissionManagement from './pages/PermissionManagement';
+
+// Add this to your routes array
+{
+  path: '/roles/:roleId/permissions',
+  element: <PermissionManagement />
+}
+```
+
+6. Create a backend endpoint for permissions in RolesController.cs:
+```csharp
+[HttpGet("api/permissions")]
+public IActionResult GetAllPermissions()
+{
+    // Return the static list of permissions if no custom permissions exist
+    var permissions = _context.Permissions.ToList();
+    
+    if (!permissions.Any())
+    {
+        // Use the static permission list defined in the controller
+        permissions = new List<Permission>
+        {
+            new Permission { Id = 1, Name = "ViewUsers", Description = "View user accounts", Category = "User Management" },
+            new Permission { Id = 2, Name = "CreateUsers", Description = "Create new user accounts", Category = "User Management" },
+            new Permission { Id = 3, Name = "EditUsers", Description = "Edit existing user accounts", Category = "User Management" },
+            new Permission { Id = 4, Name = "DeleteUsers", Description = "Delete user accounts", Category = "User Management" },
+            new Permission { Id = 5, Name = "ViewRoles", Description = "View roles", Category = "Role Management" },
+            new Permission { Id = 6, Name = "CreateRoles", Description = "Create new roles", Category = "Role Management" },
+            new Permission { Id = 7, Name = "EditRoles", Description = "Edit existing roles", Category = "Role Management" },
+            new Permission { Id = 8, Name = "DeleteRoles", Description = "Delete roles", Category = "Role Management" },
+            new Permission { Id = 9, Name = "AssignRoles", Description = "Assign roles to users", Category = "Role Management" },
+            // Add more permissions as needed
+        };
+    }
+    
+    return Ok(permissions);
+}
+
+[HttpGet("api/roles/{roleId}/permissions")]
+public IActionResult GetRolePermissions(int roleId)
+{
+    var role = _context.Roles.Find(roleId);
+    if (role == null)
+    {
+        return NotFound();
+    }
+    
+    var rolePermissions = _context.RolePermissions
+        .Where(rp => rp.RoleId == roleId)
+        .ToList();
+    
+    return Ok(rolePermissions);
+}
+
+[HttpPost("api/roles/{roleId}/permissions")]
+public IActionResult SaveRolePermissions(int roleId, [FromBody] SavePermissionsRequest request)
+{
+    var role = _context.Roles.Find(roleId);
+    if (role == null)
+    {
+        return NotFound();
+    }
+    
+    // Remove existing permissions
+    var existingPermissions = _context.RolePermissions
+        .Where(rp => rp.RoleId == roleId)
+        .ToList();
+    
+    _context.RolePermissions.RemoveRange(existingPermissions);
+    
+    // Add new permissions
+    foreach (var permissionId in request.PermissionIds)
+    {
+        _context.RolePermissions.Add(new RolePermission
+        {
+            RoleId = roleId,
+            PermissionId = permissionId
+        });
+    }
+    
+    _context.SaveChanges();
+    
+    return Ok();
+}
+
+public class SavePermissionsRequest
+{
+    public List<int> PermissionIds { get; set; }
+}
+```
+
+7. Create the database models for permissions (if not already existing):
+```csharp
+public class Permission
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string Category { get; set; }
+}
+
+public class RolePermission
+{
+    public int Id { get; set; }
+    public int RoleId { get; set; }
+    public int PermissionId { get; set; }
+    
+    public Role Role { get; set; }
+    public Permission Permission { get; set; }
+}
+```
 
 # Test Strategy:
-1. Test login button in authenticated and unauthenticated states
-2. Verify login flow works correctly
-3. Verify logout flow works correctly
-4. Test user profile display with mock user data
-5. Verify components are responsive on different screen sizes
+1. Create unit tests for the PermissionManagement component using React Testing Library
+2. Mock API responses for permission data
+3. Test the tree view initialization and data loading
+4. Test permission selection and deselection
+5. Test saving permissions and verify API calls
+6. Verify error handling for API failures
+7. Test navigation back to the roles page
+8. Verify that success and error messages are displayed correctly
+9. Test the permission management button in the role grid
+10. Verify that clicking the permission button navigates to the correct URL
+11. Test the backend endpoints for retrieving and saving permissions
+12. Verify that the static permission list is used when no custom permissions exist
+13. Test adding and removing permissions for a role
+
+# Subtasks:
+## 1. Define Permission Types and Structure [done]
+### Dependencies: None
+### Description: Identify and categorize all permission types needed in the system, creating a hierarchical structure for the tree view.
+### Details:
+Determine the different permission categories, individual permissions within each category, and their relationships. Create a data model that supports inheritance and hierarchical representation. Define permission attributes such as read, write, execute levels for each resource.
+
+## 2. Design and Implement Permission Service [done]
+### Dependencies: 7.1
+### Description: Create a backend service to handle permission operations including fetching, updating, and validating permissions.
+### Details:
+Develop API endpoints for CRUD operations on permissions. Implement efficient algorithms for permission checks and validation. Create methods for batch operations to optimize performance. Include caching mechanisms to reduce database load for frequently accessed permissions.
+
+## 3. Develop Tree View Component for Permission UI [done]
+### Dependencies: 7.1
+### Description: Build a responsive tree view component that displays the hierarchical permission structure with selection capabilities.
+### Details:
+Implement an expandable/collapsible tree structure that visually represents permission categories and individual permissions. Add checkboxes for selection with support for partial selection states. Ensure the component handles large permission sets efficiently with virtualization if needed.
+
+## 4. Implement Permission Selection and Update Logic [done]
+### Dependencies: 7.3
+### Description: Create the logic to handle user interactions with the permission tree, including selection propagation and change tracking.
+### Details:
+Implement cascading selection logic where selecting a parent automatically selects children. Add logic to handle partial selection states. Create a change tracking mechanism to identify modified permissions. Implement undo/redo functionality for selection changes.
+
+## 5. Integrate with Role Management System [done]
+### Dependencies: 7.2, 7.4
+### Description: Connect the permission management system with the existing role-based access control framework.
+### Details:
+Create interfaces to associate roles with permission sets. Implement role-based permission inheritance. Add functionality to view and modify permissions by role. Ensure changes to roles properly update associated permissions and vice versa.
+
+## 6. Implement Loading and Saving States [done]
+### Dependencies: 7.4, 7.5
+### Description: Add state management for loading permissions and saving changes with appropriate user feedback.
+### Details:
+Implement loading indicators during permission fetching and updates. Create optimistic UI updates with rollback capability on failure. Add confirmation dialogs for significant permission changes. Implement periodic auto-saving of permission changes to prevent data loss.
+
+## 7. Develop Comprehensive Error Handling [done]
+### Dependencies: 7.2, 7.6
+### Description: Implement robust error handling throughout the permission management system.
+### Details:
+Create meaningful error messages for different failure scenarios. Implement retry mechanisms for transient errors. Add logging for debugging purposes. Create recovery paths for common error situations to prevent data loss or inconsistent states.
+
+## 8. Add Permission Management Button to Role Grid [done]
+### Dependencies: 7.5
+### Description: Add a button in the role grid that opens the permissions interface for a selected role.
+### Details:
+Implement a button in the role grid similar to the one in variation-columns.ts. Configure the button to navigate to the permission management page for the selected role. Add appropriate styling and tooltips for the button.
+
+## 9. Create Backend Endpoint for Permissions [done]
+### Dependencies: 7.2
+### Description: Implement an endpoint to retrieve all available permissions and handle role-specific permission operations.
+### Details:
+Create an API endpoint that returns all available permissions. Implement logic to use static permission list from RolesController.cs if no custom permissions exist. Create endpoints for retrieving and updating role-specific permissions.
+
+## 10. Implement ROLE_PERMISSION Table Integration [done]
+### Dependencies: 7.5, 7.9
+### Description: Create functionality to add and remove entries in the ROLE_PERMISSION table when permissions are assigned or unassigned.
+### Details:
+Implement logic to add entries to the ROLE_PERMISSION table when a permission is checked. Create functionality to remove entries when permissions are unchecked. Ensure proper database transaction handling to maintain data integrity.
+

@@ -5,6 +5,12 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { MsalProvider } from '@azure/msal-react';
+import { msalConfig } from './auth/msalConfig';
+
+// Initialize MSAL instance
+const msalInstance = new PublicClientApplication(msalConfig);
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -14,7 +20,9 @@ root.render(
   // <React.StrictMode> is commented out because it causes components to render twice (in dev but not production)
   // This double rendering can cause issues with some components and makes debugging more difficult
   // StrictMode is a development tool that helps detect problems but is enabled by default in create-react-app
-  <App />
+  <MsalProvider instance={msalInstance}>
+    <App />
+  </MsalProvider>
   // </React.StrictMode>
 );
 

@@ -1,76 +1,268 @@
 # Task ID: 9
-# Title: Implement Token Refresh Logic
-# Status: pending
-# Dependencies: 4, 6
+# Title: Handling Expired Tokens and Network Issues
+# Status: done
+# Dependencies: 3
 # Priority: medium
-# Description: Create logic to automatically refresh authentication tokens before they expire to maintain user sessions.
+# Description: Implement token refresh logic and handle network disconnections gracefully to ensure uninterrupted user experience.
 # Details:
-1. Enhance the AuthContext to include token refresh logic:
+1. Enhance the API service with token refresh and network handling (src/services/apiService.ts):
 ```typescript
-// Add to AuthContext.tsx
-import { useEffect, useCallback } from 'react';
+import { msalInstance } from '../auth/msalInstance';
+import { loginRequest } from '../auth/msalConfig';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 
-// Inside the AuthProvider component
-const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(null);
+interface ApiOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: any;
+  retryCount?: number;
+}
 
-const acquireTokenSilently = useCallback(async (): Promise<string | null> => {
-  if (!account) return null;
+class ApiService {
+  private baseUrl: string;
+  private maxRetries: number = 3;
+  private retryDelay: number = 1000; // 1 second
   
-  try {
-    const response = await instance.acquireTokenSilent({
-      ...loginRequest,
-      account: account
-    });
-    
-    // Calculate token expiration time (typically in seconds)
-    // MSAL doesn't directly provide expiration, so we need to decode the JWT
-    const tokenClaims = JSON.parse(atob(response.accessToken.split('.')[1]));
-    if (tokenClaims.exp) {
-      setTokenExpiresAt(tokenClaims.exp * 1000); // Convert to milliseconds
-    }
-    
-    return response.accessToken;
-  } catch (error) {
-    if (error instanceof InteractionRequiredAuthError) {
-      // User interaction required, handle accordingly
-      setError('Interactive login required');
-      return null;
-    }
-    
-    setError('Silent token acquisition failed: ' + (error instanceof Error ? error.message : String(error)));
-    console.error('Silent token acquisition error:', error);
-    return null;
-  }
-}, [account, instance]);
-
-// Set up token refresh timer
-useEffect(() => {
-  if (!isAuthenticated || !tokenExpiresAt) return;
-  
-  // Refresh token 5 minutes before expiration
-  const timeUntilRefresh = tokenExpiresAt - Date.now() - (5 * 60 * 1000);
-  
-  // Don't set a timer if the token is already expired or about to expire
-  if (timeUntilRefresh <= 0) {
-    acquireTokenSilently();
-    return;
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
   }
   
-  const refreshTimer = setTimeout(() => {
-    acquireTokenSilently();
-  }, timeUntilRefresh);
+  private async getAuthToken(): Promise<string> {
+    try {
+      const account = msalInstance.getAllAccounts()[0];
+      if (!account) {
+        throw new Error('No active account! Signin required.');
+      }
+      
+      const response = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account
+      });
+      
+      return response.accessToken;
+    } catch (error) {
+      // If silent token acquisition fails due to interaction required
+      if (error instanceof InteractionRequiredAuthError) {
+        try {
+          const response = await msalInstance.acquireTokenPopup(loginRequest);
+          return response.accessToken;
+        } catch (interactiveError) {
+          throw interactiveError;
+        }
+      }
+      throw error;
+    }
+  }
   
-  return () => clearTimeout(refreshTimer);
-}, [isAuthenticated, tokenExpiresAt, acquireTokenSilently]);
+  private async fetchWithAuth(url: string, options: ApiOptions = {}): Promise<Response> {
+    const retryCount = options.retryCount || 0;
+    
+    try {
+      const token = await this.getAuthToken();
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+      };
+      
+      const config: RequestInit = {
+        method: options.method || 'GET',
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined
+      };
+      
+      const response = await fetch(`${this.baseUrl}${url}`, config);
+      
+      if (!response.ok) {
+        // Handle different error status codes
+        if (response.status === 401) {
+          // Token might be expired, try to refresh and retry
+          if (retryCount < this.maxRetries) {
+            // Clear token cache to force new token acquisition
+            await msalInstance.clearCache();
+            
+            // Retry with incremented retry count
+            return this.fetchWithAuth(url, {
+              ...options,
+              retryCount: retryCount + 1
+            });
+          }
+        }
+        
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `API error: ${response.status}`);
+      }
+      
+      return response;
+    } catch (error) {
+      // Handle network errors with retry logic
+      if (error instanceof TypeError && error.message.includes('network') && retryCount < this.maxRetries) {
+        // Exponential backoff for retries
+        const delay = this.retryDelay * Math.pow(2, retryCount);
+        
+        console.log(`Network error, retrying in ${delay}ms...`);
+        
+        return new Promise(resolve => {
+          setTimeout(() => {
+            resolve(this.fetchWithAuth(url, {
+              ...options,
+              retryCount: retryCount + 1
+            }));
+          }, delay);
+        });
+      }
+      
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+  
+  // Rest of the API service methods (get, post, put, delete) remain the same
+}
 ```
 
-2. Update the getAccessToken method to use the acquireTokenSilently function
-3. Add error handling for token refresh failures
-4. Implement retry logic for failed token refreshes
+2. Create a network status monitor (src/utils/networkMonitor.ts):
+```typescript
+import { useState, useEffect } from 'react';
+
+export function useNetworkStatus() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+  
+  return isOnline;
+}
+```
+
+3. Create a network status indicator component (src/components/NetworkStatus.tsx):
+```typescript
+import React, { useEffect } from 'react';
+import { useNetworkStatus } from '../utils/networkMonitor';
+import { useToast } from './ToastContainer';
+import '../styles/network-status.css';
+
+const NetworkStatus: React.FC = () => {
+  const isOnline = useNetworkStatus();
+  const { showToast } = useToast();
+  
+  useEffect(() => {
+    if (isOnline) {
+      showToast('Your connection has been restored.', 'success');
+    } else {
+      showToast('You are currently offline. Some features may be unavailable.', 'warning', 0); // 0 means don't auto-dismiss
+    }
+  }, [isOnline, showToast]);
+  
+  if (isOnline) return null;
+  
+  return (
+    <div className="offline-indicator">
+      <span>You are offline</span>
+    </div>
+  );
+};
+
+export default NetworkStatus;
+```
+
+4. Create styles for the network status indicator (src/styles/network-status.css):
+```css
+.offline-indicator {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #d83b01;
+  color: white;
+  text-align: center;
+  padding: 0.5rem;
+  font-weight: bold;
+  z-index: 1000;
+}
+```
+
+5. Add the NetworkStatus component to the App:
+```typescript
+import NetworkStatus from './components/NetworkStatus';
+
+function App() {
+  return (
+    <>
+      {/* Rest of your application */}
+      <NetworkStatus />
+    </>
+  );
+}
+```
+
+6. Enhance the AuthContext to handle token refresh (src/auth/AuthContext.tsx):
+```typescript
+import { useEffect, useCallback } from 'react';
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ... existing code
+  
+  // Function to refresh the token
+  const refreshToken = useCallback(async () => {
+    if (!account) return null;
+    
+    try {
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account
+      });
+      return response;
+    } catch (error) {
+      if (error instanceof InteractionRequiredAuthError) {
+        // Token expired and requires user interaction
+        try {
+          const response = await instance.acquireTokenPopup(loginRequest);
+          return response;
+        } catch (interactiveError) {
+          setError(interactiveError as Error);
+          return null;
+        }
+      }
+      setError(error as Error);
+      return null;
+    }
+  }, [account, instance]);
+  
+  // Set up a token refresh interval
+  useEffect(() => {
+    if (!account) return;
+    
+    // Refresh token every 45 minutes (Azure AD tokens typically last 1 hour)
+    const tokenRefreshInterval = setInterval(() => {
+      refreshToken();
+    }, 45 * 60 * 1000);
+    
+    return () => clearInterval(tokenRefreshInterval);
+  }, [account, refreshToken]);
+  
+  // ... rest of the component
+};
+```
 
 # Test Strategy:
-1. Test token refresh before expiration
-2. Verify token expiration calculation
-3. Test error handling for refresh failures
-4. Verify automatic refresh works without user interaction
-5. Test retry logic for failed refreshes
+1. Test token refresh logic by simulating expired tokens
+2. Verify that the API service correctly retries requests after token refresh
+3. Test network error handling with simulated network failures
+4. Verify that the network status indicator appears when offline
+5. Test the exponential backoff retry mechanism
+6. Verify that authentication state is maintained during network disconnections
+7. Test the automatic token refresh interval
+8. Verify that appropriate notifications are shown when network status changes

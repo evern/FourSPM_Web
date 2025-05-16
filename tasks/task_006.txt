@@ -1,78 +1,204 @@
 # Task ID: 6
-# Title: Implement API Service with Token Authentication
-# Status: pending
-# Dependencies: 4
-# Priority: high
-# Description: Update the API service to include authentication tokens in requests and handle authentication-related errors.
+# Title: Role Management Interface
+# Status: done
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Create an administrative interface for viewing and managing roles with a grid for viewing, adding, editing, and deleting roles.
 # Details:
-1. Create or update the API service to include authentication tokens (src/services/api.ts):
+1. Create a Role Management page (src/pages/RoleManagement.tsx):
 ```typescript
-import { useAuth } from '../auth/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { DataGrid, Column, Editing, Paging, Filtering, Sorting } from 'devextreme-react/data-grid';
+import { Button } from 'devextreme-react/button';
+import { useApi } from '../hooks/useApi';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-export const useApiService = () => {
-  const { getAccessToken } = useAuth();
+interface Role {
+  id: number;
+  name: string;
+  description: string;
+  createdDate: string;
+  modifiedDate: string;
+}
+
+const RoleManagement: React.FC = () => {
+  const { data: roles, loading, error, get, post, put, delete: deleteRole } = useApi<Role[]>();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const navigate = useNavigate();
   
-  const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-    const token = await getAccessToken();
-    
-    if (!token) {
-      throw new Error('No authentication token available');
+  useEffect(() => {
+    get('/api/roles');
+  }, [get, refreshTrigger]);
+  
+  const handleRowInserting = async (e: any) => {
+    try {
+      await post('/api/roles', e.data);
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error creating role:', error);
+      e.cancel = true;
     }
-    
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-    
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
-    
-    if (response.status === 401) {
-      // Token might be expired or invalid
-      throw new Error('Authentication failed. Please log in again.');
+  };
+  
+  const handleRowUpdating = async (e: any) => {
+    try {
+      const roleId = e.key;
+      await put(`/api/roles/${roleId}`, { ...e.oldData, ...e.newData });
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error updating role:', error);
+      e.cancel = true;
     }
-    
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
+  };
+  
+  const handleRowRemoving = async (e: any) => {
+    try {
+      const roleId = e.key;
+      await deleteRole(`/api/roles/${roleId}`);
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error deleting role:', error);
+      e.cancel = true;
     }
-    
-    return response.json();
   };
   
-  const get = <T>(url: string): Promise<T> => {
-    return apiRequest<T>(url, { method: 'GET' });
+  const handleManagePermissions = (roleId: number) => {
+    navigate(`/roles/${roleId}/permissions`);
   };
   
-  const post = <T>(url: string, data: any): Promise<T> => {
-    return apiRequest<T>(url, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  };
+  if (loading && !roles) {
+    return <LoadingSpinner message="Loading roles..." />;
+  }
   
-  const put = <T>(url: string, data: any): Promise<T> => {
-    return apiRequest<T>(url, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  };
+  if (error) {
+    return (
+      <div className="error-container">
+        <h2>Error loading roles</h2>
+        <p>{error.message}</p>
+        <Button text="Retry" onClick={() => setRefreshTrigger(prev => prev + 1)} />
+      </div>
+    );
+  }
   
-  const del = <T>(url: string): Promise<T> => {
-    return apiRequest<T>(url, { method: 'DELETE' });
-  };
-  
-  return { get, post, put, del };
+  return (
+    <div className="role-management-container">
+      <h1>Role Management</h1>
+      
+      <DataGrid
+        dataSource={roles || []}
+        keyExpr="id"
+        showBorders={true}
+        onRowInserting={handleRowInserting}
+        onRowUpdating={handleRowUpdating}
+        onRowRemoving={handleRowRemoving}
+      >
+        <Paging defaultPageSize={10} />
+        <Filtering />
+        <Sorting mode="multiple" />
+        
+        <Editing
+          mode="popup"
+          allowAdding={true}
+          allowUpdating={true}
+          allowDeleting={true}
+          useIcons={true}
+        />
+        
+        <Column dataField="id" caption="ID" allowEditing={false} width={80} />
+        <Column dataField="name" caption="Role Name" />
+        <Column dataField="description" caption="Description" />
+        <Column dataField="createdDate" caption="Created Date" dataType="date" allowEditing={false} />
+        <Column dataField="modifiedDate" caption="Modified Date" dataType="date" allowEditing={false} />
+        <Column type="buttons" width={110} />
+        
+        <Column caption="Actions" type="buttons" width={120}>
+          <Button
+            hint="Manage Permissions"
+            icon="key"
+            onClick={(e: any) => handleManagePermissions(e.row.data.id)}
+          />
+        </Column>
+      </DataGrid>
+    </div>
+  );
 };
+
+export default RoleManagement;
 ```
-2. Update existing API calls to use the new service
-3. Implement error handling for authentication failures
+
+2. Create styles for the Role Management page (src/styles/role-management.css):
+```css
+.role-management-container {
+  padding: 1.5rem;
+}
+
+.role-management-container h1 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.error-container {
+  padding: 2rem;
+  text-align: center;
+  background-color: #fde7e9;
+  border-radius: 8px;
+  margin: 2rem;
+}
+
+.error-container h2 {
+  color: #d83b01;
+  margin-bottom: 1rem;
+}
+
+.error-container button {
+  margin-top: 1rem;
+}
+```
+
+3. Create a service for role management (src/services/roleService.ts):
+```typescript
+import apiService from './apiService';
+
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+  createdDate: string;
+  modifiedDate: string;
+}
+
+class RoleService {
+  async getRoles(): Promise<Role[]> {
+    return apiService.get<Role[]>('/api/roles');
+  }
+  
+  async getRole(id: number): Promise<Role> {
+    return apiService.get<Role>(`/api/roles/${id}`);
+  }
+  
+  async createRole(role: Omit<Role, 'id' | 'createdDate' | 'modifiedDate'>): Promise<Role> {
+    return apiService.post<Role>('/api/roles', role);
+  }
+  
+  async updateRole(id: number, role: Partial<Omit<Role, 'id' | 'createdDate' | 'modifiedDate'>>): Promise<Role> {
+    return apiService.put<Role>(`/api/roles/${id}`, role);
+  }
+  
+  async deleteRole(id: number): Promise<void> {
+    return apiService.delete<void>(`/api/roles/${id}`);
+  }
+}
+
+export const roleService = new RoleService();
+```
 
 # Test Strategy:
-1. Test API requests with valid authentication tokens
-2. Test API requests with invalid or expired tokens
-3. Verify error handling for authentication failures
-4. Test token refresh during API requests
-5. Verify all HTTP methods (GET, POST, PUT, DELETE) work correctly with authentication
+1. Create unit tests for the RoleManagement component using React Testing Library
+2. Mock API responses for role data
+3. Test the grid initialization and data loading
+4. Test CRUD operations (Create, Read, Update, Delete) for roles
+5. Verify that error handling works correctly
+6. Test navigation to the permission management page
+7. Verify that the grid displays and filters data correctly
+8. Test form validation for adding and editing roles

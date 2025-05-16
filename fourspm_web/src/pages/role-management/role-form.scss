@@ -1,0 +1,34 @@
+@import "../../styles/variables.scss";
+
+.role-form {
+  padding: 10px;
+  
+  .dx-form {
+    height: 100%;
+  }
+  
+  .dx-item-content {
+    margin-bottom: 8px;
+  }
+  
+  .permissions-placeholder {
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #666;
+  }
+  
+  .form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    
+    .dx-button {
+      min-width: 120px;
+    }
+  }
+}

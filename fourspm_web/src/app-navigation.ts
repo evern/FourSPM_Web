@@ -38,6 +38,12 @@ export const navigation: NavigationItem[] = [
     path: '',
     items: [
       {
+        text: 'Role Management',
+        path: '/role-management',
+        icon: 'key',
+        id: 'role_management'
+      },
+      {
         text: 'Disciplines',
         path: '/disciplines',
         icon: 'tags'

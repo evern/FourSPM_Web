@@ -5,3 +5,4 @@
 export * from './odata-types';
 export * from './app-types';
 export * from './enums';
+export * from './auth-types';

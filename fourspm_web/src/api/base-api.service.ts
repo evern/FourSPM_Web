@@ -2,7 +2,35 @@ import { User } from '../types';
 
 export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
+  skipTokenRefresh?: boolean; // Optional flag to skip token refresh attempts for public endpoints
 }
+
+/**
+ * Token store for managing access tokens outside of React components
+ */
+class TokenStore {
+  private static token: string | null = null;
+  
+  /**
+   * Sets the active token
+   */
+  static setToken(token: string | null): void {
+    TokenStore.token = token;
+  }
+  
+  /**
+   * Gets the active token
+   */
+  static getToken(): string | null {
+    return TokenStore.token;
+  }
+}
+
+/**
+ * Export token store methods for use in authentication context
+ */
+export const setApiToken = TokenStore.setToken;
+export const getApiToken = TokenStore.getToken;
 
 class BaseApiService {
   /**
@@ -16,11 +44,10 @@ class BaseApiService {
       'Content-Type': 'application/json',
     };
 
-    // Get the stored user data and add the token to headers if available
-    const userStr = localStorage.getItem('user');
-    const user: User | null = userStr ? JSON.parse(userStr) : null;
-    if (user?.token) {
-      defaultHeaders['Authorization'] = `Bearer ${user.token}`;
+    // Get the token from TokenStore
+    const token = TokenStore.getToken();
+    if (token) {
+      defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
 
     const mergedOptions: RequestOptions = {
@@ -37,9 +64,16 @@ class BaseApiService {
       if (!response.ok) {
         // Handle 401 Unauthorized specifically
         if (response.status === 401) {
-          // Clear stored user data and redirect to login
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          // Session has expired - we'll let the auth component handle this
+          // This will be handled by the AuthProvider which monitors account state
+          // Just log and throw a standardized error
+          console.error('Authentication token expired or invalid');
+          
+          // Clear the stored token so new requests won't use the expired token
+          TokenStore.setToken(null);
+          
+          // Use hash router navigation format for redirection
+          window.location.hash = '#/login';
           throw new Error('Session expired. Please log in again.');
         }
 

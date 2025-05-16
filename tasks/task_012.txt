@@ -1,150 +1,354 @@
 # Task ID: 12
-# Title: Implement Error Handling for Authentication
-# Status: pending
-# Dependencies: 4, 6, 7
-# Priority: medium
-# Description: Create comprehensive error handling for authentication-related errors, including clear user messages and logging.
+# Title: End-to-End Testing and Documentation
+# Status: done
+# Dependencies: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+# Priority: low
+# Description: Create comprehensive end-to-end tests for the authentication flow and document the MSAL integration for future reference.
 # Details:
-1. Create an authentication error component (src/components/AuthError.tsx):
-```typescript
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
-
-export const AuthError: React.FC = () => {
-  const { error } = useAuth();
-
-  if (!error) {
-    return null;
-  }
-
-  return (
-    <div className="auth-error-container">
-      <div className="auth-error-message">
-        <h3>Authentication Error</h3>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()}>Retry</button>
-      </div>
-    </div>
-  );
-};
-```
-
-2. Update the API service to handle specific authentication errors:
-```typescript
-// Add to api.ts
-const handleApiError = (error: any) => {
-  // Check if it's an authentication error
-  if (error.message && (
-    error.message.includes('authentication') ||
-    error.message.includes('token') ||
-    error.message.includes('401')
-  )) {
-    // Log the error
-    console.error('Authentication error:', error);
-    
-    // You might want to trigger a re-authentication here
-    // or redirect to login page
-    window.location.href = '/login?error=session_expired';
-    
-    return new Error('Your session has expired. Please log in again.');
-  }
+1. Create end-to-end tests using Cypress (cypress/integration/auth.spec.js):
+```javascript
+describe('Authentication Flow', () => {
+  beforeEach(() => {
+    // Visit the application
+    cy.visit('/');
+  });
   
-  // Handle other API errors
-  console.error('API error:', error);
-  return error;
-};
-
-// Update the apiRequest function to use the error handler
-const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-  try {
-    // Existing code...
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-```
-
-3. Create a login page that handles error parameters:
-```typescript
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
-import { LoginButton } from '../components/LoginButton';
-
-export const Login: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  it('should redirect to login page when not authenticated', () => {
+    // Check that we're on the login page
+    cy.url().should('include', '/login');
+    cy.contains('Sign in with Microsoft').should('be.visible');
+  });
   
-  // Check for error parameters in the URL
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const error = params.get('error');
-    
-    if (error === 'session_expired') {
-      setErrorMessage('Your session has expired. Please log in again.');
-    } else if (error) {
-      setErrorMessage('An authentication error occurred. Please try again.');
-    }
-  }, [location]);
+  it('should show login button', () => {
+    cy.get('.ms-login-button').should('be.visible');
+    cy.get('.ms-login-button').should('contain', 'Sign in with Microsoft');
+  });
   
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, location.state, navigate]);
-  
-  return (
-    <div className="login-container">
-      <h1>Welcome to FourSPM</h1>
+  // Note: Testing actual Microsoft authentication requires special setup
+  // This is a mock test that simulates successful authentication
+  it('should handle successful authentication', () => {
+    // Mock MSAL authentication
+    cy.window().then(win => {
+      // Create a mock authenticated user
+      win.mockAuthenticatedUser = {
+        account: {
+          homeAccountId: 'test-account-id',
+          username: 'test@example.com',
+          name: 'Test User'
+        },
+        idTokenClaims: {
+          roles: ['User']
+        },
+        accessToken: 'mock-access-token'
+      };
       
-      {errorMessage && (
-        <div className="error-message">{errorMessage}</div>
-      )}
-      
-      <div className="login-box">
-        <p>Please sign in to continue:</p>
-        <LoginButton />
-      </div>
-    </div>
-  );
-};
-```
-
-4. Implement server-side error logging for authentication failures:
-```csharp
-// Add to Program.cs or a middleware
-app.Use(async (context, next) => {
-    try
-    {
-        await next();
-        
-        // Log authentication failures
-        if (context.Response.StatusCode == 401)
-        {
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning(
-                "Authentication failure for request {Method} {Path}", 
-                context.Request.Method, 
-                context.Request.Path);
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An unhandled exception occurred");
-        throw;
-    }
+      // Override MSAL loginPopup method
+      if (win.msal && win.msal.instance) {
+        cy.stub(win.msal.instance, 'loginPopup').resolves(win.mockAuthenticatedUser);
+        cy.stub(win.msal.instance, 'acquireTokenSilent').resolves(win.mockAuthenticatedUser);
+      }
+    });
+    
+    // Click login button
+    cy.get('.ms-login-button').click();
+    
+    // Should redirect to dashboard after login
+    cy.url().should('not.include', '/login');
+    
+    // User info should be displayed
+    cy.contains('Test User').should('be.visible');
+  });
 });
 ```
 
+2. Create end-to-end tests for role management (cypress/integration/roles.spec.js):
+```javascript
+describe('Role Management', () => {
+  beforeEach(() => {
+    // Mock authentication as admin
+    cy.mockAdminAuth();
+    
+    // Visit the roles page
+    cy.visit('/roles');
+  });
+  
+  it('should display the roles grid', () => {
+    cy.get('.role-management-container').should('be.visible');
+    cy.contains('Role Management').should('be.visible');
+    cy.get('.dx-datagrid').should('be.visible');
+  });
+  
+  it('should allow adding a new role', () => {
+    // Click add button
+    cy.get('.dx-datagrid-addrow-button').click();
+    
+    // Fill in role details
+    cy.get('[aria-label="Name"]').type('Test Role');
+    cy.get('[aria-label="Description"]').type('Role created during automated testing');
+    
+    // Save the role
+    cy.get('.dx-popup-done').click();
+    
+    // Verify role was added
+    cy.contains('Test Role').should('be.visible');
+  });
+  
+  it('should navigate to permission management', () => {
+    // Find the first role and click its permissions button
+    cy.get('.dx-datagrid-content')
+      .find('tr')
+      .first()
+      .find('[aria-label="Manage Permissions"]')
+      .click();
+    
+    // Verify we're on the permissions page
+    cy.url().should('include', '/permissions');
+    cy.contains('Manage Permissions for').should('be.visible');
+  });
+});
+```
+
+3. Create custom Cypress commands for authentication (cypress/support/commands.js):
+```javascript
+// Mock authentication as a regular user
+Cypress.Commands.add('mockUserAuth', () => {
+  cy.window().then(win => {
+    win.mockAuthenticatedUser = {
+      account: {
+        homeAccountId: 'user-account-id',
+        username: 'user@example.com',
+        name: 'Regular User'
+      },
+      idTokenClaims: {
+        roles: ['User']
+      },
+      accessToken: 'mock-user-access-token'
+    };
+    
+    if (win.msal && win.msal.instance) {
+      cy.stub(win.msal.instance, 'getAllAccounts').returns([win.mockAuthenticatedUser.account]);
+      cy.stub(win.msal.instance, 'acquireTokenSilent').resolves(win.mockAuthenticatedUser);
+    }
+  });
+});
+
+// Mock authentication as an admin user
+Cypress.Commands.add('mockAdminAuth', () => {
+  cy.window().then(win => {
+    win.mockAuthenticatedUser = {
+      account: {
+        homeAccountId: 'admin-account-id',
+        username: 'admin@example.com',
+        name: 'Admin User'
+      },
+      idTokenClaims: {
+        roles: ['User', 'Administrator']
+      },
+      accessToken: 'mock-admin-access-token'
+    };
+    
+    if (win.msal && win.msal.instance) {
+      cy.stub(win.msal.instance, 'getAllAccounts').returns([win.mockAuthenticatedUser.account]);
+      cy.stub(win.msal.instance, 'acquireTokenSilent').resolves(win.mockAuthenticatedUser);
+    }
+  });
+});
+```
+
+4. Create documentation for the MSAL integration (docs/MSAL-Integration.md):
+```markdown
+# MSAL Integration Documentation
+
+## Overview
+
+This document provides technical details about the Microsoft Authentication Library (MSAL) integration in the FourSPM application. The integration enables Single Sign-On (SSO) capabilities through Azure Active Directory (Azure AD).
+
+## Configuration
+
+### Azure AD Configuration
+
+- **Application (client) ID**: c67bf91d-8b6a-494a-8b99-c7a4592e08c1
+- **Directory (tenant) ID**: 3c7fa9e9-64e7-443c-905a-d9134ca00da9
+- **Redirect URI**: The application's origin (e.g., https://app.fourspm.com)
+
+### Environment Variables
+
+The application uses the following environment variables for configuration:
+
+- `REACT_APP_ENVIRONMENT`: The current environment (development or production)
+- `REACT_APP_AZURE_CLIENT_ID`: The Azure AD application client ID
+- `REACT_APP_AZURE_TENANT_ID`: The Azure AD tenant ID
+- `REACT_APP_API_BASE_URL`: The base URL for API requests
+
+## Authentication Flow
+
+1. **Initial Load**: When the application loads, it attempts silent authentication for returning users.
+2. **Login**: Users click the "Sign in with Microsoft" button, which opens a popup for Microsoft authentication.
+3. **Token Acquisition**: After successful authentication, MSAL acquires access and ID tokens.
+4. **User Information**: User details and roles are extracted from the ID token claims.
+5. **Token Refresh**: Tokens are automatically refreshed when they expire.
+
+## Components
+
+### AuthProvider
+
+The `AuthProvider` component manages the authentication state and provides authentication-related functions to the application.
+
+```jsx
+<AuthProvider>
+  {/* Application components */}
+</AuthProvider>
+```
+
+### RequireAuth
+
+The `RequireAuth` component protects routes based on authentication status and user roles.
+
+```jsx
+<RequireAuth requiredRoles={['Administrator']}>
+  <ProtectedComponent />
+</RequireAuth>
+```
+
+### PermissionGate
+
+The `PermissionGate` component conditionally renders content based on user permissions.
+
+```jsx
+<PermissionGate permissions="Administrator">
+  <AdminContent />
+</PermissionGate>
+```
+
+## API Integration
+
+The `apiService` automatically includes authentication tokens in API requests and handles token refresh when needed.
+
+```javascript
+// Example API call
+const data = await apiService.get('/api/endpoint');
+```
+
+## Error Handling
+
+The application includes comprehensive error handling for authentication failures:
+
+- Network disconnections
+- Expired tokens
+- Authentication rejections
+- Permission changes
+
+## Role Management
+
+The application includes interfaces for managing roles and permissions:
+
+- `/roles`: Grid for viewing, adding, editing, and deleting roles
+- `/roles/:roleId/permissions`: Interface for assigning permissions to roles
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Popup Blocked**: Ensure popup blockers are disabled for the application.
+2. **Token Expiration**: If tokens expire unexpectedly, check the Azure AD token lifetime policy.
+3. **Missing Permissions**: Verify that the user has the required roles assigned in Azure AD.
+
+### Debugging
+
+Set `REACT_APP_ENVIRONMENT` to `development` to enable verbose logging of MSAL activities.
+```
+
+5. Create a README file for the authentication module (src/auth/README.md):
+```markdown
+# Authentication Module
+
+## Overview
+
+This module handles authentication using Microsoft Authentication Library (MSAL) for the FourSPM application.
+
+## Components
+
+- `AuthContext.tsx`: Provides authentication state and functions
+- `RequireAuth.tsx`: Protects routes based on authentication and roles
+- `SilentAuth.tsx`: Handles silent authentication for returning users
+- `PermissionChangeDetector.tsx`: Detects changes in user permissions
+- `msalConfig.ts`: Configuration for MSAL
+- `msalInstance.ts`: Exports the MSAL instance
+
+## Usage
+
+### Protecting Routes
+
+```jsx
+<Route path="/protected" element={
+  <RequireAuth>
+    <ProtectedComponent />
+  </RequireAuth>
+} />
+```
+
+### Role-Based Protection
+
+```jsx
+<Route path="/admin" element={
+  <RequireAuth requiredRoles={['Administrator']}>
+    <AdminComponent />
+  </RequireAuth>
+} />
+```
+
+### Using Authentication Context
+
+```jsx
+import { useAuth } from './auth/AuthContext';
+
+function MyComponent() {
+  const { user, isAuthenticated, login, logout } = useAuth();
+  
+  return (
+    <div>
+      {isAuthenticated ? (
+        <>
+          <p>Welcome, {user.displayName}</p>
+          <button onClick={logout}>Logout</button>
+        </>
+      ) : (
+        <button onClick={login}>Login</button>
+      )}
+    </div>
+  );
+}
+```
+
+### Conditional Rendering Based on Permissions
+
+```jsx
+import PermissionGate from './components/PermissionGate';
+
+function MyComponent() {
+  return (
+    <div>
+      <PermissionGate permissions="Administrator">
+        <AdminSection />
+      </PermissionGate>
+    </div>
+  );
+}
+```
+
+## Configuration
+
+Update the MSAL configuration in `msalConfig.ts` if needed. The configuration uses environment variables for client ID and tenant ID.
+```
+
 # Test Strategy:
-1. Test error display for various authentication errors
-2. Verify error handling for expired tokens
-3. Test error handling for invalid tokens
-4. Verify error messages are user-friendly
-5. Test server-side error logging
-6. Verify redirect to login page with error parameters works correctly
+1. Set up Cypress for end-to-end testing
+2. Create tests for the complete authentication flow
+3. Test role-based access control
+4. Verify that protected routes are properly secured
+5. Test the role and permission management interfaces
+6. Create tests for error scenarios and edge cases
+7. Document all test scenarios and expected outcomes
+8. Create comprehensive documentation for the MSAL integration
+9. Verify that all documentation is accurate and up-to-date
+10. Create a README file for the authentication module

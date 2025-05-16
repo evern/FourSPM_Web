@@ -1,66 +1,183 @@
 # Task ID: 2
-# Title: Install Required Frontend Packages
+# Title: Authentication Context Refactoring
 # Status: done
-# Dependencies: None
+# Dependencies: 1
 # Priority: high
-# Description: Install and configure the necessary frontend packages for Azure AD authentication, including MSAL libraries for React.
+# Description: Replace the current AuthProvider with MSAL-based implementation and update the User type to include roles from Azure AD claims.
 # Details:
-1. Add the following packages to the React application:
-```bash
-npm install @azure/msal-browser @azure/msal-react --save
-```
-2. Update package.json to ensure compatibility with existing dependencies
-3. Create a configuration file for MSAL settings (src/auth/msalConfig.ts):
+1. Create a new authentication context (src/auth/AuthContext.tsx):
 ```typescript
-import { Configuration, LogLevel } from '@azure/msal-browser';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useMsal, useAccount } from '@azure/msal-react';
+import { InteractionStatus } from '@azure/msal-browser';
+import { loginRequest } from './msalConfig';
 
-export const msalConfig: Configuration = {
-  auth: {
-    clientId: 'YOUR_CLIENT_ID', // From Azure AD registration
-    authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID',
-    redirectUri: window.location.origin, // Will be http://localhost:3000 or https://app.4spm.org
-    postLogoutRedirectUri: window.location.origin
-  },
-  cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false
-  },
-  system: {
-    loggerOptions: {
-      loggerCallback: (level, message, containsPii) => {
-        if (containsPii) return;
-        switch (level) {
-          case LogLevel.Error:
-            console.error(message);
-            break;
-          case LogLevel.Warning:
-            console.warn(message);
-            break;
-          case LogLevel.Info:
-            console.info(message);
-            break;
-          case LogLevel.Verbose:
-            console.debug(message);
-            break;
+interface User {
+  id: string;
+  displayName: string;
+  email: string;
+  roles: string[];
+}
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: Error | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { instance, accounts, inProgress } = useMsal();
+  const account = useAccount(accounts[0] || {});
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  
+  useEffect(() => {
+    const getUser = async () => {
+      if (account && inProgress === InteractionStatus.None) {
+        try {
+          const response = await instance.acquireTokenSilent({
+            ...loginRequest,
+            account: account
+          });
+          
+          // Extract user information from ID token claims
+          const idTokenClaims = response.idTokenClaims as any;
+          const roles = idTokenClaims.roles || [];
+          
+          setUser({
+            id: account.homeAccountId,
+            displayName: account.name || '',
+            email: account.username,
+            roles: roles
+          });
+        } catch (err) {
+          setError(err as Error);
         }
-      },
-      logLevel: LogLevel.Info
+      } else {
+        setUser(null);
+      }
+    };
+    
+    getUser();
+  }, [account, inProgress, instance]);
+  
+  const login = async () => {
+    try {
+      await instance.loginPopup(loginRequest);
+    } catch (err) {
+      setError(err as Error);
     }
+  };
+  
+  const logout = async () => {
+    try {
+      await instance.logoutPopup();
+    } catch (err) {
+      setError(err as Error);
+    }
+  };
+  
+  const contextValue: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    isLoading: inProgress !== InteractionStatus.None,
+    error,
+    login,
+    logout
+  };
+  
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-};
-
-export const loginRequest = {
-  scopes: ['User.Read', 'api://YOUR_CLIENT_ID/Application.User']
-};
-
-export const adminRequest = {
-  scopes: ['api://YOUR_CLIENT_ID/Application.Admin']
+  return context;
 };
 ```
-4. Create environment-specific configuration files for development and production
+
+2. Update the App component to use the new AuthProvider:
+```typescript
+import { AuthProvider } from './auth/AuthContext';
+
+function App() {
+  return (
+    <AuthProvider>
+      {/* Rest of your application */}
+    </AuthProvider>
+  );
+}
+```
+
+3. Create a utility function to check user roles (src/auth/roleUtils.ts):
+```typescript
+export const hasRole = (user: { roles: string[] } | null, requiredRoles: string[]): boolean => {
+  if (!user || !user.roles) return false;
+  return requiredRoles.some(role => user.roles.includes(role));
+};
+```
 
 # Test Strategy:
-1. Verify all packages install without conflicts
-2. Check that TypeScript types are correctly resolved
-3. Validate MSAL configuration file syntax
-4. Ensure environment-specific configurations load correctly
+1. Create unit tests for the AuthContext using React Testing Library
+2. Test the login and logout functions
+3. Verify that user information is correctly extracted from ID token claims
+4. Test role extraction and the hasRole utility function
+5. Verify that the context correctly updates when authentication state changes
+6. Test error handling for authentication failures
+
+# Subtasks:
+## 1. Define the User type and interfaces [done]
+### Dependencies: None
+### Description: Create TypeScript interfaces for the User model that includes role-based access properties and MSAL account information
+### Details:
+Define a comprehensive User interface that includes properties like id, name, email, roles array, permissions, and any MSAL-specific account information. Create additional interfaces for authentication state and context props that will be used throughout the application.
+
+## 2. Implement AuthContext with MSAL React integration [done]
+### Dependencies: 2.1
+### Description: Create a new AuthContext using MSAL React hooks and configure the MSAL instance
+### Details:
+Set up the MSAL configuration in authConfig.js with proper Azure AD B2C settings. Create an AuthContext that uses MsalProvider and implements the PublicClientApplication from MSAL. Include methods for login, logout, and token acquisition. Wrap the context provider around the application in index.js.
+
+## 3. Implement authentication state management [done]
+### Dependencies: 2.2
+### Description: Handle authentication state changes and user information retrieval from MSAL
+### Details:
+Create hooks or methods to track authentication state (logged in, logging in, error states). Implement functions to retrieve and process user information from MSAL accounts. Handle token refresh logic and session persistence. Implement proper error handling for authentication failures.
+
+## 4. Implement role-based access control [done]
+### Dependencies: 2.1, 2.3
+### Description: Add role verification and permission checking functionality to the AuthContext
+### Details:
+Create helper functions like hasRole(), hasPermission(), and isAuthorized() that check user roles against required permissions. Implement a higher-order component or hook for protecting routes based on roles. Add logic to extract role information from authentication tokens or user profile data.
+
+## 5. Update App component and migrate from old provider [done]
+### Dependencies: 2.2, 2.3, 2.4
+### Description: Refactor the App component to use the new MSAL-based AuthContext and ensure backward compatibility
+### Details:
+Wrap the main application with MsalProvider and the custom AuthContext. Update any components that were using the old authentication provider to use the new context. Implement a migration strategy to handle the transition period. Update protected routes to use the new role-based access control.
+
+## 6. Implement logout functionality [done]
+### Dependencies: None
+### Description: Create a logout method that correctly ends both the application session and the Azure AD session
+### Details:
+Implement the logout function in the AuthContext that:
+
+1. Calls the MSAL instance's logout method to terminate the Azure AD session
+2. Clears the local user state in the AuthContext
+3. Redirects the user to the login page
+4. Ensures all application state related to the user is properly reset
+5. Handles any edge cases like offline logout
+
+The logout function should be exposed through the AuthContext and should be callable from the user menu in the header component. The implementation should follow user story ST-103 which specifies that the logout option should be available in the user menu, clicking logout should end the session with both the application and Microsoft, the user should be redirected to the login page after logout, and the user should no longer be able to access protected routes without re-authentication.
+

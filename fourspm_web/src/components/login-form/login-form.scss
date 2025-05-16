@@ -1,6 +1,105 @@
 @use "../../themes/generated/variables.base.scss" as vars;
 
 .login-form {
+  padding: 20px;
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 24px;
+    
+    h3 {
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    .login-description {
+      color: vars.$base-text-color;
+      opacity: 0.7;
+      margin-bottom: 0;
+    }
+  }
+
+  .login-error-message {
+    background-color: rgba(243, 71, 71, 0.1);
+    color: #d9534f;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .microsoft-login-button {
+    .button-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      
+      .ms-logo {
+        width: 20px;
+        height: 20px;
+      }
+      
+      .button-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .login-loader {
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .login-separator {
+    position: relative;
+    text-align: center;
+    margin: 20px 0;
+    
+    &:before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 1px;
+      background-color: vars.$base-border-color;
+    }
+    
+    .separator-text {
+      position: relative;
+      background-color: vars.$base-bg;
+      padding: 0 10px;
+      color: vars.$base-text-color;
+      opacity: 0.7;
+      font-size: 14px;
+    }
+  }
+
+  .login-links {
+    display: flex;
+    justify-content: space-between;
+    
+    a {
+      text-decoration: none;
+      color: vars.$base-accent;
+      font-size: 14px;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  
+  // Keep original styles for compatibility
   .link {
     text-align: center;
     font-size: 16px;
