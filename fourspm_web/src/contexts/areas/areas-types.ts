@@ -8,6 +8,7 @@ export interface AreasState {
   loading: boolean;
   error: string | null;
   dataLoaded: boolean;
+  token: string | null;
 }
 
 /**
@@ -16,7 +17,8 @@ export interface AreasState {
 export const initialAreasState: AreasState = {
   loading: false,
   error: null,
-  dataLoaded: false
+  dataLoaded: false,
+  token: null
 };
 
 /**
@@ -25,7 +27,8 @@ export const initialAreasState: AreasState = {
 export type AreasAction = 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_DATA_LOADED'; payload: boolean };
+  | { type: 'SET_DATA_LOADED'; payload: boolean }
+  | { type: 'SET_TOKEN'; payload: string | null };
 
 /**
  * Props interface for AreasContext
@@ -35,6 +38,8 @@ export interface AreasContextProps {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setDataLoaded: (loaded: boolean) => void;
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   invalidateAllLookups: () => void;
   projectId: string;
   project?: Project;

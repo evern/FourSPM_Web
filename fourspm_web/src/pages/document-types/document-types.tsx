@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './document-types.scss';
@@ -24,15 +24,15 @@ export function DocumentTypes(): React.ReactElement {
  * Internal component that uses the document types context
  */
 const DocumentTypesContent = React.memo((): React.ReactElement => {
-  // Get user auth token for API calls
-  const { user } = useAuth();
+  // Get everything from the context including token
   
   // Use the document types context
   const {
     state,
     documentTypesLoading,
     documentTypesError,
-    isLookupDataLoading
+    isLookupDataLoading,
+    acquireToken
   } = useDocumentTypes();
 
   // Use the dedicated grid handlers hook
@@ -44,7 +44,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useDocumentTypeGridHandlers({
-    userToken: user?.token
+    acquireToken
   });
   
   // Determine if we're still loading - combine all loading states including project loading
@@ -75,12 +75,13 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Document Types</div>
-        {!isLoading && !hasError && (
+        {!isLoading && !hasError && state.token && (
           <ODataGrid
             title=" "
             endpoint={DOCUMENT_TYPES_ENDPOINT}
             columns={documentTypeColumns}
             keyField="guid"
+            token={state.token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -89,6 +90,12 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
             customGridHeight={900}
+          />
+        )}
+        {!isLoading && !hasError && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

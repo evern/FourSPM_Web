@@ -1,4 +1,6 @@
 import { ODataService, ODataResponse } from './odata.service';
+import { useMSALAuth } from '../contexts/msal-auth';
+import { PublicClientApplication } from '@azure/msal-browser';
 
 /**
  * SharedApiService provides reusable API methods for common operations
@@ -6,24 +8,21 @@ import { ODataService, ODataResponse } from './odata.service';
  */
 class SharedApiService {
   private odataService: ODataService;
+  private msalInstance?: PublicClientApplication;
 
-  constructor() {
-    this.odataService = new ODataService();
+  constructor(msalInstance?: PublicClientApplication) {
+    this.msalInstance = msalInstance;
+    this.odataService = new ODataService(msalInstance);
   }
 
   /**
    * Generic method to perform a direct GET request to an API endpoint
    * @param url Full endpoint URL including query parameters
-   * @param token Auth token
    * @returns Promise resolving to the API response
    */
-  async get<T>(url: string, token: string): Promise<T> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async get<T>(url: string): Promise<T> {
     try {
-      const response = await this.odataService.get<T>(url, token);
+      const response = await this.odataService.get<T>(url);
       return response as unknown as T;
     } catch (error: any) {
       console.error(`Error fetching ${url}:`, error);
@@ -35,22 +34,17 @@ class SharedApiService {
    * Generic method to get an entity by ID
    * @param endpoint OData endpoint path
    * @param id Entity ID
-   * @param token Auth token
    * @param query Optional query string (e.g. $expand=Related)
    * @returns Promise resolving to the entity
    */
-  async getById<T>(endpoint: string, id: string, token: string, query?: string): Promise<T> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async getById<T>(endpoint: string, id: string, query?: string): Promise<T> {
     if (!id) {
       throw new Error(`No ID provided for ${endpoint}`);
     }
 
     try {
       const queryParam = query ? `?${query}` : '';
-      const response = await this.odataService.get<T>(`${endpoint}(${id})${queryParam}`, token);
+      const response = await this.odataService.get<T>(`${endpoint}(${id})${queryParam}`);
       return response as unknown as T;
     } catch (error: any) {
       console.error(`Error fetching ${endpoint} by ID:`, error);
@@ -61,17 +55,14 @@ class SharedApiService {
   /**
    * Generic method to get all entities from an endpoint
    * @param endpoint OData endpoint path
-   * @param token Auth token
    * @param query Optional query string
    * @returns Promise resolving to array of entities
    */
-  async getAll<T>(endpoint: string, token: string, query?: string): Promise<T[]> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async getAll<T>(endpoint: string, query?: string): Promise<T[]> {
     try {
-      const response = await this.odataService.get<T>(endpoint, token, query);
+      // Construct full URL with query parameters if provided
+      const url = query ? `${endpoint}?${query}` : endpoint;
+      const response = await this.odataService.get<T>(url);
       return response.value || [];
     } catch (error: any) {
       console.error(`Error fetching all ${endpoint}:`, error);
@@ -82,17 +73,12 @@ class SharedApiService {
   /**
    * Generic method to create or update an entity with POST
    * @param endpoint OData endpoint path
-   * @param token Auth token
    * @param data Data to send
    * @returns Promise resolving to the created/updated entity
    */
-  async post<T>(endpoint: string, token: string, data: any): Promise<T> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async post<T>(endpoint: string, data: any): Promise<T> {
     try {
-      return this.odataService.post<T>(endpoint, token, data);
+      return this.odataService.post<T>(endpoint, data);
     } catch (error: any) {
       console.error(`Error posting to ${endpoint}:`, error);
       throw error;
@@ -104,20 +90,15 @@ class SharedApiService {
    * @param endpoint OData endpoint path
    * @param id Entity ID
    * @param data Update data
-   * @param token Auth token
    * @returns Promise that resolves when update is complete
    */
-  async update<T>(endpoint: string, id: string, data: Partial<T>, token: string): Promise<void> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async update<T>(endpoint: string, id: string, data: Partial<T>): Promise<void> {
     if (!id) {
       throw new Error(`No ID provided for ${endpoint} update`);
     }
 
     try {
-      await this.odataService.patch<T>(endpoint, token, id, data);
+      await this.odataService.patch<T>(endpoint, id, data);
     } catch (error: any) {
       console.error(`Error updating ${endpoint}:`, error);
       throw error;
@@ -128,20 +109,15 @@ class SharedApiService {
    * Generic method to delete an entity
    * @param endpoint OData endpoint path
    * @param id Entity ID
-   * @param token Auth token
    * @returns Promise that resolves when deletion is complete
    */
-  async delete(endpoint: string, id: string, token: string): Promise<void> {
-    if (!token) {
-      throw new Error('No auth token provided');
-    }
-
+  async delete(endpoint: string, id: string): Promise<void> {
     if (!id) {
       throw new Error(`No ID provided for ${endpoint} delete`);
     }
 
     try {
-      await this.odataService.delete(endpoint, token, id);
+      await this.odataService.delete(endpoint, id);
     } catch (error: any) {
       console.error(`Error deleting ${endpoint}:`, error);
       throw error;

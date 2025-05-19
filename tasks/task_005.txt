@@ -1,182 +1,291 @@
 # Task ID: 5
-# Title: Configure Backend Authentication Middleware
-# Status: pending
-# Dependencies: 3
+# Title: Create New Login Page with MSAL Authentication
+# Status: done
+# Dependencies: 3, 4
 # Priority: high
-# Description: Configure ASP.NET Core authentication middleware to validate Azure AD tokens and enforce permission-based authentication for API endpoints.
+# Description: Design and implement a new login page that incorporates the Microsoft login button and handles authentication flows.
 # Details:
-1. Update Program.cs or Startup.cs to configure authentication:
-```csharp
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Identity.Web;
+Create a new login page component that uses the Microsoft login button:
 
-var builder = WebApplication.CreateBuilder(args);
+```typescript
+// src/pages/LoginPage.tsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useMSALAuth } from '../auth/MSALAuthContext';
+import MicrosoftLoginButton from '../components/auth/MicrosoftLoginButton';
+import './LoginPage.css';
 
-// Add services to the container.
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+const LoginPage: React.FC = () => {
+  const { isAuthenticated, isLoading, error: authError } = useMSALAuth();
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the return URL from location state or default to home
+  const from = (location.state as any)?.from?.pathname || '/';
 
-builder.Services.AddAuthorization(options =>
-{
-    // Create policies for different permissions
-    options.AddPolicy("CanViewProjects", policy =>
-        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.View"));
-    
-    options.AddPolicy("CanEditProjects", policy =>
-        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.Edit"));
-        
-    options.AddPolicy("CanDeleteProjects", policy =>
-        policy.RequireClaim("http://schemas.microsoft.com/identity/claims/scope", "Projects.Delete"));
-        
-    // Add more granular permission policies as needed
-});
-
-// Configure CORS for the SPA
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("default", policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "https://app.4spm.org")
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
-
-builder.Services.AddControllers();
-
-// Register permission service
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
-else
-{
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
-app.UseRouting();
-app.UseCors("default");
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
-```
-2. Update existing controller classes to require authentication:
-```csharp
-[Authorize]
-[ApiController]
-[Route("api/[controller]")]
-public class ProjectsController : ControllerBase
-{
-    private readonly IPermissionService _permissionService;
-    
-    public ProjectsController(IPermissionService permissionService)
-    {
-        _permissionService = permissionService;
+  useEffect(() => {
+    // If user is already authenticated, redirect to the intended destination
+    if (isAuthenticated && !isLoading) {
+      navigate(from, { replace: true });
     }
-    
-    // Controller implementation
-}
-```
-3. Add permission-based authorization to specific endpoints:
-```csharp
-[Authorize(Policy = "CanDeleteProjects")]
-[HttpDelete("{id}")]
-public async Task<IActionResult> DeleteProject(int id)
-{
-    // Implementation
-}
-```
-4. Implement a custom permission handler for more complex permission checks:
-```csharp
-public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
-{
-    private readonly IPermissionService _permissionService;
-    
-    public PermissionAuthorizationHandler(IPermissionService permissionService)
-    {
-        _permissionService = permissionService;
+  }, [isAuthenticated, isLoading, navigate, from]);
+
+  useEffect(() => {
+    // Update local error state when auth context error changes
+    if (authError) {
+      setError(authError);
     }
-    
-    protected override async Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        PermissionRequirement requirement)
-    {
-        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
-        {
-            return;
-        }
+  }, [authError]);
+
+  const handleLoginSuccess = () => {
+    setError(null);
+    // Navigation will be handled by the useEffect above
+  };
+
+  const handleLoginError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-container">
+        <div className="login-header">
+          <img src="/logo.png" alt="FourSPM Logo" className="logo" />
+          <h1>Welcome to FourSPM</h1>
+        </div>
         
-        var hasPermission = await _permissionService.UserHasPermissionAsync(
-            userId, requirement.Permission);
-            
-        if (hasPermission)
-        {
-            context.Succeed(requirement);
-        }
-    }
+        <div className="login-form">
+          {isLoading ? (
+            <div className="loading-indicator">
+              <span className="spinner"></span>
+              <p>Authenticating...</p>
+            </div>
+          ) : (
+            <>
+              <p className="login-instruction">
+                Sign in with your Microsoft account to access FourSPM.
+              </p>
+              
+              <MicrosoftLoginButton 
+                onLoginSuccess={handleLoginSuccess}
+                onLoginError={handleLoginError}
+                className="login-button"
+              />
+              
+              {error && (
+                <div className="error-message">
+                  <p>{error}</p>
+                  <p className="error-help">
+                    If you continue to experience issues, please contact support.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        
+        <div className="login-footer">
+          <p>&copy; {new Date().getFullYear()} FourSPM. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LoginPage;
+```
+
+Add the corresponding CSS:
+
+```css
+/* src/pages/LoginPage.css */
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 450px;
+  padding: 40px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+.login-header h1 {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+.login-form {
+  margin-bottom: 30px;
+}
+
+.login-instruction {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.login-button {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  padding: 12px;
+  background-color: #fdeded;
+  border: 1px solid #f5c2c7;
+  border-radius: 4px;
+  color: #842029;
+  margin-top: 20px;
+}
+
+.error-help {
+  font-size: 14px;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #0078d4;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 14px;
+  color: #777;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 30px 20px;
+    max-width: 100%;
+    margin: 0 15px;
+  }
 }
 ```
-5. Note that the RolesController and permission-based infrastructure has been implemented in the backend. The IPermissionService interface has been implemented and integrated with the RolePermissionsController.
 
 # Test Strategy:
-1. Verify authentication middleware is correctly configured
-2. Test token validation with valid and invalid tokens
-3. Verify CORS configuration works for allowed origins
-4. Test permission-based authorization policies with different token scopes
-5. Ensure unauthenticated requests are properly rejected
-6. Test the custom permission handler with various permission scenarios
-7. Verify integration with the RolePermissionsController
-8. Test granular permissions for different operations (view, edit, delete, etc.)
-9. Verify permission inheritance and hierarchies work correctly
-10. Test the RolesController endpoints for managing roles and permissions
+1. Verify that the login page renders correctly with all UI elements
+2. Test that the Microsoft login button is displayed and functional
+3. Verify error messages are displayed when authentication fails
+4. Test loading states during authentication
+5. Verify redirection to the intended page after successful login
+6. Test responsive design on different screen sizes
+7. Verify accessibility compliance using automated tools
 
 # Subtasks:
-## 5.1. Implement IPermissionService interface [completed]
+## 1. Implement Login Page Layout and Design [done]
 ### Dependencies: None
-### Description: Create an interface and implementation for the permission service that will handle checking user permissions
+### Description: Create the visual structure and styling for the login page following the application design system
 ### Details:
+1. Create a new React component for the login page
+2. Implement the form with username/email and password fields
+3. Add a submit button and 'forgot password' link
+4. Style the page according to design guidelines using CSS/SCSS
+5. Include the company logo and any welcome text
+6. Add form validation for input fields (required fields, email format)
+7. Ensure proper tab navigation between form elements
 
+Acceptance Criteria:
+- Page matches the approved design mockups
+- Form elements are properly aligned and styled
+- Visual feedback is provided for input focus states
+- Form layout maintains integrity at various screen sizes
 
-## 5.2. Create permission requirements and handlers [pending]
-### Dependencies: None
-### Description: Implement custom authorization requirements and handlers for permission-based access control
+## 2. Implement Authentication Flow Integration [done]
+### Dependencies: 5.1
+### Description: Connect the login form to the authentication service and handle user session management
 ### Details:
+1. Create form submission handler to capture user credentials
+2. Implement API service to communicate with authentication endpoints
+3. Add state management for login process (loading, success, failure states)
+4. Implement token storage in localStorage/sessionStorage
+5. Set up redirect to dashboard/home page after successful login
+6. Integrate with React Router for navigation
+7. Implement 'Remember me' functionality if required
 
+Acceptance Criteria:
+- Successful authentication redirects to the appropriate page
+- Authentication tokens are properly stored
+- User session persists through page refreshes if 'Remember me' is selected
+- Loading states are properly displayed during authentication
+- API calls are properly structured with error handling
 
-## 5.3. Integrate with RolePermissionsController [completed]
-### Dependencies: None
-### Description: Ensure the authentication middleware works with the existing RolePermissionsController to fetch and validate user permissions
+## 3. Implement Error Handling and User Feedback [done]
+### Dependencies: 5.2
+### Description: Add comprehensive error handling for authentication failures and input validation with clear user feedback
 ### Details:
+1. Implement form validation error messages
+2. Create error handling for authentication failures (wrong credentials, account locked, etc.)
+3. Add visual indicators for validation errors (red borders, error icons)
+4. Implement toast/notification system for system-level errors
+5. Add accessibility attributes for error messages (aria-invalid, aria-describedby)
+6. Create retry logic for failed network requests
+7. Implement rate limiting protection for multiple failed attempts
 
+Acceptance Criteria:
+- All error states have clear, user-friendly messages
+- Form validation errors appear inline next to the relevant fields
+- Authentication errors are displayed prominently
+- Error messages are accessible to screen readers
+- Network errors are handled gracefully with retry options
+- Security measures prevent brute force attempts
 
-## 5.4. Update API endpoints with permission-based policies [pending]
-### Dependencies: None
-### Description: Replace role-based policies with permission-based policies across all API endpoints
+## 4. Implement Responsive Design and Cross-Browser Testing [done]
+### Dependencies: 5.1, 5.3
+### Description: Ensure the login page works correctly across all device sizes and major browsers
 ### Details:
+1. Implement responsive breakpoints for mobile, tablet, and desktop views
+2. Add media queries for different screen sizes
+3. Test and fix layout on iOS and Android devices
+4. Ensure functionality in Chrome, Firefox, Safari, and Edge browsers
+5. Optimize touch targets for mobile users
+6. Test and fix keyboard navigation for accessibility
+7. Implement automated tests for critical login functionality
 
-
-## 5.5. Implement permission caching [pending]
-### Dependencies: None
-### Description: Add caching for permission checks to improve performance and reduce database queries
-### Details:
-
-
-## 5.6. Implement Role Management UI [pending]
-### Dependencies: None
-### Description: Create a user interface for managing roles that will interact with the new RolesController endpoints
-### Details:
-
+Acceptance Criteria:
+- Page renders correctly from 320px to 1920px width
+- All functionality works on touch devices
+- Form is usable on all major browsers (Chrome, Firefox, Safari, Edge)
+- Login process works with keyboard navigation only
+- Automated tests pass for core functionality
+- Page load time is optimized for mobile connections
 

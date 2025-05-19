@@ -74,10 +74,12 @@ const DeliverableProgressContent = (): React.ReactElement => {
     // Get deliverable gates from context following Collection View Doctrine
     deliverableGates,
     isGatesLoading: gatesLoading,
-    gatesError
+    gatesError,
+    // Get token acquisition function from context
+    acquireToken
   } = useDeliverableProgress();
   
-  const { user } = useAuth();
+  // No longer need user context as we get token from our own context
   
   // Get grid handlers directly from the hook
   const {
@@ -87,7 +89,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
     handleGridInitialized
   } = useDeliverableProgressGridHandlers({
     projectGuid: projectId || '',
-    userToken: user?.token,
+    userToken: state.token || undefined, // Convert null to undefined to match expected type
     getSelectedPeriod: () => selectedPeriod || 0,
     progressDate: progressDate || new Date()
     // Note: deliverableGates is now obtained directly from context in the hook
@@ -241,11 +243,13 @@ const DeliverableProgressContent = (): React.ReactElement => {
             </div>
           </div>
         
-          <ODataGrid
-            title=""
-            endpoint={endpoint}
-            columns={columns}
-            keyField="guid"
+          {state.token ? (
+            <ODataGrid
+              title=""
+              endpoint={endpoint}
+              columns={columns}
+              keyField="guid"
+              token={state.token}
             onRowUpdating={handleRowUpdating}
             onRowValidating={handleRowValidating}
             onInitialized={onGridInitialized}
@@ -256,7 +260,13 @@ const DeliverableProgressContent = (): React.ReactElement => {
             countColumn="guid"
             customGridHeight={isMobile ? 500 : 800}
             defaultSort={[{ selector: 'created', desc: false }]}
-          />
+            />
+          ) : (
+            <div className="error-message">
+              <h3>Authentication Error</h3>
+              <p>Unable to acquire authentication token. Please try refreshing the page.</p>
+            </div>
+          )}
         </ScrollView>
       )}
     </div>

@@ -1,4 +1,5 @@
-import React, { createContext, useReducer, useCallback, useMemo, useContext } from 'react';
+import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect } from 'react';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { v4 as uuidv4 } from 'uuid';
 import { ClientsState, ClientsContextProps } from './clients-types';
 import { clientsReducer } from './clients-reducer';
@@ -9,6 +10,7 @@ import { CLIENTS_ENDPOINT } from '@/config/api-endpoints';
 const initialState: ClientsState = {
   loading: false,
   error: null,
+  token: null,
 };
 
 // Default validation rules for clients
@@ -46,6 +48,7 @@ const ClientsContext = createContext<ClientsContextProps | undefined>(undefined)
 
 export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(clientsReducer, initialState);
+  const msalAuth = useMSALAuth();
 
   // Add auto-increment hook to get the next client number
   const { nextNumber, refreshNextNumber } = useAutoIncrement({
@@ -62,6 +65,25 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setError = useCallback((error: string | null) => {
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
+  
+  const setToken = useCallback((token: string | null) => {
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const token = await msalAuth.acquireToken();
+      if (token) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAuth.acquireToken, setToken]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
@@ -75,18 +97,29 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [nextNumber]);
 
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
+
   const contextValue = useMemo(
     () => ({ 
       state, 
       setLoading, 
-      setError, 
+      setError,
+      setToken,
+      acquireToken, 
       invalidateAllLookups,
       validationRules: CLIENT_VALIDATION_RULES,
       getDefaultValues,
       nextNumber,
       refreshNextNumber
     }),
-    [state, setLoading, setError, invalidateAllLookups, getDefaultValues, nextNumber, refreshNextNumber]
+    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues, nextNumber, refreshNextNumber]
   );
 
   return (

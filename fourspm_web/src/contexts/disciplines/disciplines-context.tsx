@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useContext, useMemo, useCallback, useEffect } from 'react';
+import React, { createContext, useReducer, useContext, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 import { disciplinesReducer, initialDisciplinesState } from './disciplines-reducer';
@@ -7,6 +7,7 @@ import { Discipline } from '@/types/odata-types';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { baseApiService } from '@/api/base-api.service';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
+import { useMSALAuth } from '../msal-auth';
 
 /**
  * Default validation rules for disciplines
@@ -61,6 +62,20 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
   
+  // For token management
+  const { acquireToken: msalAcquireToken } = useMSALAuth();
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    // Set mounted flag to true when component mounts
+    isMountedRef.current = true;
+    
+    // Clean up function to prevent state updates after unmounting
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
   // Initialize state with reducer
   const [state, dispatch] = useReducer(disciplinesReducer, initialDisciplinesState);
   
@@ -74,8 +89,41 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
   }, []);
 
   const setDataLoaded = useCallback((loaded: boolean) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
+  
+  // Token management functions
+  const setToken = useCallback((token: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      if (!isMountedRef.current) return null;
+      
+      const token = await msalAcquireToken();
+      if (token && isMountedRef.current) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAcquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
   
   // For Collection View Doctrine patterns, the ODataGrid handles data fetching directly
   // We provide minimal implementations to satisfy the interface
@@ -123,6 +171,10 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     setLoading,
     setError,
     setDataLoaded,
+    
+    // Token management
+    setToken,
+    acquireToken,
     
     // Data
     disciplines,

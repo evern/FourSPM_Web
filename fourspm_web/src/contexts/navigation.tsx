@@ -35,7 +35,8 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
 
 
       const staticNav = getStaticNavigation();
-      const projectNav = await getProjectNavigation(user.token);
+      // Token is now handled by MSAL internally
+      const projectNav = await getProjectNavigation();
       
       // Create project status navigation structure
       const projectStatusNav: NavigationItem = {

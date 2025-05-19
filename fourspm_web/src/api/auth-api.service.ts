@@ -7,7 +7,7 @@ import {
   PROJECTS_ENDPOINT, 
   REGISTER_ENDPOINT, 
   CHANGE_PASSWORD_ENDPOINT, 
-  RESET_PASSWORD_ENDPOINT 
+  RESET_PASSWORD_ENDPOINT
 } from '../config/api-endpoints';
 
 // Define interfaces for the application types
@@ -92,14 +92,20 @@ export async function getUser(): Promise<ApiResponse<User>> {
 
     // Validate token with a backend request
     try {
-      const response = await apiRequest(PROJECTS_ENDPOINT, {
+      // Use MSAL for authentication - this will validate the token automatically
+      // since the MSAL library handles token acquisition and refresh
+      const { acquireToken } = require('../contexts/msal-auth').useMSALAuth();
+      const token = await acquireToken();
+      
+      // Use projects endpoint to validate the token - a valid token will return a 200 response
+      const validateResponse = await fetch(PROJECTS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.ok) {
+      if (validateResponse.ok) {
         return {
           isOk: true,
           data: user

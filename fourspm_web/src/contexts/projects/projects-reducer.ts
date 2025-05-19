@@ -4,11 +4,15 @@ export const initialProjectsState: ProjectsState = {
   projects: [],
   loading: false,
   error: null,
-  validationErrors: {}
+  validationErrors: {},
+  token: null
 };
 
 export function projectsReducer(state: ProjectsState, action: ProjectsAction): ProjectsState {
   switch (action.type) {
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
+
     case 'FETCH_PROJECTS_START':
       return { ...state, loading: true, error: null };
     

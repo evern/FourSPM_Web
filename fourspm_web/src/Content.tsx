@@ -5,13 +5,14 @@ import routes from './app-routes';
 import { SideNavOuterToolbar as SideNavBarLayout } from './layouts';
 import { Footer } from './components';
 import ScrollToTop from './components/scroll-to-top';
+import { ProtectedRoute } from './components/protected-route';
 
 const Content: React.FC = () => {
   return (
     <SideNavBarLayout title={appInfo.title}>
       <Switch>
         {routes.map(({ path, component: Component }) => (
-          <Route
+          <ProtectedRoute
             exact
             key={path}
             path={path}

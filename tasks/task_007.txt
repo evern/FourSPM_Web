@@ -1,65 +1,230 @@
 # Task ID: 7
-# Title: Create Login and Logout Components
+# Title: Update API Service for MSAL Token Integration
 # Status: pending
-# Dependencies: 4
-# Priority: medium
-# Description: Implement React components for login and logout functionality using MSAL.
+# Dependencies: 2, 3
+# Priority: high
+# Description: Modify the API service to use MSAL tokens for authentication and handle token acquisition and renewal.
 # Details:
-1. Create a login button component (src/components/LoginButton.tsx):
+Create or update the API service to use MSAL tokens:
+
 ```typescript
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
+// src/services/apiService.ts
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { msalInstance } from '../auth/MSALProvider';
+import { loginRequest } from '../auth/msalConfig';
 
-export const LoginButton: React.FC = () => {
-  const { isAuthenticated, login, logout } = useAuth();
+class ApiService {
+  private api: AxiosInstance;
+  private isAcquiringToken: boolean = false;
+  private tokenAcquisitionPromise: Promise<string | null> | null = null;
 
-  const handleAuthClick = async () => {
-    if (isAuthenticated) {
-      await logout();
-    } else {
-      await login();
-    }
-  };
+  constructor() {
+    this.api = axios.create({
+      baseURL: process.env.REACT_APP_API_URL || '/api',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  return (
-    <button 
-      onClick={handleAuthClick}
-      className="auth-button"
-    >
-      {isAuthenticated ? 'Sign Out' : 'Sign in with Microsoft'}
-    </button>
-  );
-};
-```
-
-2. Create a user profile component (src/components/UserProfile.tsx):
-```typescript
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
-
-export const UserProfile: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-
-  if (!isAuthenticated || !user) {
-    return null;
+    this.setupInterceptors();
   }
 
-  return (
-    <div className="user-profile">
-      <span className="user-name">{user.name}</span>
-      <span className="user-email">{user.username}</span>
-    </div>
-  );
-};
+  private setupInterceptors(): void {
+    // Request interceptor to add auth token
+    this.api.interceptors.request.use(
+      async (config) => {
+        const token = await this.getAccessToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor to handle errors
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+        
+        // If error is 401 Unauthorized and we haven't retried yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          try {
+            // Force token refresh
+            const token = await this.getAccessToken(true);
+            if (token) {
+              // Update the authorization header
+              this.api.defaults.headers.common.Authorization = `Bearer ${token}`;
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              // Retry the request
+              return this.api(originalRequest);
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed', refreshError);
+            // Redirect to login if token refresh fails
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          }
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  private async getAccessToken(forceRefresh: boolean = false): Promise<string | null> {
+    // If we're already acquiring a token, return the existing promise
+    if (this.isAcquiringToken && this.tokenAcquisitionPromise) {
+      return this.tokenAcquisitionPromise;
+    }
+
+    this.isAcquiringToken = true;
+    this.tokenAcquisitionPromise = (async () => {
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+          return null;
+        }
+
+        const account = accounts[0];
+        let tokenResponse;
+
+        try {
+          // Try silent token acquisition first
+          tokenResponse = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account,
+            forceRefresh
+          });
+        } catch (error: any) {
+          // If silent acquisition fails, try interactive
+          console.warn('Silent token acquisition failed', error);
+          if (error.name === 'InteractionRequiredAuthError') {
+            try {
+              tokenResponse = await msalInstance.acquireTokenPopup(loginRequest);
+            } catch (interactiveError) {
+              console.error('Interactive token acquisition failed', interactiveError);
+              throw interactiveError;
+            }
+          } else {
+            throw error;
+          }
+        }
+
+        return tokenResponse.accessToken;
+      } catch (error) {
+        console.error('Failed to acquire token', error);
+        return null;
+      } finally {
+        this.isAcquiringToken = false;
+        this.tokenAcquisitionPromise = null;
+      }
+    })();
+
+    return this.tokenAcquisitionPromise;
+  }
+
+  // Generic request method
+  public async request<T>(config: AxiosRequestConfig): Promise<T> {
+    try {
+      const response: AxiosResponse<T> = await this.api(config);
+      return response.data;
+    } catch (error) {
+      console.error('API request failed', error);
+      throw error;
+    }
+  }
+
+  // Convenience methods for common HTTP verbs
+  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'GET', url });
+  }
+
+  public async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'POST', url, data });
+  }
+
+  public async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'PUT', url, data });
+  }
+
+  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'DELETE', url });
+  }
+}
+
+// Create a singleton instance
+const apiService = new ApiService();
+export default apiService;
 ```
 
-3. Update the application header to include these components
-4. Style the components to match the application design
-5. Add loading indicators for authentication processes
-
 # Test Strategy:
-1. Test login button in authenticated and unauthenticated states
-2. Verify login flow works correctly
-3. Verify logout flow works correctly
-4. Test user profile display with mock user data
-5. Verify components are responsive on different screen sizes
+1. Test that API requests include the authentication token in the headers
+2. Verify token acquisition works correctly for authenticated users
+3. Test token refresh when a 401 error is received
+4. Verify error handling for various API response scenarios
+5. Test the retry mechanism for failed requests due to token expiration
+6. Mock API responses to test different error conditions
+7. Verify that unauthenticated users are redirected to login
+
+# Subtasks:
+## 1. Design API Service Class Structure [pending]
+### Dependencies: None
+### Description: Create a modular and extensible service class structure for the API client
+### Details:
+1. Create a base ApiService class that handles common functionality
+2. Design interfaces for request/response types
+3. Implement configuration options (base URL, timeout, headers)
+4. Create service factory for generating API service instances
+5. Document class relationships and responsibilities
+6. Test cases: Verify service instantiation with different configs, validate inheritance structure works correctly
+
+## 2. Implement Token Acquisition Logic [pending]
+### Dependencies: 7.1
+### Description: Develop the authentication mechanism to acquire initial access tokens
+### Details:
+1. Create AuthService class for token management
+2. Implement login/authentication endpoint integration
+3. Store tokens securely (access token, refresh token, expiration)
+4. Add token validation methods
+5. Implement token storage persistence
+6. Test cases: Successful token acquisition, handling invalid credentials, token validation checks, persistence across sessions
+
+## 3. Build Request Interceptors [pending]
+### Dependencies: 7.1, 7.2
+### Description: Create interceptors that process outgoing API requests
+### Details:
+1. Implement request interceptor mechanism
+2. Add authentication header injection
+3. Create request logging functionality
+4. Add request timestamp tracking
+5. Implement request retry configuration
+6. Test cases: Verify auth headers are added correctly, test logging output, confirm retry behavior works
+
+## 4. Develop Response Interceptors with Token Refresh [pending]
+### Dependencies: 7.2, 7.3
+### Description: Create interceptors for API responses with automatic token refresh capability
+### Details:
+1. Implement response interceptor mechanism
+2. Add token expiration detection
+3. Create token refresh logic
+4. Implement request retry after token refresh
+5. Add concurrency handling for multiple requests during refresh
+6. Test cases: Expired token scenarios, successful refresh and retry, multiple concurrent requests during refresh
+
+## 5. Implement Comprehensive Error Handling [pending]
+### Dependencies: 7.3, 7.4
+### Description: Create robust error handling for all API service operations
+### Details:
+1. Design custom error classes for different error types
+2. Implement global error handler
+3. Add specific handlers for auth errors, network errors, and server errors
+4. Create user-friendly error messages
+5. Implement error logging and reporting
+6. Test cases: Authentication failures, network timeouts, server errors, malformed responses, retry exhaustion scenarios
+

@@ -62,7 +62,6 @@ export const handleProgressUpdate = async (
     // Use the shared API service to make the request
     const result = await sharedApiService.post<any>(
       `${PROGRESS_ENDPOINT}/AddOrUpdateExisting`,
-      authToken,
       progressData
     );
 

@@ -1,5 +1,5 @@
 import ODataStore from 'devextreme/data/odata/store';
-import { useAuth } from '../contexts/auth';
+import { useMSALAuth } from '../contexts/msal-auth';
 import { useMemo } from 'react';
 
 /**
@@ -10,7 +10,7 @@ import { useMemo } from 'react';
  * @returns An ODataStore instance configured for the specified endpoint
  */
 export const useODataStore = (endpointPath: string, keyField: string = 'guid', storeOptions: Record<string, any> = {}) => {
-  const { user } = useAuth();
+  const { acquireToken } = useMSALAuth();
   
   // Use useMemo to prevent creating a new store on every render
   return useMemo(() => {
@@ -25,23 +25,35 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid', s
         ...(storeOptions.fieldTypes || {})
       },
       ...storeOptions,
-      beforeSend: (options: any) => {
-        if (!user?.token) {
-          console.error('No token available');
+      beforeSend: async (options: any) => {
+        try {
+          // Dynamically acquire a token using MSAL
+          const authToken = await acquireToken();
+          
+          if (!authToken) {
+            console.error('No token available for API request');
+            return false;
+          }
+          
+          // Initialize headers if they don't exist
+          if (!options.headers) {
+            options.headers = {};
+          }
+
+          // Add authorization headers without overwriting the entire headers object
+          options.headers['Authorization'] = `Bearer ${authToken}`;
+          options.headers['Accept'] = 'application/json';
+
+          if (options.method === 'PATCH') {
+            options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
+            options.headers['Prefer'] = 'return=minimal';
+          }
+          
+          return true;
+        } catch (error) {
+          console.error('Error acquiring token:', error);
           return false;
         }
-
-        options.headers = {
-          'Authorization': `Bearer ${user?.token}`,
-          'Accept': 'application/json'
-        };
-
-        if (options.method === 'PATCH') {
-          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-          options.headers['Prefer'] = 'return=minimal';
-        }
-
-        return true;
       },
       errorHandler: (error) => {
         if (error.httpStatus === 401) {
@@ -53,5 +65,5 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid', s
         return false;
       }
     });
-  }, [endpointPath, keyField, user?.token, storeOptions]); // Only recreate the store when these dependencies change
+  }, [endpointPath, keyField, acquireToken, storeOptions]); // Only recreate the store when these dependencies change
 };

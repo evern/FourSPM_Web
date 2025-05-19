@@ -110,13 +110,15 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
       
       try {
-        const projectData = await fetchProject(projectId, user.token);
+        // Token is now handled by MSAL internally
+        const projectData = await fetchProject(projectId);
         
         // After loading the project, also load the client details if a client is selected
         if (projectData && projectData.clientGuid && isMountedRef.current) {
           try {
     
-            const clientData = await getClientDetails(projectData.clientGuid, user.token);
+            // Token is now handled by MSAL internally
+            const clientData = await getClientDetails(projectData.clientGuid);
     
             
             // Check if we have the data we need
@@ -224,7 +226,8 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         // Audit fields (created, updated, etc.) are managed by the server
       };
       
-      const updatedProject = await updateProject(project.guid, projectToSave, user.token);
+      // Token is now handled by MSAL internally
+      const updatedProject = await updateProject(project.guid, projectToSave);
       
       if (isMountedRef.current) {
         dispatch({ type: 'SET_PROJECT', payload: updatedProject });
@@ -256,10 +259,10 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
   // Client operations
   const handleClientSelectionChange = useCallback(async (e: any) => {
     const clientId = e.value;
-    if (!clientId || !user?.token || !formRef.current?.instance) return;
+    if (!clientId || !formRef.current?.instance) return;
     
     try {
-      const clientData = await getClientDetails(clientId, user.token);
+      const clientData = await getClientDetails(clientId);
       
       // Get form instance for updating
       const formInstance = formRef.current.instance;
@@ -294,7 +297,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     if (!clientId || !user?.token || !formRef.current?.instance) return null;
     
     try {
-      const clientData = await getClientDetails(clientId, user.token);
+      const clientData = await getClientDetails(clientId);
       
       if (!project) return null;
       

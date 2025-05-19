@@ -7,6 +7,7 @@ import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
 import { compareGuids } from '../../utils/guid-utils';
 import { useAuth } from '../auth';
+import { useMSALAuth } from '../msal-auth';
 import { useQuery } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
@@ -42,13 +43,44 @@ export function DeliverableProgressProvider({
   startDate = undefined 
 }: DeliverableProgressProviderProps): React.ReactElement {
   // Initialize state with reducer - without period management which is now handled by usePeriodManager
-  const [state] = useReducer(deliverableProgressReducer, {
+  const [state, dispatch] = useReducer(deliverableProgressReducer, {
     loading: false,
-    error: null
+    error: null,
+    token: null
   });
   
   // Get authentication token for API calls
   const { user } = useAuth();
+  const msalAuth = useMSALAuth();
+  
+  // MSAL token management
+  const setToken = useCallback((token: string | null) => {
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const token = await msalAuth.acquireToken();
+      if (token) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAuth.acquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -197,7 +229,8 @@ export function DeliverableProgressProvider({
     if (newData.deliverableGateGuid !== undefined && 
         oldData.deliverableGateGuid !== newData.deliverableGateGuid) {
       // Update the deliverable gate in the backend using the adapter directly
-      await updateDeliverableGate(key, newData.deliverableGateGuid, user?.token || '');
+      // Token is now handled by MSAL internally
+      await updateDeliverableGate(key, newData.deliverableGateGuid);
     }
     
     // Next, check if progress update is needed
@@ -234,6 +267,10 @@ export function DeliverableProgressProvider({
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
+    // Token management
+    setToken,
+    acquireToken,
+    // Period management
     setSelectedPeriod,
     incrementPeriod,
     decrementPeriod,

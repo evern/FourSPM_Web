@@ -9,7 +9,8 @@ export const initialVariationDeliverablesState: VariationDeliverablesState = {
   loading: false,
   error: null,
   isReadOnly: false,
-  lookupDataLoaded: false
+  lookupDataLoaded: false,
+  token: null
 };
 
 /**
@@ -21,6 +22,9 @@ export const variationDeliverablesReducer = (
   action: VariationDeliverablesAction
 ): VariationDeliverablesState => {
   switch (action.type) {
+    // Token management
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
     // Basic state management actions
     case 'SET_DELIVERABLES':
       return { ...state, deliverables: action.payload };

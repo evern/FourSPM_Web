@@ -1,138 +1,75 @@
-import React, { useState, useRef, useCallback, ReactElement, FormEvent } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import Form, {
-  Item,
-  Label,
-  ButtonItem,
-  ButtonOptions,
-  RequiredRule,
-  EmailRule
-} from 'devextreme-react/form';
-import LoadIndicator from 'devextreme-react/load-indicator';
+import React, { useState, useCallback, ReactElement } from 'react';
+import { useHistory } from 'react-router-dom';
 import notify from 'devextreme/ui/notify';
-import { useAuth } from '../../contexts/auth';
-import defaultUser from '../../utils/default-user';
+import LoadIndicator from 'devextreme-react/load-indicator';
+import { useMSALAuth } from '../../contexts/msal-auth';
 
 import './login-form.scss';
 
-interface FormData {
-  email?: string;
-  password?: string;
-  rememberMe?: boolean;
-}
-
-interface EditorOptions {
-  stylingMode?: string;
-  placeholder?: string;
-  mode?: string;
-  text?: string;
-  elementAttr?: {
-    class: string;
-  };
+interface MicrosoftLoginButtonProps {
+  className?: string;
 }
 
 export default function LoginForm(): ReactElement {
   const history = useHistory();
-  const { signIn } = useAuth();
+  const { signIn, signInWithRole } = useMSALAuth();
   const [loading, setLoading] = useState<boolean>(false);
-  const formData = useRef<FormData>({
-    email: defaultUser.email,
-    password: 'password',
-    rememberMe: false
-  });
 
-  const onSubmit = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
-    const { email, password } = formData.current;
-    setLoading(true);
-
-    if (email && password) {
-      const result = await signIn(email, password);
+  const handleMicrosoftLogin = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Use signInWithRole for admin access, or signIn for regular user access
+      const result = await signIn();
+      
       if (!result.isOk) {
-        setLoading(false);
-        notify(result.message, 'error', 2000);
+        notify(result.message || 'Login failed', 'error', 3500);
       }
+    } catch (error) {
+      notify('Authentication failed. Please try again.', 'error', 3500);
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
     }
   }, [signIn]);
 
-  const onCreateAccountClick = useCallback(() => {
-    history.push('/create-account');
-  }, [history]);
-
   return (
-    <form className={'login-form'} onSubmit={onSubmit}>
-      <Form formData={formData.current} disabled={loading}>
-        <Item
-          dataField={'email'}
-          editorType={'dxTextBox'}
-          editorOptions={emailEditorOptions}
-        >
-          <RequiredRule message="Email is required" />
-          <EmailRule message="Email is invalid" />
-          <Label visible={false} />
-        </Item>
-        <Item
-          dataField={'password'}
-          editorType={'dxTextBox'}
-          editorOptions={passwordEditorOptions}
-        >
-          <RequiredRule message="Password is required" />
-          <Label visible={false} />
-        </Item>
-        <Item
-          dataField={'rememberMe'}
-          editorType={'dxCheckBox'}
-          editorOptions={rememberMeEditorOptions}
-        >
-          <Label visible={false} />
-        </Item>
-        <ButtonItem>
-          <ButtonOptions
-            width={'100%'}
-            type={'default'}
-            useSubmitBehavior={true}
-          >
-            <span className="dx-button-text">
-              {
-                loading
-                  ? <LoadIndicator width={'24px'} height={'24px'} visible={true} />
-                  : 'Sign In'
-              }
-            </span>
-          </ButtonOptions>
-        </ButtonItem>
-        <Item>
-          <div className={'link'}>
-            <Link to={'/reset-password'}>Forgot password?</Link>
-          </div>
-        </Item>
-        <ButtonItem>
-          <ButtonOptions
-            text={'Create an account'}
-            width={'100%'}
-            onClick={onCreateAccountClick}
-          />
-        </ButtonItem>
-      </Form>
-    </form>
+    <div className="login-form">
+      <div className="login-header">
+        <h2>Sign in to FourSPM</h2>
+        <p>Use your Microsoft account to access the application</p>
+      </div>
+      
+      <button
+        type="button"
+        className="microsoft-login-button"
+        onClick={handleMicrosoftLogin}
+        disabled={loading}
+        aria-label="Sign in with Microsoft"
+      >
+        <span className="microsoft-icon">
+          {/* Microsoft logo SVG */}
+          <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+          </svg>
+        </span>
+        <span className="button-text">
+          {loading ? (
+            <>
+              <LoadIndicator width={'20px'} height={'20px'} visible={true} />
+              <span style={{ marginLeft: '8px' }}>Signing in...</span>
+            </>
+          ) : (
+            'Sign in with Microsoft'
+          )}
+        </span>
+      </button>
+      
+      <div className="login-footer">
+        <p>Using FourSPM requires a valid Microsoft account with appropriate permissions</p>
+      </div>
+    </div>
   );
 }
-
-const emailEditorOptions: EditorOptions = { 
-  stylingMode: 'filled', 
-  placeholder: 'Email', 
-  mode: 'email' 
-};
-
-const passwordEditorOptions: EditorOptions = { 
-  stylingMode: 'filled', 
-  placeholder: 'Password', 
-  mode: 'password' 
-};
-
-const rememberMeEditorOptions: EditorOptions = { 
-  text: 'Remember me', 
-  elementAttr: { 
-    class: 'form-text' 
-  } 
-};

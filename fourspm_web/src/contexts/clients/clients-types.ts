@@ -11,16 +11,20 @@ export interface Client {
 export interface ClientsState {
   loading: boolean;
   error: string | null;
+  token: string | null;
 }
 
 export type ClientsAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_TOKEN'; payload: string | null };
 
 export interface ClientsContextProps {
   state: ClientsState;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   invalidateAllLookups: () => void;
   validationRules: ValidationRule[];
   getDefaultValues: () => Partial<Client>;

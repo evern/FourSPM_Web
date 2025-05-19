@@ -6,7 +6,8 @@ import { DisciplinesState, DisciplinesAction } from './disciplines-types';
 export const initialDisciplinesState: DisciplinesState = {
   loading: false,
   error: null,
-  dataLoaded: false
+  dataLoaded: false,
+  token: null
 };
 
 /**
@@ -17,6 +18,8 @@ export const initialDisciplinesState: DisciplinesState = {
  */
 export function disciplinesReducer(state: DisciplinesState, action: DisciplinesAction): DisciplinesState {
   switch (action.type) {
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'SET_ERROR':

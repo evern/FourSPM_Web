@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 
 interface UseAutoIncrementProps {
   endpoint: string;
@@ -17,7 +17,7 @@ export const useAutoIncrement = ({
   filter
 }: UseAutoIncrementProps) => {
   const [nextNumber, setNextNumber] = useState<string>(startFrom);
-  const { user } = useAuth();
+  const { acquireToken } = useMSALAuth();
   
   // Use refs to track hook initialization and request count
   const initCountRef = useRef(0);
@@ -37,15 +37,27 @@ export const useAutoIncrement = ({
     requestCountRef.current += 1;
     
     try {
-      // Base URL for OData query
-      let url = `${endpoint}?$orderby=${field} desc&$top=1`;
+      // Create a URL object to properly handle parameter encoding
+      // First create the base URL without query parameters
+      let url = new URL(endpoint);
+      
+      // Use proper encoding for OData parameters
+      // OData requires spaces to be encoded as %20 rather than +
+      url.searchParams.set('$orderby', `${field} desc`);
+      url.searchParams.set('$top', '1');
+      
+      // Create a clean URL string with proper encoding
+      let urlString = url.toString();
+      // Fix any '+' encodings to be proper '%20' for OData
+      urlString = urlString.replace(/\+/g, '%20');
       
       // Handle filter processing
       if (filter) {
+        // Create a new URL object to update the parameters
+        let updatedUrl = new URL(urlString);
+        
         if (Array.isArray(filter)) {
-
           if (Array.isArray(filter[0])) {
-
             const condition = filter[0];
             
             if (Array.isArray(condition)) {
@@ -53,8 +65,7 @@ export const useAutoIncrement = ({
               const operator = condition[1];
               const value = condition[2];
               
-
-              
+              // Map common comparison operators to OData operators
               const operatorMap: { [key: string]: string } = {
                 '=': 'eq',
                 '>': 'gt',
@@ -77,26 +88,40 @@ export const useAutoIncrement = ({
                 formattedValue = value;
               }
               
-              url += `&$filter=${fieldName} ${odataOperator} ${formattedValue}`;
-
+              // Add filter to URL parameters
+              updatedUrl.searchParams.set('$filter', `${fieldName} ${odataOperator} ${formattedValue}`);
             }
           }
         } else {
           // Direct string filter
-          url += `&$filter=${filter}`;
-
+          updatedUrl.searchParams.set('$filter', filter);
         }
+        
+        // Update the URL string with filter parameters
+        urlString = updatedUrl.toString().replace(/\+/g, '%20');
       }
       
 
       
       try {
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-            'Accept': 'application/json'
-          }
-        });
+        // Acquire a token using MSAL
+        const token = await acquireToken();
+        
+        if (!token) {
+          console.error('useAutoIncrement: No token available');
+          return startFrom;
+        }
+        
+        // Initialize headers object
+        const headers: Record<string, string> = {};
+        
+        // Add authorization headers without overwriting the entire headers object
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['Accept'] = 'application/json';
+        
+        // Make the request with properly formatted headers and the correctly encoded URL
+        console.log('Fetching from URL:', urlString);
+        const response = await fetch(urlString, { headers });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch latest ${field}`);
@@ -139,23 +164,23 @@ export const useAutoIncrement = ({
 
       return startFrom;
     }
-  }, [endpoint, field, filter, padLength, startFrom, user?.token]);
+  }, [endpoint, field, filter, padLength, startFrom, acquireToken]);
 
   useEffect(() => {
-    // Only fetch if we have a token
-    if (user?.token) {
-      getNextNumber().then(number => {
-        setNextNumber(number);
-      });
-    }
-  }, [user?.token, getNextNumber]);
+    // Always try to fetch on mount - acquireToken will handle authentication
+    getNextNumber().then(number => {
+      setNextNumber(number);
+    }).catch(error => {
+      console.error('Failed to get next number:', error);
+    });
+  }, [getNextNumber]);
 
   const refreshNextNumber = () => {
-    if (user?.token) {
-      getNextNumber().then(number => {
-        setNextNumber(number);
-      });
-    }
+    getNextNumber().then(number => {
+      setNextNumber(number);
+    }).catch(error => {
+      console.error('Failed to refresh next number:', error);
+    });
   };
 
   return { nextNumber, refreshNextNumber };

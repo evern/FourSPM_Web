@@ -6,7 +6,8 @@ import { HashRouter as Router } from 'react-router-dom';
 import './dx-styles.scss';
 import LoadPanel from 'devextreme-react/load-panel';
 import { NavigationProvider } from './contexts/navigation';
-import { AuthProvider, useAuth } from './contexts/auth';
+// All pages now use MSAL auth - legacy auth system has been removed
+import { MSALAuthProvider, useMSALAuth } from './contexts/msal-auth';
 import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
@@ -15,12 +16,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useMSALAuth(); // Use MSAL authentication
   const screenSizeClass = useScreenSizeClass();
   const themeContext = useThemeContext();
 
   if (loading) {
-    return <LoadPanel visible={true} />;
+    return (
+      <LoadPanel 
+        visible={true} 
+        message="Initializing application..." 
+        showIndicator={true} 
+        shading={true}
+      />
+    );
   }
 
   if (user) {
@@ -53,11 +61,12 @@ const RootApp = () => {
     <Router>
       <ThemeContext.Provider value={themeContext}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
+          {/* MSAL-based authentication */}
+          <MSALAuthProvider>
             <NavigationProvider>
               <AppContent />
             </NavigationProvider>
-          </AuthProvider>
+          </MSALAuthProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </ThemeContext.Provider>

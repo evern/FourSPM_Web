@@ -3,7 +3,7 @@ import { CLIENTS_ENDPOINT } from '@/config/api-endpoints';
 import { createGridOperationHook } from '@/hooks/factories/createGridOperationHook';
 import { useClients } from '@/contexts/clients/clients-context';
 
-export function useClientGridHandlers({ userToken }: { userToken?: string }) {
+export function useClientGridHandlers({ acquireToken }: { acquireToken: () => Promise<string | null> }) {
   const { setError, invalidateAllLookups, validationRules, getDefaultValues, refreshNextNumber } = useClients();
 
   const gridOperations = createGridOperationHook({
@@ -22,8 +22,9 @@ export function useClientGridHandlers({ userToken }: { userToken?: string }) {
       setError('Failed to create client: ' + error.message);
     },
     invalidateCache: invalidateAllLookups,
-    defaultValues: getDefaultValues()
-  }, userToken);
+    defaultValues: getDefaultValues(),
+    acquireToken
+  });
 
   const { 
     handleRowValidating,

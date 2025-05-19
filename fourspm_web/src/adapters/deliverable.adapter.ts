@@ -3,6 +3,7 @@ import { baseApiService } from '../api/base-api.service';
 import { API_CONFIG } from '../config/api';
 import { createProjectFilter } from '../utils/odata-filters';
 import { DELIVERABLES_ENDPOINT, getDeliverablesByVariationUrl } from '../config/api-endpoints';
+import { useMSALAuth } from '../contexts/msal-auth';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -39,15 +40,10 @@ export interface Deliverable {
 
 /**
  * Gets all deliverables, optionally filtered by project
- * @param token User authentication token
  * @param projectId Optional project GUID to filter deliverables
  * @returns Array of deliverables
  */
-export const getDeliverables = async (token: string, projectId?: string): Promise<Deliverable[]> => {
-  if (!token) {
-    throw new Error('Token is required');
-  }
-  
+export const getDeliverables = async (projectId?: string): Promise<Deliverable[]> => {
   try {
     let query = '';
     if (projectId) {
@@ -58,7 +54,7 @@ export const getDeliverables = async (token: string, projectId?: string): Promis
       query = createProjectFilter(projectId);
     }
     
-    return await sharedApiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, token, query);
+    return await sharedApiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, query);
   } catch (error) {
     console.error('Error fetching deliverables:', error);
     throw error;
@@ -114,13 +110,11 @@ export const getSuggestedDocumentNumber = async (
  * Update a deliverable's gate
  * @param deliverableKey The GUID of the deliverable to update
  * @param gateGuid The GUID of the new gate
- * @param userToken The user's authentication token
  * @returns A promise that resolves when the update is complete
  */
 export const updateDeliverableGate = async (
   deliverableKey: string, 
-  gateGuid: string, 
-  userToken: string
+  gateGuid: string
 ): Promise<void> => {
   try {
     // Create the request payload
@@ -131,8 +125,7 @@ export const updateDeliverableGate = async (
     return sharedApiService.update<any>(
       DELIVERABLES_ENDPOINT,
       deliverableKey,
-      payload,
-      userToken
+      payload
     );
   } catch (error) {
     console.error(`Error updating deliverable ${deliverableKey} to gate ${gateGuid}: ${error}`);
@@ -265,24 +258,18 @@ export const createNewVariationDeliverable = async (
 /**
  * Gets all deliverables for a specific variation
  * @param variationGuid The GUID of the variation
- * @param token User authentication token
  * @returns Array of deliverables associated with the variation
  */
 export const getDeliverablesByVariation = async (
-  variationGuid: string,
-  token: string
+  variationGuid: string
 ): Promise<Deliverable[]> => {
-  if (!token) {
-    throw new Error('Token is required');
-  }
-  
   if (!variationGuid) {
     throw new Error('Variation GUID is required');
   }
   
   try {
     const url = getDeliverablesByVariationUrl(variationGuid);
-    const response = await sharedApiService.get<any>(url, token);
+    const response = await sharedApiService.get<any>(url);
     return response.value || [];
   } catch (error) {
     console.error('Error fetching variation deliverables:', error);

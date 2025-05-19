@@ -14,14 +14,11 @@ import {
  * This function should be called within React function components or custom hooks.
  * It returns an implementation of CollectionHook<T> with grid operations.
  * 
- * @param config Configuration for the hook
- * @param token Authentication token
- * @param gridEnabled If true, returns a hook with guaranteed grid handlers
+ * @param config Configuration for the hook including optional token acquisition function
  * @returns Object with grid-enabled operations
  */
 export function createGridOperationHook<T>(
-  config: GridOperationsConfig,
-  token?: string
+  config: GridOperationsConfig
 ): GridOperationsHook<T> {
   /**
    * Row updating event handler for grid
@@ -58,7 +55,7 @@ export function createGridOperationHook<T>(
       }
       notify(`Update failed: ${error instanceof Error ? error.message : String(error)}`, 'error', 3000);
     }
-  }, [token, config]);
+  }, [config]);
   
   /**
    * Row removing event handler for grid
@@ -95,7 +92,7 @@ export function createGridOperationHook<T>(
       }
       notify(`Delete failed: ${error instanceof Error ? error.message : String(error)}`, 'error', 3000);
     }
-  }, [token, config]);
+  }, [config]);
   
   /**
    * Row inserting event handler for grid
@@ -130,12 +127,13 @@ export function createGridOperationHook<T>(
       if (config.onInsertError) {
         config.onInsertError(error instanceof Error ? error : new Error(String(error)));
       }
-      notify(`Insert failed: ${error instanceof Error ? error.message : String(error)}`, 'error', 3000);
+      notify(`Create failed: ${error instanceof Error ? error.message : String(error)}`, 'error', 3000);
     }
-  }, [token, config]);
+  }, [config]);
   
   /**
-   * Function generator for row validation
+   * Handles row validation against a set of validation rules
+   * 
    * @param additionalRules Additional validation rules to apply on top of the default ones
    * @returns Validation function for the grid
    */

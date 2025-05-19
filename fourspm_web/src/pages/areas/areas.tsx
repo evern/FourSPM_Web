@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { ODataGrid } from '../../components';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
@@ -39,15 +39,15 @@ function Areas(): React.ReactElement {
  * Internal component that uses the areas context
  */
 const AreasContent = React.memo((): React.ReactElement => {
-  // Get user auth token for API calls
-  const { user } = useAuth();
+  // Get everything from context including token acquisition
   
-  // Use the areas context - now including project data
+  // Use the areas context - now including project data and token
   const {
     state,
     projectId,
     project,
-    isLookupDataLoading
+    isLookupDataLoading,
+    acquireToken
   } = useAreas();
 
   // Define filter to only show areas for the current project
@@ -62,7 +62,7 @@ const AreasContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useAreaGridHandlers({
-    userToken: user?.token
+    acquireToken
   });
 
   // Use the combined loading state from context - prevents flickering
@@ -96,12 +96,13 @@ const AreasContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Areas` : 'Areas'}
         </div>
         
-        {!isLoading && !hasError && (
+        {!isLoading && !hasError && state.token && (
           <ODataGrid
             title=" "
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"
+            token={state.token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -112,6 +113,12 @@ const AreasContent = React.memo((): React.ReactElement => {
             defaultSort={[{ selector: 'areaNumber', desc: false }]}
             customGridHeight={900}
             countColumn="guid"
+          />
+        )}
+        {!isLoading && !hasError && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

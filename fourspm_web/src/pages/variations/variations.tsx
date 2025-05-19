@@ -5,7 +5,7 @@ import { variationColumns } from './variation-columns';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 // Removed useProjectInfo import as we now get project from context
 import { VariationsProvider, useVariations } from '../../contexts/variations/variations-context';
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';
@@ -39,10 +39,11 @@ function Variations(): React.ReactElement {
  */
 const VariationsContent = (): React.ReactElement => {
   const { projectId } = useParams<VariationParams>();
-  const { user } = useAuth();
   
-  // Get data from our combined context - now including project data
-  const { state, project, isLookupDataLoading } = useVariations();
+  // Get data from our combined context - now including token and token acquisition
+  
+  // Get data from our combined context - now including project data, token and token acquisition
+  const { state, project, isLookupDataLoading, acquireToken } = useVariations();
   
   // Use our custom grid handlers
   const {
@@ -58,7 +59,7 @@ const VariationsContent = (): React.ReactElement => {
     handleRejectVariation
   } = useVariationGridHandlers({
     projectId,
-    userToken: user?.token
+    acquireToken
   });
   
   // Create variation columns configuration with handlers
@@ -123,11 +124,13 @@ const VariationsContent = (): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
         </div>
         
-        <ODataGrid
-          title=" "
-          endpoint={VARIATIONS_ENDPOINT}
-          columns={variationColumns(variationColumnsConfig)}
-          keyField="guid"
+        {state.token && (
+          <ODataGrid
+            title=" "
+            endpoint={VARIATIONS_ENDPOINT}
+            columns={variationColumns(variationColumnsConfig)}
+            keyField="guid"
+            token={state.token}
           onRowValidating={handleRowValidating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
@@ -142,7 +145,14 @@ const VariationsContent = (): React.ReactElement => {
           customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
-        />
+          />
+        )}
+        {!state.token && (
+          <div className="auth-error-message">
+            <h3>Authentication Error</h3>
+            <p>Unable to acquire authentication token. Please try refreshing the page.</p>
+          </div>
+        )}
       </div>
       
       <ScrollToTop />

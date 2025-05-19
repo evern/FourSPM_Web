@@ -39,9 +39,6 @@ export function Deliverables(): React.ReactElement {
  * Internal component that uses the deliverables context
  */
 const DeliverablesContent = React.memo((): React.ReactElement => {
-  // Get user auth token for API calls
-  const { user } = useAuth();
-  
   // Get projectId from URL params directly
   const { projectId } = useParams<DeliverableParams>();
 
@@ -57,7 +54,10 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     isLookupDataLoading,
     
     // Project data
-    project
+    project,
+    
+    // Token acquisition
+    acquireToken
   } = useDeliverables();
   
   // Get grid handlers directly from the hook
@@ -68,7 +68,7 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     handleEditorPreparing
   } = useDeliverableGridHandlers({
     projectGuid: projectId || '',
-    userToken: user?.token,
+    userToken: state.token || undefined, // Use token from context
     project
   });
   
@@ -126,12 +126,13 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}
         </div>
         
-        {!isLoading && !hasError && (
+        {!isLoading && !hasError && state.token && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLES_ENDPOINT}
             columns={mobileAdjustedColumns}
             keyField="guid"
+            token={state.token}
             onRowValidating={handleRowValidating}
             onInitNewRow={handleInitNewRow}
             onEditorPreparing={handleEditorPreparing}
@@ -143,6 +144,12 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={true}
             allowDeleting={true}
             customGridHeight={900}
+          />
+        )}
+        {!isLoading && !hasError && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

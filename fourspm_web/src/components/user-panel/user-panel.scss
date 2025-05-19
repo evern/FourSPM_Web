@@ -1,42 +1,99 @@
 @use "../../themes/generated/variables.base.scss" as vars;
 
-.user-info {
-  display: flex;
-  align-items: center;
-
-  .dx-toolbar-menu-section & {
-    padding: 10px 6px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  }
-
-  .image-container {
-    overflow: hidden;
-    border-radius: 50%;
-    height: 30px;
-    width: 30px;
-    margin: 0 4px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-
-    .user-image {
-      width: 100%;
-      height: 100%;
+.user-panel {
+  .user-info {
+    display: flex;
+    align-items: center;
+  
+    .dx-toolbar-menu-section & {
+      padding: 10px 6px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  
+      // In dark theme, adjust border color
+      .dx-theme-generic-dark & {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+  
+    .image-container {
+      overflow: hidden;
+      border-radius: 50%;
+      height: 30px;
+      width: 30px;
+      margin: 0 4px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  
+      // In dark theme, adjust border and shadow
+      .dx-theme-generic-dark & {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+  
+      .user-image {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  
+    .user-name {
+      font-size: 14px;
+      color: white;
+      margin: 0 9px;
+      max-width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      
+      // In dark theme, text color adjustments
+      .dx-theme-generic-dark & {
+        color: #f5f5f5;
+      }
     }
   }
 
-  .user-name {
-    font-size: 14px;
-    color: white;
-    margin: 0 9px;
+  // Style the user panel list in menu
+  .user-panel-list-wrapper {
+    .dx-list {
+      .dx-scrollview-content {
+        padding: 0 !important;
+      }
+    }
   }
 }
 
-.user-panel-list-wrapper {
-  // Style the list like the context menu
-  .dx-list {
-    // Target the dx-scrollview-content element directly
-    .dx-scrollview-content {
-      padding: 0px !important;
+// Logout confirmation popup styles
+.logout-popup-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 15px;
+  
+  .logout-message {
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    color: vars.$base-text-color;
+  }
+  
+  .logout-popup-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+  }
+  
+  .logout-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    .loading-text {
+      margin-top: 15px;
+      font-size: 16px;
+      color: vars.$base-text-color;
     }
   }
 }

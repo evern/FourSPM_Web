@@ -68,10 +68,10 @@ function extractVariationErrorMessage(error: any, type: 'approve' | 'reject'): s
  */
 export function useVariationGridHandlers({
   projectId,
-  userToken,
+  acquireToken,
 }: {
   projectId?: string;
-  userToken?: string;
+  acquireToken?: () => Promise<string | null>;
 }) {
   // Get the variations context for validation, operations, and cache invalidation
   const { 

@@ -29,6 +29,7 @@ export interface VariationsState {
   variations: Variation[];
   loading: boolean;
   error: string | null;
+  token: string | null;
   validationErrors: Record<string, string[]>;
   
   // Editor state
@@ -39,6 +40,8 @@ export interface VariationsState {
 
 // Actions that can be dispatched
 export type VariationsAction = 
+  // Auth-related actions
+  | { type: 'SET_TOKEN'; payload: string | null }
   // Data operations actions
   | { type: 'FETCH_VARIATIONS_START' }
   | { type: 'FETCH_VARIATIONS_SUCCESS'; payload: Variation[] }
@@ -62,6 +65,10 @@ export type VariationsAction =
 export interface VariationsContextType {
   // Data state and operations
   state: VariationsState;
+  
+  // Auth functions
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   
   // Validation methods
   validateVariation: (variation: Record<string, any>) => { isValid: boolean; errors: Record<string, string> };

@@ -35,11 +35,11 @@ export interface ProjectGridHandlersResult {
 export function useProjectGridHandlers({
   nextProjectNumber,
   refreshNextNumber,
-  userToken,
+  acquireToken,
 }: {
   nextProjectNumber?: string;
   refreshNextNumber?: () => void;
-  userToken?: string;
+  acquireToken?: () => Promise<string | null>;
 }): ProjectGridHandlersResult {
   // Grid reference for direct control access
   const dataGridRef = useRef<any>(null);

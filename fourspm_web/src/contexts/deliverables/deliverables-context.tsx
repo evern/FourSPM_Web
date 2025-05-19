@@ -6,7 +6,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
-import { useAuth } from '../auth';
+import { useMSALAuth } from '../msal-auth';
 import { Deliverable } from '../../types/odata-types';
 import { getDeliverables, getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
@@ -77,7 +77,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   // Get route parameters and authentication
   const params = useParams<{ projectId: string }>();
   const projectId = projectIdProp || params.projectId;
-  const { user } = useAuth();
+  const { acquireToken } = useMSALAuth();
   
   // Get query client for cache invalidation
   const queryClient = useQueryClient();
@@ -108,6 +108,38 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
+  
+  // Token management functions
+  const setToken = useCallback((token: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireTokenWithState = useCallback(async (): Promise<string | null> => {
+    try {
+      if (!isMountedRef.current) return null;
+      
+      const token = await acquireToken();
+      if (token && isMountedRef.current) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [acquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireTokenWithState();
+    };
+    
+    getInitialToken();
+  }, [acquireTokenWithState]);
   
   // setProjectGuid function removed - project ID now passed explicitly to functions
   
@@ -273,13 +305,20 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       // Convert to string for consistency with API call
       const deliverableTypeIdStr = deliverableTypeId?.toString() || '';
       
+      // Acquire token using MSAL authentication
+      const token = await acquireToken();
+      
+      if (!token) {
+        throw new Error('Authentication token required for document number generation');
+      }
+      
       const suggestedNumber = await getSuggestedDocumentNumber(
         projectId,
         deliverableTypeIdStr,
         areaNumber, 
         discipline, 
         documentType,
-        user?.token || '',
+        token,
         currentDeliverableGuid 
       );
       
@@ -296,19 +335,23 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       return '';
     }
-  }, [projectId, user?.token, processApiError, dispatch]);
+  }, [projectId, acquireToken, processApiError, dispatch]);
 
   // Fetch all deliverables for a project
   const fetchDeliverables = useCallback(async (projectId: string) => {
-    if (!projectId || !user?.token) {
-      // Skip if no project ID or user token
+    if (!projectId) {
+      // Skip if no project ID
       return;
     }
 
     dispatch({ type: 'FETCH_DELIVERABLES_START' });
 
     try {
-      const loadedDeliverables = await getDeliverables(user.token, projectId);
+      // Acquire token using MSAL authentication
+      const token = await acquireToken();
+      
+      // Token is no longer needed as authentication is handled by MSAL internally
+      const loadedDeliverables = await getDeliverables(projectId);
       
       // Convert the adapter Deliverable type to the odata-types Deliverable type
       // by ensuring numeric fields are treated as strings to match odata-types
@@ -330,7 +373,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       const errorMessage = processApiError(error);
       dispatch({ type: 'FETCH_DELIVERABLES_ERROR', payload: errorMessage });
     }
-  }, [dispatch, user, processApiError]);
+  }, [dispatch, acquireToken, processApiError]);
   
   /**
    * Add a new deliverable with validation
@@ -342,8 +385,10 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     deliverable: Partial<Deliverable>,
     isVariation: boolean = false
   ): Promise<Deliverable> => {
-    if (!user?.token) {
-      throw new Error('User token is required');
+    // Acquire token using MSAL authentication
+    const token = await acquireToken();
+    if (!token) {
+      throw new Error('Authentication token required for adding deliverable');
     }
     
     // Validate the deliverable before saving
@@ -382,14 +427,14 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       }
       
       // In a real implementation, you would call an adapter method like:
-      // const result = await createDeliverable(deliverable, user.token);
+      // const result = await createDeliverable(deliverable, token);
       
       // For now, we'll simulate a successful creation by generating a new GUID and adding timestamps
       const newDeliverable = {
         ...deliverable,
         guid: deliverable.guid || uuidv4(), // Use provided GUID or generate a new one
         created: new Date(),
-        createdBy: user.name || 'system'
+        createdBy: 'system' // User identification would be handled by the backend with the token
       };
       
       // Convert numeric types to string to match odata-types
@@ -418,7 +463,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       });
       throw error;
     }
-  }, [user?.token, validateDeliverable, generateDocumentNumber, dispatch, processApiError, queryClient, projectId]);
+  }, [validateDeliverable, generateDocumentNumber, dispatch, processApiError, queryClient, projectId, acquireToken]);
   
   /**
    * Update an existing deliverable with validation
@@ -430,8 +475,10 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     deliverable: Deliverable,
     isVariation: boolean = false
   ): Promise<Deliverable> => {
-    if (!user?.token) {
-      throw new Error('User token is required');
+    // Acquire token using MSAL authentication
+    const token = await acquireToken();
+    if (!token) {
+      throw new Error('Authentication token required for updating deliverable');
     }
     
     // First validate the deliverable
@@ -482,13 +529,13 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       }
       
       // In a real implementation, you would call an adapter method like:
-      // const result = await updateDeliverableApi(deliverable, user.token);
+      // const result = await updateDeliverableApi(deliverable, token);
       
       // For this simulation, we'll just add updated timestamp
       const updatedDeliverable = {
         ...deliverable,
         updated: new Date(),
-        updatedBy: user.name || 'system'
+        updatedBy: 'system' // User identification would be handled by the backend with the token
       };
       
       // Convert numeric types to string to match odata-types
@@ -517,7 +564,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       });
       throw error;
     }
-  }, [user, user?.name, dispatch, validateDeliverable, generateDocumentNumber, processApiError, queryClient, projectId]);
+  }, [dispatch, validateDeliverable, generateDocumentNumber, processApiError, queryClient, projectId, acquireToken]);
   
   /**
    * Delete a deliverable with confirmation and error handling
@@ -525,8 +572,10 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
    * @returns Promise resolving when delete is complete
    */
   const deleteDeliverable = useCallback(async (id: string): Promise<void> => {
-    if (!user?.token) {
-      throw new Error('User token is required');
+    // Acquire token using MSAL authentication
+    const token = await acquireToken();
+    if (!token) {
+      throw new Error('Authentication token required for deleting deliverable');
     }
     
     if (!id) {
@@ -537,7 +586,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       dispatch({ type: 'DELETE_DELIVERABLE_START', payload: id });
       
       // In a real implementation, you would call an adapter method like:
-      // await deleteDeliverableApi(id, user.token);
+      // await deleteDeliverableApi(id, token);
       
       // For simulation, we'll just dispatch the success action
       // This would normally happen after the API call succeeds
@@ -560,7 +609,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       });
       throw error;
     }
-  }, [user, dispatch, processApiError, queryClient, projectId]);
+  }, [dispatch, processApiError, queryClient, projectId, acquireToken]);
 
   // Use React Query to fetch reference data
   const { 
@@ -626,15 +675,19 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   
   // Fetch deliverables when project ID is available
   useEffect(() => {
-    if (projectId && user?.token) {
+    if (projectId) {
       fetchDeliverables(projectId);
     }
-  }, [projectId, user?.token, fetchDeliverables]);
+  }, [projectId, fetchDeliverables]);
   
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State
     state,
+    
+    // Token management
+    setToken,
+    acquireToken: acquireTokenWithState,
     
     // CRUD operations
     validateDeliverable,

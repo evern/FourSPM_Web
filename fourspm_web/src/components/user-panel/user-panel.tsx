@@ -1,53 +1,160 @@
-import React, { useMemo, ReactElement } from 'react';
+import React, { useMemo, ReactElement, useState } from 'react';
 import { useHistory } from "react-router-dom";
 import ContextMenu, { Position } from 'devextreme-react/context-menu';
 import List from 'devextreme-react/list';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
+import LoadIndicator from 'devextreme-react/load-indicator';
+import Popup from 'devextreme-react/popup';
+import Button from 'devextreme-react/button';
+import notify from 'devextreme/ui/notify';
 import './user-panel.scss';
 
 interface Props {
   menuMode: 'context' | 'list';
 }
 
+/**
+ * Generate an avatar color based on the user's name
+ * @param name The user's name to generate a color for
+ * @returns A hex color code
+ */
+function generateAvatarColor(name: string): string {
+  // Simple hash function for the name
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  // Convert to hex color (pastel shades for better readability)
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    // Generate pastel colors by keeping values between 150-220
+    const value = ((hash >> (i * 8)) & 0xFF) % 70 + 150;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+}
+
+/**
+ * Generate initials from a name
+ * @param name The user's name
+ * @returns Up to 2 initials from the name
+ */
+function getInitials(name: string): string {
+  if (!name) return '?';
+  
+  const parts = name.split(' ');
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+  
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 export default function UserPanel({ menuMode }: Props): ReactElement {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useMSALAuth();
   const history = useHistory();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  // Handle logout confirmation
+  const handleLogoutClick = () => {
+    setConfirmLogout(true);
+  };
+
+  // Execute actual logout
+  const handleConfirmedLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await signOut();
+      // The page will redirect automatically after logout
+    } catch (error) {
+      notify('Logout failed. Please try again.', 'error', 3000);
+      console.error('Logout error:', error);
+      setLoggingOut(false);
+      setConfirmLogout(false);
+    }
+  };
 
   const menuItems = useMemo(() => {
-    const navigateToProfile = () => {
-      history.push("/profile");
-    };
-
     return [
       {
-        text: 'Profile',
+        text: 'Account Info',
         icon: 'user',
-        onClick: navigateToProfile
+        onClick: () => {
+          // Display account info in a notification instead of navigating
+          if (user) {
+            notify({
+              message: `
+                <b>Name:</b> ${user.name || 'Not available'}<br/>
+                <b>Email:</b> ${user.email || 'Not available'}<br/>
+                <b>ID:</b> ${user.id || 'Not available'}
+              `,
+              width: 300,
+              height: 150,
+              type: 'info',
+              displayTime: 5000,
+              position: { at: 'top center', my: 'top center' }
+            }, 'info', 5000);
+          }
+        }
       },
       {
         text: 'Logout',
         icon: 'runner',
-        onClick: signOut
+        onClick: handleLogoutClick
       }
     ];
-  }, [history, signOut]);
+  }, [user, handleLogoutClick]);
 
   if (!user) {
-    return <div className="user-panel">Loading...</div>;
+    return (
+      <div className="user-panel">
+        <LoadIndicator visible={true} width={20} height={20} />
+      </div>
+    );
   }
+
+  // Generate avatar background color and initials from user's name
+  const userName = user?.name || user?.email?.split('@')[0] || 'User';
+  const avatarColor = generateAvatarColor(userName);
+  const initials = getInitials(userName);
+  
+  // Create avatar as initials on a background, or use user's avatarUrl if available
+  const avatar = user?.avatarUrl ? (
+    <div
+      style={{
+        background: `url(${user.avatarUrl}) no-repeat #fff`,
+        backgroundSize: 'cover'
+      }}
+      className={'user-image'}
+    />
+  ) : (
+    <div
+      style={{
+        backgroundColor: avatarColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: '16px'
+      }}
+      className={'user-image'}
+    >
+      {initials}
+    </div>
+  );
 
   return (
     <div className={'user-panel'}>
       <div className={'user-info'}>
         <div className={'image-container'}>
-          <div
-            style={{
-              background: `url(${user.avatarUrl || ''}) no-repeat #fff`,
-              backgroundSize: 'cover'
-            }}
-            className={'user-image'} />
+          {avatar}
         </div>
-        <div className={'user-name'}>{user.email || 'Anonymous'}</div>
+        <div className={'user-name'}>
+          {user.name || user.email || 'Anonymous'}
+        </div>
       </div>
 
       {menuMode === 'context' && (
@@ -69,6 +176,46 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
           />
         </div>
       )}
+      
+      {/* Logout confirmation popup */}
+      <Popup
+        visible={confirmLogout}
+        dragEnabled={false}
+        closeOnOutsideClick={!loggingOut}
+        showCloseButton={!loggingOut}
+        showTitle={true}
+        title="Sign Out"
+        onHiding={() => !loggingOut && setConfirmLogout(false)}
+        width={300}
+        height={180}
+      >
+        <div className="logout-popup-content">
+          {loggingOut ? (
+            <div className="logout-loading">
+              <LoadIndicator visible={true} width={40} height={40} />
+              <div className="loading-text">Signing out...</div>
+            </div>
+          ) : (
+            <>
+              <p className="logout-message">Are you sure you want to sign out?</p>
+              <div className="logout-popup-buttons">
+                <Button
+                  text="Yes"
+                  type="default"
+                  onClick={handleConfirmedLogout}
+                  width={100}
+                />
+                <Button
+                  text="No"
+                  type="normal"
+                  onClick={() => setConfirmLogout(false)}
+                  width={100}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </Popup>
     </div>
   );
 }

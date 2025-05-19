@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 
 /**
  * Fetch project details from the API with client data expanded
@@ -33,6 +34,7 @@ const AreasContext = createContext<AreasContextProps | undefined>(undefined);
 export function AreasProvider({ children, projectId }: AreasProviderProps): React.ReactElement {
   // Get authentication
   const { user } = useAuth();
+  const msalAuth = useMSALAuth();
   
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -68,6 +70,38 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
+  
+  // Token management functions
+  const setToken = useCallback((token: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      if (!isMountedRef.current) return null;
+      
+      const token = await msalAuth.acquireToken();
+      if (token && isMountedRef.current) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAuth.acquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
   
   // Set data loaded to true by default since the ODataGrid manages loading state
   useEffect(() => {
@@ -111,11 +145,15 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
   
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    // State
+    // State and actions
     state,
     setLoading,
     setError,
     setDataLoaded,
+    
+    // Token management
+    setToken,
+    acquireToken,
     
     // Project data
     projectId,
@@ -129,6 +167,8 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setLoading,
     setError,
     setDataLoaded,
+    setToken,
+    acquireToken,
     projectId,
     project,
     isLookupDataLoading,

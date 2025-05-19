@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useEffect, useContext, useMemo, useCallback } from 'react';
+import React, { createContext, useReducer, useEffect, useContext, useMemo, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useVariationInfo } from '../../hooks/utils/useVariationInfo';
 import { useAuth } from '../auth';
+import { useMSALAuth } from '../msal-auth';
 import { useDeliverables, DEFAULT_DELIVERABLE_VALIDATION_RULES } from '../deliverables/deliverables-context';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { 
@@ -57,6 +58,20 @@ export function VariationDeliverablesProvider({
   const variationId = variationGuidProp || params.variationId;
   const { user } = useAuth();
   
+  // For token management
+  const { acquireToken: msalAcquireToken } = useMSALAuth();
+  
+  // Track component mount state to prevent state updates after unmounting
+  const isMountedRef = useRef(true);
+  
+  // Set up mounted ref
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
   // Initialize state with reducer
   const [state, dispatch] = useReducer(variationDeliverablesReducer, {
     ...initialVariationDeliverablesState
@@ -64,16 +79,51 @@ export function VariationDeliverablesProvider({
   
   // Action creators
   const setLoading = useCallback((loading: boolean) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_LOADING', payload: loading });
   }, []);
   
   const setError = useCallback((error: string | null) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
   
   const setLookupDataLoaded = useCallback((loaded: boolean) => {
+    if (!isMountedRef.current) return;
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
+  
+  // Token management functions
+  const setToken = useCallback((token: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      if (!isMountedRef.current) return null;
+      
+      const token = await msalAcquireToken();
+      if (token && isMountedRef.current) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAcquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
   
   // Step 1: Load variation using the existing hook
   const {
@@ -81,7 +131,7 @@ export function VariationDeliverablesProvider({
     loading: variationLoading,
     error: variationError,
     projectGuid: variationProjectGuid
-  } = useVariationInfo(variationId, user?.token);
+  } = useVariationInfo(variationId); // Token is now handled by MSAL internally
   
   // Determine which project ID to use (from variation or props)
   const projectGuid = variationProjectGuid || projectGuidProp;
@@ -91,7 +141,7 @@ export function VariationDeliverablesProvider({
     project,
     isLoading: projectLoading,
     error: projectError
-  } = useProjectInfo(projectGuid, user?.token);
+  } = useProjectInfo(projectGuid); // Token is now handled by MSAL internally
   
   // Step 3: Fetch reference data only when project data is available
   const { 
@@ -174,7 +224,7 @@ export function VariationDeliverablesProvider({
     
     try {
       dispatch({ type: 'FETCH_DELIVERABLES_START' });
-      const loadedDeliverables = await getVariationDeliverables(variationId, user.token);
+      const loadedDeliverables = await getVariationDeliverables(variationId);
       dispatch({ type: 'FETCH_DELIVERABLES_SUCCESS', payload: loadedDeliverables });
     } catch (error) {
       const errorMessage = processError(error);
@@ -211,7 +261,7 @@ export function VariationDeliverablesProvider({
         variationGuid: variationId
       };
       
-      const result = await addExistingDeliverableToVariation(variationDeliverable, user?.token);
+      const result = await addExistingDeliverableToVariation(variationDeliverable);
       
       // Only update the context state if we're not skipping updates
       if (!skipStateUpdate) {
@@ -296,7 +346,7 @@ export function VariationDeliverablesProvider({
         createdBy: user.name || 'system'
       };
       
-      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable, user.token);
+      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable); // Token is now handled by MSAL internally
       dispatch({ type: 'ADD_DELIVERABLE_SUCCESS', payload: result });
       
       // Invalidate any relevant queries
@@ -337,7 +387,7 @@ export function VariationDeliverablesProvider({
       }
       
       // Always perform the API call
-      const result = await cancelDeliverableVariation(originalDeliverableGuid, variationId, user.token);
+      const result = await cancelDeliverableVariation(originalDeliverableGuid, variationId);
       
       // Only update context state if not skipping state updates
       if (!skipStateUpdate) {
@@ -436,7 +486,7 @@ export function VariationDeliverablesProvider({
           guid: deliverableToAdd.guid || uuidv4(),
           variationGuid: variationId
         };
-        await addNewDeliverableToVariation(preparedDeliverable as Deliverable, user.token);
+        await addNewDeliverableToVariation(preparedDeliverable as Deliverable); // Token is now handled by MSAL internally
         
         // Still invalidate queries to maintain data consistency
         queryClient.invalidateQueries({ queryKey: ['variation-deliverables', variationId] });
@@ -501,7 +551,7 @@ export function VariationDeliverablesProvider({
     let isValid = true;
     
     // Get UI status to determine validation rules
-    const uiStatus = deliverable.uiStatus as VariationDeliverableUiStatus || 'Original';
+    const uiStatus = (deliverable.uiStatus as VariationDeliverableUiStatus) || 'Original';
     
     // For Original status, only validate variationHours if it was changed
     if (uiStatus === 'Original') {
@@ -565,27 +615,30 @@ export function VariationDeliverablesProvider({
         return true;
       case 'Cancel':
       case 'View':
+        return false;
       default:
         return false;
     }
   }, []);
   
-  // Create stable state object
-  const stableState = useMemo(() => ({
-    loading: state.loading,
-    error: state.error,
-    isReadOnly: state.isReadOnly
-  }), [state.loading, state.error, state.isReadOnly]);
+  // Create stable state reference for context value memoization
+  const stableState = useMemo(() => state, [state]);
   
-  // Create memoized context value to prevent unnecessary re-renders
+  // Create context value with all functions and state
   const contextValue = useMemo(() => ({
     // State
     state: stableState,
+    
+    // State management functions
     setLoading,
     setError,
     setLookupDataLoaded,
     
-    // Data provider functions
+    // Token management
+    setToken,
+    acquireToken,
+    
+    // Field and validation utilities
     isFieldEditable,
     getDefaultDeliverableValues,
     validateVariationDeliverable,
@@ -612,13 +665,20 @@ export function VariationDeliverablesProvider({
     project,
     variation
   }), [
+    // State and state setters
     stableState,
     setLoading,
     setError,
     setLookupDataLoaded,
+    setToken,
+    acquireToken,
+    
+    // Field and validation utilities
     isFieldEditable,
     getDefaultDeliverableValues,
     validateVariationDeliverable,
+    
+    // CRUD operations
     fetchVariationDeliverables,
     addExistingToVariation,
     addNewToVariation,
@@ -626,10 +686,14 @@ export function VariationDeliverablesProvider({
     canDeliverableBeCancelled,
     updateVariationDeliverable,
     addNewVariationDeliverable,
+    
+    // Reference data
     areasDataSource,
     disciplinesDataSource,
     documentTypesDataSource,
     isLookupDataLoading,
+    
+    // Entity data
     projectGuid,
     project,
     variation

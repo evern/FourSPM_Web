@@ -1,4 +1,5 @@
-import React, { createContext, useReducer, useCallback, useMemo, useContext } from 'react';
+import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect } from 'react';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { v4 as uuidv4 } from 'uuid';
 import { DeliverableGatesState, DeliverableGatesContextProps } from './deliverable-gates-types';
 import { deliverableGatesReducer } from './deliverable-gates-reducer';
@@ -7,6 +8,7 @@ import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interface
 const initialState: DeliverableGatesState = {
   loading: false,
   error: null,
+  token: null,
 };
 
 // Default validation rules for deliverable gates
@@ -52,6 +54,7 @@ const DeliverableGatesContext = createContext<DeliverableGatesContextProps | und
 
 export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(deliverableGatesReducer, initialState);
+  const msalAuth = useMSALAuth();
 
   const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
@@ -60,6 +63,25 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
   const setError = useCallback((error: string | null) => {
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
+  
+  const setToken = useCallback((token: string | null) => {
+    dispatch({ type: 'SET_TOKEN', payload: token });
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const token = await msalAuth.acquireToken();
+      if (token) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAuth.acquireToken, setToken]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
@@ -71,16 +93,27 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     return getDefaultDeliverableGateValues();
   }, []);
 
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
+
   const contextValue = useMemo(
     () => ({ 
       state, 
       setLoading, 
-      setError, 
+      setError,
+      setToken,
+      acquireToken,
       invalidateAllLookups,
       validationRules: DELIVERABLE_GATE_VALIDATION_RULES,
       getDefaultValues
     }),
-    [state, setLoading, setError, invalidateAllLookups, getDefaultValues]
+    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
   );
 
   return (

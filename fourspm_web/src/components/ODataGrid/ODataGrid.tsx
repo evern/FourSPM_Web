@@ -12,7 +12,6 @@ import DataGrid, {
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
-import { useAuth } from '../../contexts/auth';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
 
@@ -92,6 +91,7 @@ interface ODataGridProps {
   customGridHeight?: string | number;
   loading?: boolean; // Loading state prop
   storeOptions?: any; // Options passed to the ODataStore
+  token: string; // Required token prop for authentication
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -119,10 +119,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   countColumn,
   customGridHeight,
   loading = false, // Default to false if not provided
-  storeOptions = {}, // Default to empty object if not provided
+  storeOptions = {},  // We now use the token prop directly instead of acquiring it dynamically
+  token,
 }) => {
-  const { user } = useAuth();
-  const token = user?.token;
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
 
@@ -145,18 +144,50 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         ...(storeOptions.fieldTypes || {})
       },
       beforeSend: (options: any) => {
+        console.log('ODataGrid: beforeSend called for URL:', options.url);
+        
+        // Use the token prop directly - it's now required
         if (!token) {
+          console.error('ODataGrid: No auth token available for API request');
           return false;
         }
-  
-        options.headers = {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        };
-  
+        
+        console.log('ODataGrid: Setting headers with auth token:', token.substring(0, 10) + '...');
+        
+        // Initialize headers if they don't exist
+        if (!options.headers) {
+          options.headers = {};
+        }
+
+        // Add authorization headers without overwriting the entire headers object
+        options.headers['Authorization'] = `Bearer ${token}`;
+        options.headers['Accept'] = 'application/json';
+        
+        // Add method-specific headers for write operations
+        const method = (options.method || '').toLowerCase();
+        if (['patch', 'put', 'post'].includes(method)) {
+          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal';
+          options.headers['Prefer'] = 'return=representation';
+        }
+        
+        // For maximum compatibility, also set headers directly on XHR object if available
+        if (options.httpRequest && options.httpRequest.setRequestHeader) {
+          console.log('ODataGrid: Also setting headers directly on XHR object');
+          options.httpRequest.setRequestHeader('Authorization', `Bearer ${token}`);
+          options.httpRequest.setRequestHeader('Accept', 'application/json');
+          
+          if (['patch', 'put', 'post'].includes(method)) {
+            options.httpRequest.setRequestHeader('Content-Type', 'application/json;odata.metadata=minimal');
+            options.httpRequest.setRequestHeader('Prefer', 'return=representation');
+          }
+        }
+        
+        console.log('ODataGrid: Headers set, options:', JSON.stringify(options, (key, value) => 
+          key === 'httpRequest' ? 'XHR_OBJECT' : value
+        ));
+
         // Handle expand parameter based on the request method
         const url = new URL(options.url);
-        const method = (options.method || '').toLowerCase();
         
         if (method === 'get' && expand) {
           url.searchParams.set('$expand', expand.join(','));
@@ -193,12 +224,6 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         }
         
         options.url = url.toString();
-  
-        // Set appropriate headers for all HTTP methods
-        if (options.method === 'PUT' || options.method === 'PATCH' || options.method === 'POST') {
-          options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-          options.headers['Prefer'] = 'return=minimal';
-        }
         
         return true;
       },

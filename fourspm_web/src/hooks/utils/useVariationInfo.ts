@@ -6,18 +6,17 @@ import { Variation } from '../../types/odata-types';
  * Hook to load variation data and provide access to its properties
  * 
  * @param variationGuid - GUID of the variation to load
- * @param userToken - Authentication token
  * @returns Object containing variation data, loading state, and project information
  */
-export const useVariationInfo = (variationGuid: string, userToken?: string) => {
+export const useVariationInfo = (variationGuid: string) => {
   const [variation, setVariation] = useState<Variation | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
 
   // Helper to determine if we have valid input parameters
   const hasValidParams = useCallback(() => {
-    return Boolean(variationGuid && userToken);
-  }, [variationGuid, userToken]);
+    return Boolean(variationGuid);
+  }, [variationGuid]);
 
   // Load variation data when inputs change
   const loadVariation = useCallback(async () => {
@@ -29,7 +28,8 @@ export const useVariationInfo = (variationGuid: string, userToken?: string) => {
     setError(null);
 
     try {
-      const data = await getVariationById(variationGuid, userToken || '');
+      // Token is now handled by MSAL internally
+      const data = await getVariationById(variationGuid);
       setVariation(data);
     } catch (err) {
       setError(err);
@@ -37,7 +37,7 @@ export const useVariationInfo = (variationGuid: string, userToken?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [variationGuid, userToken, hasValidParams]);
+  }, [variationGuid, hasValidParams]);
 
   // Load variation on mount and when dependencies change
   useEffect(() => {

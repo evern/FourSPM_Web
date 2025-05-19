@@ -4,6 +4,7 @@ import { variationsReducer, initialVariationsState } from './variations-reducer'
 import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
+import { useMSALAuth } from '../msal-auth';
 import { createVariation, updateVariation, deleteVariation, getProjectVariations, approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -57,6 +58,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
+  const msalAuth = useMSALAuth();
   
   // Set up the entity validator with variation-specific rules
   const {
@@ -83,13 +85,47 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     };
   }, []);
   
+  // Token management
+  const setToken = useCallback((token: string | null) => {
+    if (isMountedRef.current) {
+      dispatch({ type: 'SET_TOKEN', payload: token });
+    }
+  }, []);
+  
+  // Method to acquire a fresh token and update state
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    try {
+      if (!isMountedRef.current) return null;
+      
+      const token = await msalAuth.acquireToken();
+      if (token && isMountedRef.current) {
+        setToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      return null;
+    }
+  }, [msalAuth.acquireToken, setToken]);
+  
+  // Acquire token when context is initialized
+  useEffect(() => {
+    const getInitialToken = async () => {
+      await acquireToken();
+    };
+    
+    getInitialToken();
+  }, [acquireToken]);
+  
   // Fetch variations for a project
   const fetchVariations = useCallback(async (projectId: string) => {
-    if (!user?.token || !isMountedRef.current) return;
+    if (!state.token || !isMountedRef.current) return;
     
     try {
       dispatch({ type: 'FETCH_VARIATIONS_START' });
-      const variations = await getProjectVariations(projectId, user.token);
+      // Token is now handled by MSAL internally
+      const variations = await getProjectVariations(projectId);
       
       if (isMountedRef.current) {
         dispatch({ type: 'FETCH_VARIATIONS_SUCCESS', payload: variations });
@@ -113,8 +149,8 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
         dispatch({ type: 'ADD_VARIATION_START', payload: variation });
       }
       
-      // Always call the API
-      const newVariation = await createVariation(variation, user.token);
+      // Always call the API - token is now handled by MSAL internally
+      const newVariation = await createVariation(variation);
       
       // Only update state if we're not skipping state updates and component is still mounted
       if (!skipStateUpdate && isMountedRef.current) {
@@ -145,7 +181,8 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     
     try {
       dispatch({ type: 'UPDATE_VARIATION_START', payload: variation });
-      await updateVariation(variation, user.token);
+      // Token is now handled by MSAL internally
+      await updateVariation(variation);
       
       if (isMountedRef.current) {
         dispatch({ type: 'UPDATE_VARIATION_SUCCESS', payload: variation });
@@ -173,7 +210,8 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     
     try {
       dispatch({ type: 'DELETE_VARIATION_START', payload: id });
-      await deleteVariation(id, user.token);
+      // Token is now handled by MSAL internally
+      await deleteVariation(id);
       
       if (isMountedRef.current) {
         dispatch({ type: 'DELETE_VARIATION_SUCCESS', payload: id });
@@ -325,10 +363,11 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
       
       // Call the appropriate adapter method based on approve flag
+      // Token is now handled by MSAL internally
       if (approve) {
-        await approveVariation(variationId, user.token);
+        await approveVariation(variationId);
       } else {
-        await rejectVariation(variationId, user.token);
+        await rejectVariation(variationId);
       }
       
       // Dispatch success action if still mounted and not skipping state updates
@@ -377,6 +416,8 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     state,
+    setToken,
+    acquireToken,
     // Validation methods
     validateVariation,
     handleRowValidating,

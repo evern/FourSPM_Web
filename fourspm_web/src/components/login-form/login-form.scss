@@ -1,20 +1,96 @@
 @use "../../themes/generated/variables.base.scss" as vars;
 
 .login-form {
-  .link {
-    text-align: center;
-    font-size: 16px;
-    font-style: normal;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  max-width: 400px;
+  margin: 0 auto;
 
-    a {
-      text-decoration: none;
-      color: vars.$base-accent;
+  .login-header {
+    text-align: center;
+    margin-bottom: 30px;
+    
+    h2 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: vars.$base-text-color;
+    }
+    
+    p {
+      font-size: 16px;
+      color: vars.$base-text-color;
+      opacity: 0.8;
     }
   }
-
-  .form-text {
-    margin: 10px 0;
-    color: vars.$base-text-color;
-    font-size: 14px;
+  
+  .microsoft-login-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    background-color: #ffffff;
+    color: #5e5e5e;
+    border: 1px solid #8c8c8c;
+    border-radius: 4px;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-width: 260px;
+    height: 41px;
+    margin: 20px 0;
+    
+    &:hover {
+      background-color: #f3f3f3;
+    }
+    
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.5);
+    }
+    
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    
+    // In dark theme, adapt colors
+    .dx-theme-generic-dark & {
+      background-color: #333;
+      color: #fff;
+      border-color: #666;
+      
+      &:hover {
+        background-color: #3a3a3a;
+      }
+    }
+  }
+  
+  .microsoft-icon {
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .button-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+  
+  .login-footer {
+    margin-top: 30px;
+    text-align: center;
+    
+    p {
+      font-size: 14px;
+      color: vars.$base-text-color;
+      opacity: 0.7;
+    }
   }
 }

@@ -12,14 +12,18 @@ export interface DocumentType {
 export interface DocumentTypesState {
   loading: boolean;
   error: string | null;
+  token: string | null;
 }
 
 export type DocumentTypesAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_TOKEN'; payload: string | null };
 
 export interface DocumentTypesContextType {
   state: DocumentTypesState;
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   invalidateAllLookups: () => void;
   documentTypesLoading: boolean;
   documentTypesError: unknown;

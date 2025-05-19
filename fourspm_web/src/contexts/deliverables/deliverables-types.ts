@@ -33,6 +33,11 @@ export interface DeliverablesState {
    * Error message if an operation fails
    */
   error: string | null;
+  
+  /**
+   * Authentication token for API requests
+   */
+  token: string | null;
 
   // Project GUID removed - now passed explicitly to functions
 
@@ -56,6 +61,7 @@ export interface DeliverablesState {
  * Defines the actions that can be dispatched to the deliverables reducer
  */
 export type DeliverablesAction =
+  | { type: 'SET_TOKEN'; payload: string | null }
   | { type: 'FETCH_DELIVERABLES_START' }
   | { type: 'FETCH_DELIVERABLES_SUCCESS'; payload: Deliverable[] }
   | { type: 'FETCH_DELIVERABLES_ERROR'; payload: string }
@@ -167,6 +173,18 @@ export interface DeliverablesContextProps {
    * @param error Error message or null to clear
    */
   setError: (error: string | null) => void;
+  
+  /**
+   * Sets the authentication token
+   * @param token Authentication token or null to clear
+   */
+  setToken: (token: string | null) => void;
+  
+  /**
+   * Acquires a fresh authentication token
+   * @returns Promise resolving to the token or null if acquisition failed
+   */
+  acquireToken: () => Promise<string | null>;
   
   /**
    * Sets the current project GUID

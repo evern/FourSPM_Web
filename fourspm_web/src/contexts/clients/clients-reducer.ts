@@ -6,6 +6,8 @@ export function clientsReducer(state: ClientsState, action: ClientsAction): Clie
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
     default:
       return state;
   }

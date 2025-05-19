@@ -13,11 +13,10 @@ import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
  * @param userToken The user's authentication token
  * @returns A promise resolving to the project information
  */
-export const fetchProject = async (projectId: string, userToken: string): Promise<Project> => {
+export const fetchProject = async (projectId: string): Promise<Project> => {
   try {
-
     // Fetch project with expanded client information
-    const project = await sharedApiService.getById<Project>(PROJECTS_ENDPOINT, projectId, userToken, '$expand=Client');
+    const project = await sharedApiService.getById<Project>(PROJECTS_ENDPOINT, projectId, '$expand=Client');
     
     // Only transform date fields if needed
     if (project.progressStart) {
@@ -33,14 +32,12 @@ export const fetchProject = async (projectId: string, userToken: string): Promis
 
 /**
  * Gets project navigation items for the application menu
- * @param token User authentication token
  * @returns Array of navigation items for projects
  */
-export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
+export const getProjectNavigation = async (): Promise<NavigationItem[]> => {
   try {
     const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
-      PROJECTS_ENDPOINT,
-      token
+      PROJECTS_ENDPOINT
     );
     
     // Create status-based navigation structure
@@ -98,16 +95,14 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
 };
 
 /**
- * Updates project information
+ * Updates a project's details
  * @param projectId Project GUID
  * @param data Partial project data to update
- * @param token User authentication token
  * @returns Updated project details
  */
 export const updateProject = async (
   projectId: string, 
-  data: Partial<Project>, 
-  token: string
+  data: Partial<Project>
 ): Promise<Project> => {
   try {
     // Format data for API
@@ -121,12 +116,11 @@ export const updateProject = async (
     const result = await sharedApiService.update<Partial<Project>>(
       PROJECTS_ENDPOINT,
       projectId,
-      apiData,
-      token
+      apiData
     );
     
     // Fetch updated project details
-    return fetchProject(projectId, token);
+    return fetchProject(projectId);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;

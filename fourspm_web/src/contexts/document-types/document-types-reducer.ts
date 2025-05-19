@@ -3,7 +3,8 @@ import { DocumentTypesAction, DocumentTypesReducer, DocumentTypesState } from '.
 // Initial state for document types context
 export const initialDocumentTypesState: DocumentTypesState = {
   loading: false,
-  error: null
+  error: null,
+  token: null
 };
 
 // Reducer for document types context
@@ -13,6 +14,8 @@ export const documentTypesReducer: DocumentTypesReducer = (state, action) => {
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
     default:
       return state;
   }

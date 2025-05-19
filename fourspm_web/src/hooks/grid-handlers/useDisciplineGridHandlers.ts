@@ -9,9 +9,9 @@ import { useDisciplines } from '@/contexts/disciplines/disciplines-context';
  * Uses createGridOperationHook factory for consistency
  */
 export function useDisciplineGridHandlers({
-  userToken,
+  acquireToken,
 }: {
-  userToken?: string;
+  acquireToken?: () => Promise<string | null>;
 }) {
   // Get the disciplines context for error reporting, cache invalidation, and business logic
   const { setError, invalidateAllLookups, validationRules, getDefaultValues } = useDisciplines();
@@ -39,8 +39,9 @@ export function useDisciplineGridHandlers({
     onDeleteSuccess: () => {},
     onInsertSuccess: () => {},
     invalidateCache: invalidateAllLookups,
-    defaultValues: getDefaultValues()
-  }, userToken);
+    defaultValues: getDefaultValues(),
+    acquireToken
+  });
   
   // Extract all the handlers from the grid operations hook except handleInitNewRow
   const { 

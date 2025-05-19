@@ -49,6 +49,12 @@ export interface GridOperationsConfig {
    * These will be applied after the automatic UUID generation
    */
   defaultValues?: Record<string, any>;
+  
+  /**
+   * Optional function to acquire an authentication token dynamically
+   * Used instead of a static token to ensure fresh tokens for each request
+   */
+  acquireToken?: () => Promise<string | null>;
 }
 
 /**

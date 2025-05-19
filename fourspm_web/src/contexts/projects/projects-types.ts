@@ -8,10 +8,12 @@ export interface ProjectsState {
   loading: boolean;
   error: string | null;
   validationErrors: Record<string, string[]>;
+  token: string | null;
 }
 
 // Actions that can be dispatched
 export type ProjectsAction = 
+  | { type: 'SET_TOKEN'; payload: string | null }
   | { type: 'FETCH_PROJECTS_START' }
   | { type: 'FETCH_PROJECTS_SUCCESS'; payload: Project[] }
   | { type: 'FETCH_PROJECTS_ERROR'; payload: string }
@@ -30,6 +32,11 @@ export type ProjectsAction =
 // Context interface including both state and actions
 export interface ProjectsContextType {
   state: ProjectsState;
+  
+  // Token management
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
+  
   // Core operations
   validateProject: (project: Project, rules?: ValidationRule[]) => boolean;
   generateProjectId: () => string;

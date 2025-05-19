@@ -1,88 +1,187 @@
 # Task ID: 8
-# Title: Implement Protected Routes
-# Status: pending
-# Dependencies: 4
+# Title: Implement User Profile Component
+# Status: done
+# Dependencies: 2, 3
 # Priority: medium
-# Description: Create a higher-order component or route guard to protect routes that require authentication.
+# Description: Create a user profile component that displays information from the Microsoft account and handles user-specific actions.
 # Details:
-1. Create a protected route component (src/components/ProtectedRoute.tsx):
-```typescript
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+Create a user profile component that displays user information from MSAL:
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRole?: 'user' | 'admin';
+```typescript
+// src/components/auth/UserProfile.tsx
+import React from 'react';
+import { useMSALAuth } from '../../auth/MSALAuthContext';
+import './UserProfile.css';
+
+interface UserProfileProps {
+  showLogout?: boolean;
+  className?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requiredRole = 'user' 
+const UserProfile: React.FC<UserProfileProps> = ({ 
+  showLogout = true,
+  className = ''
 }) => {
-  const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
+  const { user, logout, isLoading } = useMSALAuth();
 
-  // Check if user is authenticated
-  if (!isAuthenticated) {
-    // Redirect to login page, but save the current location they were trying to go to
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (isLoading) {
+    return <div className="user-profile-loading">Loading...</div>;
   }
 
-  // For role-based access control (if implemented)
-  if (requiredRole === 'admin' && !user?.roles?.includes('admin')) {
-    // User is authenticated but doesn't have the required role
-    return <Navigate to="/unauthorized" replace />;
+  if (!user) {
+    return null;
   }
 
-  // User is authenticated and has the required role (if specified)
-  return <>{children}</>;
-};
-```
+  // Generate initials for avatar fallback
+  const getInitials = () => {
+    if (!user.name) return '?';
+    
+    const nameParts = user.name.split(' ');
+    if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
+    
+    return (
+      nameParts[0].charAt(0).toUpperCase() + 
+      nameParts[nameParts.length - 1].charAt(0).toUpperCase()
+    );
+  };
 
-2. Update the application routes to use the protected route component:
-```typescript
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Dashboard } from './pages/Dashboard';
-import { AdminPanel } from './pages/AdminPanel';
-import { Login } from './pages/Login';
-import { Unauthorized } from './pages/Unauthorized';
+  const handleLogout = async () => {
+    await logout();
+  };
 
-export const AppRoutes = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminPanel />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <div className={`user-profile ${className}`}>
+      <div className="user-avatar">
+        {/* If we had a photo URL from Microsoft Graph, we could use it here */}
+        <div className="avatar-initials">{getInitials()}</div>
+      </div>
+      
+      <div className="user-info">
+        <div className="user-name">{user.name}</div>
+        <div className="user-email">{user.email}</div>
+      </div>
+      
+      {showLogout && (
+        <button 
+          className="logout-button" 
+          onClick={handleLogout}
+          aria-label="Sign out"
+        >
+          Sign out
+        </button>
+      )}
+    </div>
   );
 };
+
+export default UserProfile;
 ```
 
-3. Create login, unauthorized, and other necessary pages
-4. Implement redirect logic to return users to their intended destination after login
+Add the corresponding CSS:
+
+```css
+/* src/components/auth/UserProfile.css */
+.user-profile {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 12px;
+  background-color: #0078d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-initials {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  color: #0078d4;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-left: 8px;
+  border-radius: 4px;
+}
+
+.logout-button:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+  text-decoration: underline;
+}
+
+.user-profile-loading {
+  font-size: 14px;
+  color: #666;
+  padding: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .user-info {
+    max-width: 150px;
+  }
+}
+```
 
 # Test Strategy:
-1. Test protected routes with authenticated and unauthenticated users
-2. Verify redirect to login page works correctly
-3. Test role-based route protection
-4. Verify redirect back to original destination after login
-5. Test edge cases like direct URL access to protected routes
+1. Verify that the component correctly displays user information
+2. Test the logout functionality
+3. Verify that the component handles loading states correctly
+4. Test the component with different user data formats
+5. Verify that the initials generation works correctly for different name formats
+6. Test responsive behavior on different screen sizes
+7. Verify accessibility compliance
+
+# Subtasks:
+## 1. Create User Profile Component Structure [done]
+### Dependencies: None
+### Description: Set up the basic structure of the User Profile component with proper layout and responsive design
+### Details:
+Create a new React component called UserProfile. Implement a container div with appropriate styling for different screen sizes. Include placeholders for user avatar, name, email, and logout button. Use CSS modules or styled-components for styling. Ensure the component has proper TypeScript interfaces for props including user information from MSAL. Add accessibility attributes like aria-labels and proper tab navigation. The component should collapse gracefully on smaller screens.
+
+## 2. Implement User Information Display [done]
+### Dependencies: 8.1
+### Description: Display user information from MSAL including name, email, and generate/display user avatar
+### Details:
+Connect the component to MSAL context to retrieve authenticated user data. Display user's display name and email address with appropriate typography. Implement an avatar component that either uses the user's profile picture if available or generates initials-based avatar with a background color. Add hover states for interactive elements. Ensure text has sufficient contrast ratio (minimum 4.5:1) for accessibility. Implement skeleton loading state for when user data is being fetched. Add proper error handling for cases when user data cannot be retrieved.
+
+## 3. Add Logout Functionality [done]
+### Dependencies: 8.2
+### Description: Implement logout button with confirmation dialog and proper MSAL integration
+### Details:
+Add a logout button with appropriate styling and icon. Implement a confirmation dialog that appears when logout is clicked. Connect logout action to MSAL's signOut method. Add appropriate loading state during logout process. Ensure keyboard accessibility for the logout flow (can be triggered with Enter key). Add appropriate aria-labels and roles for screen readers. Implement proper focus management after logout dialog appears. Add success/error notifications for logout action. Test the logout flow thoroughly with different MSAL configurations.
+

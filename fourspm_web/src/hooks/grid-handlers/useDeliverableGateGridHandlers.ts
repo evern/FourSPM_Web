@@ -3,7 +3,7 @@ import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
 import { createGridOperationHook } from '@/hooks/factories/createGridOperationHook';
 import { useDeliverableGates } from '@/contexts/deliverable-gates/deliverable-gates-context';
 
-export function useDeliverableGateGridHandlers({ userToken }: { userToken?: string }) {
+export function useDeliverableGateGridHandlers({ acquireToken }: { acquireToken?: () => Promise<string | null> }) {
   const { setError, invalidateAllLookups, validationRules, getDefaultValues } = useDeliverableGates();
 
   const gridOperations = createGridOperationHook({
@@ -22,8 +22,9 @@ export function useDeliverableGateGridHandlers({ userToken }: { userToken?: stri
       setError('Failed to create deliverable gate: ' + error.message);
     },
     invalidateCache: invalidateAllLookups,
-    defaultValues: getDefaultValues()
-  }, userToken);
+    defaultValues: getDefaultValues(),
+    acquireToken
+  });
 
   const { 
     handleRowValidating,

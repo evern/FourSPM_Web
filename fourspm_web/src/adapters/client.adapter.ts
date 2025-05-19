@@ -8,12 +8,11 @@ import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Gets all clients
- * @param token User authentication token
  * @returns Array of clients
  */
-export const getClients = async (token: string): Promise<Client[]> => {
+export const getClients = async (): Promise<Client[]> => {
   try {
-    return await sharedApiService.getAll<Client>(CLIENTS_ENDPOINT, token);
+    return await sharedApiService.getAll<Client>(CLIENTS_ENDPOINT);
   } catch (error) {
     console.error('Error fetching clients:', error);
     throw error;
@@ -23,12 +22,11 @@ export const getClients = async (token: string): Promise<Client[]> => {
 /**
  * Gets client details by ID
  * @param clientId Client GUID
- * @param token User authentication token
  * @returns Client details
  */
-export const getClientDetails = async (clientId: string, token: string): Promise<Client> => {
+export const getClientDetails = async (clientId: string): Promise<Client> => {
   try {
-    return await sharedApiService.getById<Client>(CLIENTS_ENDPOINT, clientId, token);
+    return await sharedApiService.getById<Client>(CLIENTS_ENDPOINT, clientId);
   } catch (error) {
     console.error(`Error fetching client details for ID ${clientId}:`, error);
     throw error;

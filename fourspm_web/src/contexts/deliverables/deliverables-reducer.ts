@@ -8,6 +8,7 @@ export const initialDeliverablesState: DeliverablesState = {
   loading: false,
   isProcessing: false,
   error: null,
+  token: null,
   lookupDataLoaded: false,
   validationErrors: {},
   editorError: null
@@ -21,6 +22,10 @@ export const initialDeliverablesState: DeliverablesState = {
  */
 export function deliverablesReducer(state: DeliverablesState, action: DeliverablesAction): DeliverablesState {
   switch (action.type) {
+    // Token management
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
+
     // Fetch operations
     case 'FETCH_DELIVERABLES_START':
       return { ...state, loading: true, error: null };

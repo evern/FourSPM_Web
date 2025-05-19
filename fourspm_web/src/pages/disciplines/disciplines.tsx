@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { disciplineColumns } from './discipline-columns';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './disciplines.scss';
@@ -24,14 +24,14 @@ export function Disciplines(): React.ReactElement {
  * Internal component that uses the disciplines context
  */
 const DisciplinesContent = React.memo((): React.ReactElement => {
-  // Get user auth token for API calls
-  const { user } = useAuth();
+  // No longer need local token state or direct MSAL access
   
   // Use the disciplines context
   const {
     state,
     disciplinesLoading,
-    disciplinesError
+    disciplinesError,
+    acquireToken // Use acquireToken from context
   } = useDisciplines();
 
   // Use the dedicated grid handlers hook
@@ -43,8 +43,10 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useDisciplineGridHandlers({
-    userToken: user?.token
+    acquireToken
   });
+  
+  // No longer need to acquire token manually as it's handled by the context
   
   // Determine if we're still loading - combine context and query loading states
   const isLoading = disciplinesLoading || state.loading;
@@ -74,12 +76,13 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Disciplines</div>
-        {!isLoading && !hasError && (
+        {!isLoading && !hasError && state.token && (
           <ODataGrid
             title=" "
             endpoint={DISCIPLINES_ENDPOINT}
             columns={disciplineColumns}
             keyField="guid"
+            token={state.token} // Pass the token from context
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -88,6 +91,12 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
             customGridHeight={900}
+          />
+        )}
+        {!isLoading && !hasError && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

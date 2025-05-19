@@ -1,150 +1,368 @@
 # Task ID: 12
-# Title: Implement Error Handling for Authentication
+# Title: Implement Error Handling and User Feedback
 # Status: pending
-# Dependencies: 4, 6, 7
+# Dependencies: 2, 3, 5
 # Priority: medium
-# Description: Create comprehensive error handling for authentication-related errors, including clear user messages and logging.
+# Description: Create a comprehensive error handling system for authentication-related errors with clear user feedback.
 # Details:
-1. Create an authentication error component (src/components/AuthError.tsx):
+Create an authentication error handling utility:
+
 ```typescript
+// src/auth/authErrorHandler.ts
+import { AuthError, InteractionRequiredAuthError } from '@azure/msal-browser';
+
+export enum AuthErrorType {
+  Interaction = 'interaction',
+  Network = 'network',
+  Permissions = 'permissions',
+  Timeout = 'timeout',
+  UserCancelled = 'userCancelled',
+  Generic = 'generic'
+}
+
+export interface AuthErrorInfo {
+  type: AuthErrorType;
+  message: string;
+  technicalDetails?: string;
+  actionRequired?: string;
+}
+
+export const handleAuthError = (error: any): AuthErrorInfo => {
+  // Default error info
+  let errorInfo: AuthErrorInfo = {
+    type: AuthErrorType.Generic,
+    message: 'An authentication error occurred.',
+    technicalDetails: error?.message || 'Unknown error',
+    actionRequired: 'Please try again or contact support if the problem persists.'
+  };
+  
+  // Handle MSAL-specific errors
+  if (error instanceof AuthError) {
+    // User cancelled the login
+    if (error.name === 'UserCancelledError') {
+      errorInfo = {
+        type: AuthErrorType.UserCancelled,
+        message: 'Sign-in was cancelled.',
+        technicalDetails: error.message,
+        actionRequired: 'Please complete the sign-in process to access the application.'
+      };
+    }
+    // Popup blocked
+    else if (error.name === 'PopupBlockedError') {
+      errorInfo = {
+        type: AuthErrorType.Interaction,
+        message: 'The sign-in popup was blocked by your browser.',
+        technicalDetails: error.message,
+        actionRequired: 'Please allow popups for this site and try again.'
+      };
+    }
+    // Interaction required
+    else if (error instanceof InteractionRequiredAuthError) {
+      errorInfo = {
+        type: AuthErrorType.Interaction,
+        message: 'Your session has expired or additional authentication is required.',
+        technicalDetails: error.message,
+        actionRequired: 'Please sign in again to continue.'
+      };
+    }
+    // Network error
+    else if (error.name === 'BrowserAuthError' && error.message.includes('network')) {
+      errorInfo = {
+        type: AuthErrorType.Network,
+        message: 'A network error occurred during authentication.',
+        technicalDetails: error.message,
+        actionRequired: 'Please check your internet connection and try again.'
+      };
+    }
+    // Permissions error
+    else if (error.message.includes('AADSTS65001') || error.message.includes('consent')) {
+      errorInfo = {
+        type: AuthErrorType.Permissions,
+        message: 'You don\'t have permission to access this application.',
+        technicalDetails: error.message,
+        actionRequired: 'Please contact your administrator to request access.'
+      };
+    }
+  }
+  // Handle network errors
+  else if (error instanceof TypeError && error.message.includes('NetworkError')) {
+    errorInfo = {
+      type: AuthErrorType.Network,
+      message: 'Unable to connect to the authentication service.',
+      technicalDetails: error.message,
+      actionRequired: 'Please check your internet connection and try again.'
+    };
+  }
+  // Handle timeout errors
+  else if (error.name === 'TimeoutError' || (error.message && error.message.includes('timeout'))) {
+    errorInfo = {
+      type: AuthErrorType.Timeout,
+      message: 'The authentication request timed out.',
+      technicalDetails: error.message,
+      actionRequired: 'Please try again. If the problem persists, check your internet connection.'
+    };
+  }
+  
+  return errorInfo;
+};
+```
+
+Create an error display component:
+
+```typescript
+// src/components/auth/AuthErrorDisplay.tsx
 import React from 'react';
-import { useAuth } from '../auth/AuthContext';
+import { AuthErrorInfo, AuthErrorType } from '../../auth/authErrorHandler';
+import './AuthErrorDisplay.css';
 
-export const AuthError: React.FC = () => {
-  const { error } = useAuth();
+interface AuthErrorDisplayProps {
+  error: AuthErrorInfo;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  showTechnicalDetails?: boolean;
+}
 
-  if (!error) {
-    return null;
-  }
+const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
+  error,
+  onRetry,
+  onDismiss,
+  showTechnicalDetails = false
+}) => {
+  // Determine icon based on error type
+  const getErrorIcon = () => {
+    switch (error.type) {
+      case AuthErrorType.Network:
+        return '🌐';
+      case AuthErrorType.Permissions:
+        return '🔒';
+      case AuthErrorType.UserCancelled:
+        return '✋';
+      case AuthErrorType.Timeout:
+        return '⏱️';
+      case AuthErrorType.Interaction:
+        return '🔄';
+      default:
+        return '⚠️';
+    }
+  };
 
   return (
-    <div className="auth-error-container">
-      <div className="auth-error-message">
-        <h3>Authentication Error</h3>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()}>Retry</button>
+    <div className={`auth-error auth-error-${error.type}`}>
+      <div className="auth-error-header">
+        <span className="auth-error-icon">{getErrorIcon()}</span>
+        <h3 className="auth-error-title">{error.message}</h3>
+        {onDismiss && (
+          <button 
+            className="auth-error-dismiss" 
+            onClick={onDismiss}
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        )}
       </div>
-    </div>
-  );
-};
-```
-
-2. Update the API service to handle specific authentication errors:
-```typescript
-// Add to api.ts
-const handleApiError = (error: any) => {
-  // Check if it's an authentication error
-  if (error.message && (
-    error.message.includes('authentication') ||
-    error.message.includes('token') ||
-    error.message.includes('401')
-  )) {
-    // Log the error
-    console.error('Authentication error:', error);
-    
-    // You might want to trigger a re-authentication here
-    // or redirect to login page
-    window.location.href = '/login?error=session_expired';
-    
-    return new Error('Your session has expired. Please log in again.');
-  }
-  
-  // Handle other API errors
-  console.error('API error:', error);
-  return error;
-};
-
-// Update the apiRequest function to use the error handler
-const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-  try {
-    // Existing code...
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-```
-
-3. Create a login page that handles error parameters:
-```typescript
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
-import { LoginButton } from '../components/LoginButton';
-
-export const Login: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  // Check for error parameters in the URL
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const error = params.get('error');
-    
-    if (error === 'session_expired') {
-      setErrorMessage('Your session has expired. Please log in again.');
-    } else if (error) {
-      setErrorMessage('An authentication error occurred. Please try again.');
-    }
-  }, [location]);
-  
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, location.state, navigate]);
-  
-  return (
-    <div className="login-container">
-      <h1>Welcome to FourSPM</h1>
       
-      {errorMessage && (
-        <div className="error-message">{errorMessage}</div>
-      )}
-      
-      <div className="login-box">
-        <p>Please sign in to continue:</p>
-        <LoginButton />
-      </div>
-    </div>
-  );
-};
-```
-
-4. Implement server-side error logging for authentication failures:
-```csharp
-// Add to Program.cs or a middleware
-app.Use(async (context, next) => {
-    try
-    {
-        await next();
+      <div className="auth-error-content">
+        <p className="auth-error-action">{error.actionRequired}</p>
         
-        // Log authentication failures
-        if (context.Response.StatusCode == 401)
-        {
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning(
-                "Authentication failure for request {Method} {Path}", 
-                context.Request.Method, 
-                context.Request.Path);
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An unhandled exception occurred");
-        throw;
-    }
-});
+        {showTechnicalDetails && error.technicalDetails && (
+          <details className="auth-error-details">
+            <summary>Technical details</summary>
+            <code>{error.technicalDetails}</code>
+          </details>
+        )}
+        
+        {onRetry && (
+          <button 
+            className="auth-error-retry" 
+            onClick={onRetry}
+          >
+            Try Again
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AuthErrorDisplay;
+```
+
+Add the corresponding CSS:
+
+```css
+/* src/components/auth/AuthErrorDisplay.css */
+.auth-error {
+  margin: 16px 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border-left: 4px solid #f44336;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.auth-error-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #ffebee;
+}
+
+.auth-error-icon {
+  font-size: 20px;
+  margin-right: 12px;
+}
+
+.auth-error-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #d32f2f;
+}
+
+.auth-error-dismiss {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #757575;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.auth-error-content {
+  padding: 12px 16px;
+}
+
+.auth-error-action {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #424242;
+}
+
+.auth-error-details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.auth-error-details summary {
+  cursor: pointer;
+  color: #757575;
+  margin-bottom: 8px;
+}
+
+.auth-error-details code {
+  display: block;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 12px;
+  color: #d32f2f;
+}
+
+.auth-error-retry {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.auth-error-retry:hover {
+  background-color: #e0e0e0;
+}
+
+/* Error type specific styles */
+.auth-error-network {
+  border-left-color: #2196f3;
+}
+
+.auth-error-network .auth-error-header {
+  background-color: #e3f2fd;
+}
+
+.auth-error-network .auth-error-title {
+  color: #1976d2;
+}
+
+.auth-error-permissions {
+  border-left-color: #ff9800;
+}
+
+.auth-error-permissions .auth-error-header {
+  background-color: #fff3e0;
+}
+
+.auth-error-permissions .auth-error-title {
+  color: #f57c00;
+}
+
+.auth-error-userCancelled {
+  border-left-color: #9e9e9e;
+}
+
+.auth-error-userCancelled .auth-error-header {
+  background-color: #f5f5f5;
+}
+
+.auth-error-userCancelled .auth-error-title {
+  color: #616161;
+}
+
+.auth-error-timeout {
+  border-left-color: #ff5722;
+}
+
+.auth-error-timeout .auth-error-header {
+  background-color: #fbe9e7;
+}
+
+.auth-error-timeout .auth-error-title {
+  color: #e64a19;
+}
+```
+
+Update the login page to use the error handler:
+
+```typescript
+// Update LoginPage.tsx
+import { handleAuthError } from '../auth/authErrorHandler';
+import AuthErrorDisplay from '../components/auth/AuthErrorDisplay';
+
+// Inside the LoginPage component
+const [authErrorInfo, setAuthErrorInfo] = useState<AuthErrorInfo | null>(null);
+
+// Replace the existing error handling with:
+const handleLoginError = (error: any) => {
+  const errorInfo = handleAuthError(error);
+  setAuthErrorInfo(errorInfo);
+};
+
+// Replace the existing error display with:
+{authErrorInfo && (
+  <AuthErrorDisplay
+    error={authErrorInfo}
+    onRetry={() => {
+      setAuthErrorInfo(null);
+      // Attempt login again
+    }}
+    onDismiss={() => setAuthErrorInfo(null)}
+    showTechnicalDetails={process.env.NODE_ENV === 'development'}
+  />
+)}
 ```
 
 # Test Strategy:
-1. Test error display for various authentication errors
-2. Verify error handling for expired tokens
-3. Test error handling for invalid tokens
-4. Verify error messages are user-friendly
-5. Test server-side error logging
-6. Verify redirect to login page with error parameters works correctly
+1. Test error handling for various authentication error scenarios
+2. Verify that error messages are user-friendly and provide clear guidance
+3. Test the retry functionality for recoverable errors
+4. Verify that technical details are only shown in development mode
+5. Test the error component with different error types to ensure proper styling
+6. Verify that error messages are accessible and meet WCAG standards
+7. Test error dismissal functionality
+8. Verify integration with the login page and other authentication flows

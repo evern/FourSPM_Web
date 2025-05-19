@@ -1,7 +1,10 @@
 import { User } from '../types';
+import { PublicClientApplication } from '@azure/msal-browser';
 
 export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
+  useMsal?: boolean; // Flag to use MSAL for token acquisition instead of localStorage
+  msalInstance?: PublicClientApplication; // Optional MSAL instance for token acquisition
 }
 
 class BaseApiService {
@@ -16,11 +19,33 @@ class BaseApiService {
       'Content-Type': 'application/json',
     };
 
-    // Get the stored user data and add the token to headers if available
-    const userStr = localStorage.getItem('user');
-    const user: User | null = userStr ? JSON.parse(userStr) : null;
-    if (user?.token) {
-      defaultHeaders['Authorization'] = `Bearer ${user.token}`;
+    // Check if we should use MSAL for token acquisition
+    if (options.useMsal && options.msalInstance) {
+      try {
+        // Get the active account from MSAL
+        const account = options.msalInstance.getActiveAccount();
+        if (account) {
+          // Try to acquire a token silently
+          const request = {
+            scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User'],
+            account: account
+          };
+          
+          const response = await options.msalInstance.acquireTokenSilent(request);
+          if (response && response.accessToken) {
+            defaultHeaders['Authorization'] = `Bearer ${response.accessToken}`;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to acquire MSAL token:', error);
+      }
+    } else {
+      // Fallback to localStorage token if MSAL is not specified
+      const userStr = localStorage.getItem('user');
+      const user: User | null = userStr ? JSON.parse(userStr) : null;
+      if (user?.token) {
+        defaultHeaders['Authorization'] = `Bearer ${user.token}`;
+      }
     }
 
     const mergedOptions: RequestOptions = {

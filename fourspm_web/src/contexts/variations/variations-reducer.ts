@@ -5,6 +5,7 @@ export const initialVariationsState: VariationsState = {
   variations: [],
   loading: false,
   error: null,
+  token: null,
   validationErrors: {},
   
   // Editor state
@@ -15,6 +16,9 @@ export const initialVariationsState: VariationsState = {
 
 export function variationsReducer(state: VariationsState, action: VariationsAction): VariationsState {
   switch (action.type) {
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
+      
     case 'FETCH_VARIATIONS_START':
       return { ...state, loading: true, error: null };
     

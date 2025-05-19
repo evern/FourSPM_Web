@@ -31,7 +31,7 @@ export function VariationDeliverables(): React.ReactElement {
   
   // Get the variation info to retrieve the correct project ID
   // Always call hooks before any conditional returns
-  const { projectGuid, loading } = useVariationInfo(variationId || '', user?.token);
+  const { projectGuid, loading } = useVariationInfo(variationId || ''); // Token is now handled by MSAL internally
   
   // Validate variationId exists
   if (!variationId) {
@@ -79,7 +79,10 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     // Project and variation data
     project,
     variation,
-    projectGuid
+    projectGuid,
+    
+    // Token management
+    acquireToken
     
     // Field management functions are handled in grid handlers
   } = useVariationDeliverables();
@@ -168,12 +171,13 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             : 'Variation Deliverables'}
         </div>
         
-        {!isLoading && !hasError && variation && variationId && (
+        {!isLoading && !hasError && variation && variationId && state.token && (
           <ODataGrid
             title=" "
             endpoint={getVariationDeliverablesWithParamUrl(variationId)}
             columns={mobileAdjustedColumns.length > 0 ? mobileAdjustedColumns : []}
             keyField="guid"
+            token={state.token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -196,6 +200,12 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             }}
             // Note: Add virtual scrolling in a subsequent ticket
             // The ODataGrid component needs to be updated to support these advanced features
+          />
+        )}
+        {!isLoading && !hasError && variation && variationId && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

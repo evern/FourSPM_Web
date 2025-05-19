@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAreas } from '@/contexts/areas/areas-context';
 
 interface UseAreaGridHandlersProps {
-  userToken?: string;
+  acquireToken?: () => Promise<string | null>;
 }
 
 /**
@@ -41,7 +41,7 @@ async function getNextAreaNumber(projectId: string, token?: string): Promise<str
  * Provides handlers for grid events and validation
  * Following the Reference Data Implementation Doctrine
  */
-export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
+export function useAreaGridHandlers({ acquireToken }: UseAreaGridHandlersProps) {
   // Get the areas context for error reporting and cache invalidation
   const { setError, invalidateAllLookups, projectId } = useAreas();
   
@@ -88,8 +88,9 @@ export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
       projectGuid: projectId,
       areaNumber: '',
       name: '',
-    }
-  }, userToken);
+    },
+    acquireToken
+  });
   
   // Extract all the handlers from the grid operations hook
   const { 
@@ -102,17 +103,21 @@ export function useAreaGridHandlers({ userToken }: UseAreaGridHandlersProps) {
   
   // Function to refresh the next available area number
   const refreshNextNumber = useCallback(async () => {
-    if (projectId && userToken) {
+    if (projectId && acquireToken) {
       try {
-        const nextNumber = await getNextAreaNumber(projectId, userToken);
-        setNextAreaNumber(nextNumber);
-        return nextNumber;
+        // Get a fresh token for the API call
+        const token = await acquireToken();
+        if (token) {
+          const nextNumber = await getNextAreaNumber(projectId, token);
+          setNextAreaNumber(nextNumber);
+          return nextNumber;
+        }
       } catch (error) {
         // Error handled silently
       }
     }
     return null;
-  }, [projectId, userToken]);
+  }, [projectId, acquireToken]);
   
   // Handle grid initialization
   const handleGridInitialized = useCallback((e: any) => {

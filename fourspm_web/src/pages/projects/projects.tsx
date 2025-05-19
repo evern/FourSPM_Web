@@ -5,7 +5,7 @@ import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import './projects.scss';
 
 /**
@@ -27,15 +27,15 @@ function Projects(): React.ReactElement {
  * Focuses purely on rendering and delegating events to the context
  */
 const ProjectsContent = (): React.ReactElement => {
-  // Get everything we need from the projects context and auth
+  // Get everything we need from the projects context, including token
   const { 
     state, 
     clientDataSource,
     clientDataLoaded,
     nextProjectNumber,
-    refreshNextNumber
+    refreshNextNumber,
+    acquireToken // Use acquireToken from context instead of direct MSAL auth
   } = useProjects();
-  const { user } = useAuth();
   
   // Get the grid event handlers from our custom hook
   const { 
@@ -49,7 +49,7 @@ const ProjectsContent = (): React.ReactElement => {
   } = useProjectGridHandlers({
     nextProjectNumber,
     refreshNextNumber,
-    userToken: user?.token // Pass user token from auth context for API calls if needed
+    acquireToken // Pass token acquisition function instead of static token
   });
 
   // Client data loading is now handled by the context
@@ -89,8 +89,8 @@ const ProjectsContent = (): React.ReactElement => {
       <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
         
-        {/* Only render the grid once client data is loaded */}
-        {clientDataLoaded && (
+        {/* Only render the grid once client data is loaded and we have token */}
+        {clientDataLoaded && state.token && (
           <ODataGrid
             endpoint={PROJECTS_ENDPOINT}
             columns={createProjectColumns(clientDataSource, nextProjectNumber)}
@@ -106,12 +106,18 @@ const ProjectsContent = (): React.ReactElement => {
             allowDeleting={true}
             title=" "
             expand={['Client']}
+            token={state.token} // Pass token from context
             // Add default sort to ensure consistent query parameters
             defaultSort={[{ selector: 'created', desc: true }]}
             // Set countColumn for proper record counting - memory #96c469d2
             countColumn="guid"
             customGridHeight={900}
           />
+        )}
+        {clientDataLoaded && !state.token && (
+          <div className="alert alert-danger">
+            Authentication Error: Unable to acquire authentication token. Please try refreshing the page.
+          </div>
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { clientColumns } from './client-columns';
-import { useAuth } from '../../contexts/auth';
+import { useMSALAuth } from '../../contexts/msal-auth';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import './clients.scss';
 import { ClientsProvider, useClients } from '@/contexts/clients/clients-context';
@@ -19,8 +19,8 @@ const Clients: React.FC = () => {
 };
 
 const ClientsContent = React.memo((): React.ReactElement => {
-  const { user } = useAuth();
-  const { state } = useClients();
+  // Get everything from context including token
+  const { state, acquireToken } = useClients();
   const {
     handleRowValidating,
     handleRowUpdating,
@@ -28,7 +28,7 @@ const ClientsContent = React.memo((): React.ReactElement => {
     handleRowRemoving,
     handleInitNewRow,
     handleGridInitialized
-  } = useClientGridHandlers({ userToken: user?.token });
+  } = useClientGridHandlers({ acquireToken });
 
   // For demonstration, assume loading/error state comes from context only
   const isLoading = state.loading;
@@ -52,12 +52,13 @@ const ClientsContent = React.memo((): React.ReactElement => {
       )}
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Clients</div>
-        {!isLoading && !hasError && (
+        {!isLoading && !hasError && state.token && (
           <ODataGrid
             title=" "
             endpoint={CLIENTS_ENDPOINT}
             columns={clientColumns}
             keyField="guid"
+            token={state.token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -66,6 +67,12 @@ const ClientsContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'number', desc: false }]}
             customGridHeight={900}
+          />
+        )}
+        {!isLoading && !hasError && !state.token && (
+          <ErrorMessage
+            title="Authentication Error"
+            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

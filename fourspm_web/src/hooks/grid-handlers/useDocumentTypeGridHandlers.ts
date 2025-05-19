@@ -5,13 +5,13 @@ import { useDocumentTypes } from '@/contexts/document-types/document-types-conte
 
 // Interface for the hook parameters
 interface UseDocumentTypeGridHandlersParams {
-  userToken?: string;
+  acquireToken?: () => Promise<string | null>;
 }
 
 /**
  * Hook for handling document type grid operations
  */
-export function useDocumentTypeGridHandlers({ userToken }: UseDocumentTypeGridHandlersParams) {
+export function useDocumentTypeGridHandlers({ acquireToken }: UseDocumentTypeGridHandlersParams) {
   // Get context for error reporting, cache invalidation, and business logic
   const { state, invalidateAllLookups, validationRules, getDefaultValues } = useDocumentTypes();
   
@@ -32,8 +32,9 @@ export function useDocumentTypeGridHandlers({ userToken }: UseDocumentTypeGridHa
       console.error('Document type delete error:', error);
     },
     invalidateCache: invalidateAllLookups,
-    defaultValues: getDefaultValues()  // Use default values from context
-  }, userToken);
+    defaultValues: getDefaultValues(),  // Use default values from context
+    acquireToken  // Pass the token acquisition function
+  });
   
   // Handle grid initialization
   const handleGridInitialized = useCallback((e: any) => {

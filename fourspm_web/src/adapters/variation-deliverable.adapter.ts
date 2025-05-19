@@ -16,13 +16,12 @@ import { getAuthHeaders } from '../utils/auth-headers';
 /**
  * Get all deliverables for a specific project
  * @param projectGuid The project GUID
- * @param token Optional auth token
  * @returns Promise with array of deliverables
  */
-export async function getProjectDeliverables(projectGuid: string, token?: string): Promise<Deliverable[]> {
+export async function getProjectDeliverables(projectGuid: string): Promise<Deliverable[]> {
   const response = await fetch(`${DELIVERABLES_ENDPOINT}/ByProject/${projectGuid}`, {
     method: 'GET',
-    headers: getAuthHeaders(token)
+    headers: getAuthHeaders() // MSAL authentication is used internally
   });
   const data = await response.json();
   const deliverables = data.value.filter((d: any) => d !== null && d !== undefined) as Deliverable[];
@@ -32,16 +31,15 @@ export async function getProjectDeliverables(projectGuid: string, token?: string
 /**
  * Get all deliverables for a specific variation using the new VariationDeliverables endpoint
  * @param variationGuid The variation GUID
- * @param token Optional auth token
  * @returns Promise with array of deliverables
  */
-export async function getVariationDeliverables(variationGuid: string, token?: string): Promise<Deliverable[]> {
+export async function getVariationDeliverables(variationGuid: string): Promise<Deliverable[]> {
   // Use the dedicated OData endpoint with filter for variationGuid
   const endpoint = getVariationDeliverablesEndpoint(variationGuid);
   
   const response = await fetch(endpoint, {
     method: 'GET',
-    headers: getAuthHeaders(token)
+    headers: getAuthHeaders() // MSAL authentication is used internally
   });
   
   if (!response.ok) {
@@ -59,11 +57,9 @@ export async function getVariationDeliverables(variationGuid: string, token?: st
 /**
  * Add an existing deliverable to a variation (creates a copy with 'Edit' status)
  * @param deliverable The complete deliverable entity with all required properties
- * @param token Optional auth token
  */
 export async function addExistingDeliverableToVariation(
-  deliverable: Deliverable,
-  token?: string
+  deliverable: Deliverable
 ): Promise<Deliverable> {
   // Use the complete deliverable entity that was provided
   // This includes all the necessary fields for OData serialization
@@ -86,7 +82,7 @@ export async function addExistingDeliverableToVariation(
   const response = await fetch(`${VARIATION_DELIVERABLES_ENDPOINT}(${targetGuid})`, {
     method: 'PATCH',
     headers: {
-      ...getAuthHeaders(token),
+      ...getAuthHeaders(), // MSAL authentication is used internally
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'  // Request that the server return the updated entity
     },
@@ -110,13 +106,11 @@ export async function addExistingDeliverableToVariation(
  * Cancel a deliverable in a variation
  * @param originalDeliverableGuid The GUID of the original deliverable to cancel
  * @param variationGuid The GUID of the variation this cancellation belongs to
- * @param token Optional auth token
  * @returns The cancelled deliverable entity with updated status
  */
 export async function cancelDeliverableVariation(
   originalDeliverableGuid: string,
-  variationGuid: string,
-  token?: string
+  variationGuid: string
 ): Promise<any> {
   // Use our new dedicated cancellation endpoint
   const url = getCancelDeliverableUrl(originalDeliverableGuid, variationGuid);
@@ -124,7 +118,7 @@ export async function cancelDeliverableVariation(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(token),
+      ...getAuthHeaders(), // MSAL authentication is used internally
       'Content-Type': 'application/json'
     }
   });
@@ -142,18 +136,16 @@ export async function cancelDeliverableVariation(
 /**
  * Add a new deliverable to a variation
  * @param data The deliverable data
- * @param token Optional auth token
  * @returns Promise containing the created deliverable entity with server-calculated fields
  */
 export async function addNewDeliverableToVariation(
-  data: Deliverable,
-  token?: string
+  data: Deliverable
 ): Promise<Deliverable> {
   // Use POST to the VariationDeliverables endpoint for creating new entities
   const response = await fetch(`${VARIATION_DELIVERABLES_ENDPOINT}`, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(token),
+      ...getAuthHeaders(), // MSAL authentication is used internally
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },

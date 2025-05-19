@@ -1,66 +1,281 @@
 # Task ID: 2
-# Title: Install Required Frontend Packages
+# Title: Create MSAL Authentication Context
 # Status: done
-# Dependencies: None
+# Dependencies: 1
 # Priority: high
-# Description: Install and configure the necessary frontend packages for Azure AD authentication, including MSAL libraries for React.
+# Description: Implement the MSALAuthContext to manage authentication state and provide methods for login, logout, and token acquisition.
 # Details:
-1. Add the following packages to the React application:
-```bash
-npm install @azure/msal-browser @azure/msal-react --save
-```
-2. Update package.json to ensure compatibility with existing dependencies
-3. Create a configuration file for MSAL settings (src/auth/msalConfig.ts):
+Create a new authentication context (src/auth/MSALAuthContext.tsx) that will handle MSAL authentication:
+
 ```typescript
-import { Configuration, LogLevel } from '@azure/msal-browser';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { PublicClientApplication, AuthenticationResult, AccountInfo, InteractionRequiredAuthError, InteractionStatus } from '@azure/msal-browser';
+import { msalConfig, loginRequest } from './msalConfig';
 
-export const msalConfig: Configuration = {
-  auth: {
-    clientId: 'YOUR_CLIENT_ID', // From Azure AD registration
-    authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID',
-    redirectUri: window.location.origin, // Will be http://localhost:3000 or https://app.4spm.org
-    postLogoutRedirectUri: window.location.origin
-  },
-  cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false
-  },
-  system: {
-    loggerOptions: {
-      loggerCallback: (level, message, containsPii) => {
-        if (containsPii) return;
-        switch (level) {
-          case LogLevel.Error:
-            console.error(message);
-            break;
-          case LogLevel.Warning:
-            console.warn(message);
-            break;
-          case LogLevel.Info:
-            console.info(message);
-            break;
-          case LogLevel.Verbose:
-            console.debug(message);
-            break;
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  roles: string[];
+  accessToken: string;
+}
+
+interface MSALAuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: User | null;
+  error: string | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  acquireToken: () => Promise<string | null>;
+}
+
+const MSALAuthContext = createContext<MSALAuthContextType | undefined>(undefined);
+
+const msalInstance = new PublicClientApplication(msalConfig);
+
+export const MSALAuthProvider = ({ children }: { children: ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Handle redirect promise
+        await msalInstance.handleRedirectPromise();
+        
+        // Check if user is already signed in
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
+          await handleSignedInAccount(accounts[0]);
         }
-      },
-      logLevel: LogLevel.Info
+      } catch (err) {
+        console.error('MSAL Initialization Error', err);
+        setError('Failed to initialize authentication');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  const handleSignedInAccount = async (account: AccountInfo) => {
+    try {
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account
+      });
+      
+      const user = mapAccountToUser(account, tokenResponse);
+      setUser(user);
+      setIsAuthenticated(true);
+      setError(null);
+    } catch (err) {
+      if (err instanceof InteractionRequiredAuthError) {
+        // Silent token acquisition failed, user interaction required
+        setIsAuthenticated(false);
+        setUser(null);
+      } else {
+        console.error('Token acquisition error', err);
+        setError('Failed to acquire authentication token');
+      }
     }
+  };
+
+  const mapAccountToUser = (account: AccountInfo, tokenResponse: AuthenticationResult): User => {
+    // Extract roles from ID token claims
+    const idTokenClaims = tokenResponse.idTokenClaims as any;
+    const roles = idTokenClaims?.roles || [];
+    
+    return {
+      id: account.homeAccountId,
+      name: account.name || '',
+      email: account.username,
+      roles,
+      accessToken: tokenResponse.accessToken
+    };
+  };
+
+  const login = async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Attempt login with popup as primary method
+      const response = await msalInstance.loginPopup(loginRequest);
+      await handleSignedInAccount(response.account);
+    } catch (err: any) {
+      console.error('Login error', err);
+      if (err.name === 'PopupBlockedError') {
+        // Fallback to redirect if popup is blocked
+        msalInstance.loginRedirect(loginRequest);
+      } else {
+        setError(err.message || 'Failed to sign in');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await msalInstance.logoutPopup();
+      setIsAuthenticated(false);
+      setUser(null);
+    } catch (err) {
+      console.error('Logout error', err);
+      // Even if logout fails, clear local state
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+  };
+
+  const acquireToken = async (): Promise<string | null> => {
+    try {
+      const account = msalInstance.getActiveAccount();
+      if (!account) {
+        throw new Error('No active account');
+      }
+      
+      const response = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account
+      });
+      
+      // Update user with new token
+      setUser(prev => prev ? { ...prev, accessToken: response.accessToken } : null);
+      return response.accessToken;
+    } catch (err) {
+      if (err instanceof InteractionRequiredAuthError) {
+        try {
+          // Silent token acquisition failed, try interactive method
+          const response = await msalInstance.acquireTokenPopup(loginRequest);
+          setUser(prev => prev ? { ...prev, accessToken: response.accessToken } : null);
+          return response.accessToken;
+        } catch (interactiveErr) {
+          console.error('Interactive token acquisition failed', interactiveErr);
+          setError('Authentication session expired. Please sign in again.');
+          setIsAuthenticated(false);
+          setUser(null);
+          return null;
+        }
+      } else {
+        console.error('Token acquisition error', err);
+        setError('Failed to acquire authentication token');
+        return null;
+      }
+    }
+  };
+
+  const contextValue: MSALAuthContextType = {
+    isAuthenticated,
+    isLoading,
+    user,
+    error,
+    login,
+    logout,
+    acquireToken
+  };
+
+  return (
+    <MSALAuthContext.Provider value={contextValue}>
+      {children}
+    </MSALAuthContext.Provider>
+  );
+};
+
+export const useMSALAuth = (): MSALAuthContextType => {
+  const context = useContext(MSALAuthContext);
+  if (context === undefined) {
+    throw new Error('useMSALAuth must be used within an MSALAuthProvider');
   }
-};
-
-export const loginRequest = {
-  scopes: ['User.Read', 'api://YOUR_CLIENT_ID/Application.User']
-};
-
-export const adminRequest = {
-  scopes: ['api://YOUR_CLIENT_ID/Application.Admin']
+  return context;
 };
 ```
-4. Create environment-specific configuration files for development and production
 
 # Test Strategy:
-1. Verify all packages install without conflicts
-2. Check that TypeScript types are correctly resolved
-3. Validate MSAL configuration file syntax
-4. Ensure environment-specific configurations load correctly
+1. Create unit tests to verify the context initialization
+2. Test the login, logout, and acquireToken methods with mocked MSAL responses
+3. Verify that user state is correctly updated after authentication
+4. Test error handling for various authentication scenarios
+5. Verify that the context provides the expected interface
+
+# Subtasks:
+## 1. Create Core Authentication Context Structure [done]
+### Dependencies: None
+### Description: Set up the basic MSAL Authentication Context structure with provider and hook patterns
+### Details:
+1. Create an AuthContext.tsx file
+2. Define the AuthContextState interface with properties: account, inProgress, isAuthenticated, error
+3. Create the AuthContext using React.createContext
+4. Implement the AuthProvider component that will wrap the application
+5. Set up the MSAL instance configuration with proper authority and redirect URI
+6. Initialize the PublicClientApplication from @azure/msal-browser
+7. Create and export a useAuth hook for consuming components
+8. Add proper TypeScript types for all components and functions
+9. Test the context initialization without authentication logic
+
+## 2. Implement Authentication State Management [done]
+### Dependencies: 2.1
+### Description: Add state management logic to track authentication status, user account, and error handling
+### Details:
+1. Add useState hooks for tracking: account, inProgress, isAuthenticated, error
+2. Implement useEffect to check for existing accounts on component mount
+3. Create handleRedirectPromise function to handle redirect responses
+4. Add event callbacks for MSAL events (loginSuccess, loginFailure, etc.)
+5. Implement a function to determine if a user is authenticated
+6. Create error handling utilities for authentication errors
+7. Add state update functions that maintain immutability
+8. Implement proper cleanup in useEffect to prevent memory leaks
+9. Test state updates with mock authentication events
+
+## 3. Implement Login Functionality [done]
+### Dependencies: 2.1, 2.2
+### Description: Create login methods supporting both popup and redirect flows with proper error handling
+### Details:
+1. Implement loginPopup function using MSAL's loginPopup method
+2. Implement loginRedirect function using MSAL's loginRedirect method
+3. Create a login configuration object with proper scopes
+4. Add error handling for failed login attempts
+5. Update authentication state after successful login
+6. Implement silent login functionality for session persistence
+7. Add login hint support for improved user experience
+8. Create test cases for successful login
+9. Create test cases for failed login scenarios
+10. Document the login API for consuming components
+
+## 4. Implement Logout Functionality [done]
+### Dependencies: 2.1, 2.2, 2.3
+### Description: Create logout methods with proper state cleanup and server session termination
+### Details:
+1. Implement logout function using MSAL's logout method
+2. Add support for both popup and redirect logout flows
+3. Create proper state cleanup after logout
+4. Implement postLogoutRedirectUri configuration
+5. Add confirmation dialog option before logout
+6. Handle edge cases like logout during in-progress operations
+7. Create test cases for successful logout
+8. Create test cases for failed logout scenarios
+9. Document the logout API for consuming components
+10. Ensure all cached tokens are properly cleared
+
+## 5. Implement Token Acquisition and Management [done]
+### Dependencies: 2.1, 2.2, 2.3
+### Description: Add token acquisition, caching, and refresh functionality with proper error handling
+### Details:
+1. Implement acquireToken function using MSAL's acquireTokenSilent
+2. Add fallback to interactive methods when silent acquisition fails
+3. Create token caching mechanism for performance
+4. Implement token refresh logic before expiration
+5. Add proper scopes management for different API endpoints
+6. Create utility to check if token is expired
+7. Implement token acquisition queue to prevent race conditions
+8. Add comprehensive error handling for token acquisition failures
+9. Create test cases for successful token acquisition
+10. Create test cases for token refresh scenarios
+11. Document the token API for consuming components
+

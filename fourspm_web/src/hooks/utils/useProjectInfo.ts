@@ -16,27 +16,26 @@ export interface ProjectInfoResult extends Omit<DataFetchingResult<Project>, 'da
  * Wrapper for fetchProject that handles optional parameters
  */
 const fetchProjectWithOptionalParams = async (
-  projectId?: string,
-  userToken?: string
+  projectId?: string
 ): Promise<Project> => {
-  if (!projectId || !userToken) throw new Error('Missing required parameters');
-  return fetchProject(projectId, userToken);
+  if (!projectId) throw new Error('Missing project ID parameter');
+  // Token is now handled by MSAL internally
+  return fetchProject(projectId);
 };
 
 /**
  * Checks if the required parameters are present
  */
 const hasRequiredParams = (
-  projectId?: string,
-  userToken?: string
+  projectId?: string
 ): boolean => {
-  return !!projectId && !!userToken;
+  return !!projectId;
 };
 
 /**
  * Create the base hook using the factory
  */
-const useBaseProjectInfo = createDataFetchingHook<Project, [string?, string?]>(
+const useBaseProjectInfo = createDataFetchingHook<Project, [string?]>(
   fetchProjectWithOptionalParams,
   hasRequiredParams
 );
@@ -46,14 +45,13 @@ const useBaseProjectInfo = createDataFetchingHook<Project, [string?, string?]>(
  * Use this hook when you only need to read project data and don't need to update it
  * 
  * @param projectId The project GUID to fetch information for
- * @param userToken The user's authentication token
  * @returns Object containing project information and loading state
  */
 export const useProjectInfo = (
-  projectId: string | undefined,
-  userToken: string | undefined
+  projectId: string | undefined
 ): ProjectInfoResult => {
-  const { data: project, isLoading, error } = useBaseProjectInfo(projectId, userToken);
+  // Token is now handled by MSAL internally
+  const { data: project, isLoading, error } = useBaseProjectInfo(projectId);
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
   
   // Calculate the current period whenever project data changes

@@ -15,6 +15,7 @@ export interface VariationDeliverablesState {
   error: string | null;
   isReadOnly: boolean;
   lookupDataLoaded: boolean;
+  token: string | null;
 }
 
 /**
@@ -56,10 +57,17 @@ export interface VariationDeliverablesContextProps {
     loading: boolean;
     error: string | null;
     isReadOnly: boolean;
+    token: string | null;
   };
+  
+  // State management
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setLookupDataLoaded: (loaded: boolean) => void;
+  
+  // Token management
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   
   // Data operations have been moved to useVariationDeliverableGridHandlers.ts
   // They are no longer part of the context interface
@@ -97,6 +105,7 @@ export interface VariationDeliverablesContextProps {
  */
 export type VariationDeliverablesAction =
   // Basic state management
+  | { type: 'SET_TOKEN'; payload: string | null }
   | { type: 'SET_DELIVERABLES'; payload: Deliverable[] }
   | { type: 'UPDATE_DELIVERABLE'; payload: Deliverable }
   | { type: 'ADD_DELIVERABLE'; payload: Deliverable }
