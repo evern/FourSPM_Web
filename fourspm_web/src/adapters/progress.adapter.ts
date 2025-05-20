@@ -1,7 +1,7 @@
 // Progress data adapter - provides methods for manipulating progress data
 import { v4 as uuidv4 } from 'uuid';
 import { DeliverableProgressDto } from '../types/index';
-import { sharedApiService } from '../api/shared-api.service';
+import { apiService } from '../api/api.service';
 import { PROGRESS_ENDPOINT } from '../config/api-endpoints';
 
 /**
@@ -60,7 +60,7 @@ export const handleProgressUpdate = async (
     };
     
     // Use the shared API service to make the request
-    const result = await sharedApiService.post<any>(
+    const result = await apiService.post<any>(
       `${PROGRESS_ENDPOINT}/AddOrUpdateExisting`,
       progressData
     );

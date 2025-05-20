@@ -66,10 +66,11 @@ const AreasContent = React.memo((): React.ReactElement => {
   });
 
   // Use the combined loading state from context - prevents flickering
-  const isLoading = isLookupDataLoading;
+  const isLoading = state.loading;
   
   // Check for errors - account for context errors
-  const hasError = state.error !== null;
+  const hasError = !!state.error;
+  const hasToken = !!state.token;
   
   return (
     <div className="areas-container">
@@ -96,13 +97,13 @@ const AreasContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Areas` : 'Areas'}
         </div>
         
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && hasToken && (
           <ODataGrid
             title=" "
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"
-            token={state.token}
+            token={state.token!} // We already checked hasToken
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -115,7 +116,7 @@ const AreasContent = React.memo((): React.ReactElement => {
             countColumn="guid"
           />
         )}
-        {!isLoading && !hasError && !state.token && (
+        {!isLoading && !hasError && !hasToken && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."

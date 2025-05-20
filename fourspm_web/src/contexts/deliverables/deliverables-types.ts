@@ -136,31 +136,8 @@ export interface DeliverablesContextProps {
     isVariation?: boolean
   ) => Promise<string>;
 
-  /**
-   * Fetches deliverables for a project
-   * @param projectId The project ID to fetch deliverables for
-   */
-  fetchDeliverables: (projectId: string) => Promise<void>;
+  // CRUD operations removed as ODataGrid handles them directly via its ODataStore
 
-  /**
-   * Adds a new deliverable
-   * @param deliverable The deliverable to add
-   * @returns The created deliverable
-   */
-  addDeliverable: (deliverable: Deliverable) => Promise<Deliverable>;
-
-  /**
-   * Updates an existing deliverable
-   * @param deliverable The deliverable data to update
-   * @returns The updated deliverable
-   */
-  updateDeliverable: (deliverable: Deliverable) => Promise<Deliverable>;
-
-  /**
-   * Deletes a deliverable
-   * @param id The ID of the deliverable to delete
-   */
-  deleteDeliverable: (id: string) => Promise<void>;
 
   /**
    * Sets the loading state

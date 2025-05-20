@@ -4,7 +4,7 @@ import { variationsReducer, initialVariationsState } from './variations-reducer'
 import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { createVariation, updateVariation, deleteVariation, getProjectVariations, approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -58,7 +58,17 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
-  const msalAuth = useMSALAuth();
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   // Set up the entity validator with variation-specific rules
   const {
@@ -85,38 +95,16 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     };
   }, []);
   
-  // Token management
+  // Token management function for backward compatibility
   const setToken = useCallback((token: string | null) => {
-    if (isMountedRef.current) {
-      dispatch({ type: 'SET_TOKEN', payload: token });
-    }
+    // This is a no-op now as token is managed by useTokenAcquisition
+    console.log('setToken called, but token is now managed by useTokenAcquisition');
   }, []);
   
-  // Method to acquire a fresh token and update state
+  // Alias for backward compatibility
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAuth.acquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAuth.acquireToken, setToken]);
-  
-  // Acquire token when context is initialized
-  useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    return userToken || null;
+  }, [userToken]);
   
   // Fetch variations for a project
   const fetchVariations = useCallback(async (projectId: string) => {
@@ -413,9 +401,15 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
   
-  // CRITICAL: Memoize the context value to prevent unnecessary re-renders
+  // CRITICAL:  // Create context value with all functions and state
   const contextValue = useMemo(() => ({
-    state,
+    // State with token from the hook
+    state: {
+      ...state,
+      token: userToken,
+      loading: tokenLoading || state.loading,
+      error: tokenError || state.error
+    },
     setToken,
     acquireToken,
     // Validation methods

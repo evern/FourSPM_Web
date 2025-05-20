@@ -1,4 +1,4 @@
-import { sharedApiService } from '../api/shared-api.service';
+import { apiService } from '../api/api.service';
 import { createProjectFilter } from '../utils/odata-filters';
 import { VARIATIONS_ENDPOINT } from '../config/api-endpoints';
 import { Variation } from '../types/odata-types';
@@ -15,7 +15,8 @@ export const getProjectVariations = async (projectId: string): Promise<Variation
       query = createProjectFilter(projectId);
     }
     
-    return await sharedApiService.getAll<Variation>(VARIATIONS_ENDPOINT, query);
+    const response = await apiService.getAll<Variation>(VARIATIONS_ENDPOINT, { $filter: query });
+    return response.value || [];
   } catch (error) {
     console.error('Error fetching variations:', error);
     throw error;
@@ -29,7 +30,7 @@ export const getProjectVariations = async (projectId: string): Promise<Variation
  */
 export const createVariation = async (variation: Variation): Promise<Variation> => {
   try {
-    return await sharedApiService.post<Variation>(VARIATIONS_ENDPOINT, variation);
+    return await apiService.post<Variation>(VARIATIONS_ENDPOINT, variation);
   } catch (error) {
     console.error('Error creating variation:', error);
     throw error;
@@ -43,7 +44,7 @@ export const createVariation = async (variation: Variation): Promise<Variation> 
  */
 export const updateVariation = async (variation: Variation): Promise<void> => {
   try {
-    await sharedApiService.update<Variation>(VARIATIONS_ENDPOINT, variation.guid, variation);
+    await apiService.update<Variation>(VARIATIONS_ENDPOINT, variation.guid, variation);
   } catch (error) {
     console.error('Error updating variation:', error);
     throw error;
@@ -57,7 +58,7 @@ export const updateVariation = async (variation: Variation): Promise<void> => {
  */
 export const deleteVariation = async (variationId: string): Promise<boolean> => {
   try {
-    await sharedApiService.delete(VARIATIONS_ENDPOINT, variationId);
+    await apiService.delete(VARIATIONS_ENDPOINT, variationId);
     return true;
   } catch (error) {
     console.error('Error deleting variation:', error);
@@ -72,7 +73,7 @@ export const deleteVariation = async (variationId: string): Promise<boolean> => 
  */
 export const getVariationById = async (variationId: string): Promise<Variation> => {
   try {
-    return await sharedApiService.getById<Variation>(VARIATIONS_ENDPOINT, variationId);
+    return await apiService.getById<Variation>(VARIATIONS_ENDPOINT, variationId);
   } catch (error) {
     console.error(`Error fetching variation ${variationId}:`, error);
     throw error;
@@ -87,7 +88,7 @@ export const getVariationById = async (variationId: string): Promise<Variation> 
 export const approveVariation = async (variationGuid: string): Promise<Variation> => {
   try {
     // Use the post method to call our custom action endpoint
-    const response = await sharedApiService.post<Variation>(`${VARIATIONS_ENDPOINT}/ApproveVariation/${variationGuid}`, {});
+    const response = await apiService.post<Variation>(`${VARIATIONS_ENDPOINT}/ApproveVariation/${variationGuid}`, {});
     return response;
   } catch (error) {
     console.error('Error approving variation:', error);
@@ -103,7 +104,7 @@ export const approveVariation = async (variationGuid: string): Promise<Variation
 export const rejectVariation = async (variationGuid: string): Promise<Variation> => {
   try {
     // Use the post method to call our custom action endpoint
-    const response = await sharedApiService.post<Variation>(`${VARIATIONS_ENDPOINT}/RejectVariation/${variationGuid}`, {});
+    const response = await apiService.post<Variation>(`${VARIATIONS_ENDPOINT}/RejectVariation/${variationGuid}`, {});
     return response;
   } catch (error) {
     console.error('Error rejecting variation:', error);

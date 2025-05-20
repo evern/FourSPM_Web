@@ -14,11 +14,6 @@ export interface ClientsState {
   token: string | null;
 }
 
-export type ClientsAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_TOKEN'; payload: string | null };
-
 export interface ClientsContextProps {
   state: ClientsState;
   setLoading: (loading: boolean) => void;

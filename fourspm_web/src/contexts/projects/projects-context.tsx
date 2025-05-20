@@ -9,7 +9,7 @@ import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 
 /**
  * Default validation rules for projects
@@ -34,8 +34,16 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   // CRITICAL: Track the component mount state to prevent state updates after unmounting
   const isMountedRef = React.useRef(true);
   
-  // For token management
-  const { acquireToken: msalAcquireToken } = useMSALAuth();
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   // Use the client data provider hook from React Query instead of singleton
   const { clientsStore, isLoading: clientsLoading } = useClientDataProvider();
@@ -60,37 +68,16 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     };
   }, []);
   
-  // Token management functions
+  // Token management function for backward compatibility
   const setToken = useCallback((token: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: token });
+    // This is a no-op now as token is managed by useTokenAcquisition
+    console.log('setToken called, but token is now managed by useTokenAcquisition');
   }, []);
   
-  // Method to acquire a fresh token and update state
+  // Alias for backward compatibility
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAcquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAcquireToken, setToken]);
-  
-  // Acquire token when context is initialized
-  useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    return userToken || null;
+  }, [userToken]);
   
   // CRUD operations are now handled directly by ODataGrid
   // The context now focuses only on validation and maintaining state
@@ -147,9 +134,14 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State and core functions
-    state,
+    state: {
+      ...state,
+      token: userToken,
+      loading: tokenLoading,
+      error: tokenError
+    },
     
-    // Token management
+    // Token management - kept for backward compatibility
     setToken,
     acquireToken,
     
@@ -167,6 +159,9 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     refreshNextNumber
   }), [
     state,
+    userToken,
+    tokenLoading,
+    tokenError,
     setToken,
     acquireToken,
     validateProject,

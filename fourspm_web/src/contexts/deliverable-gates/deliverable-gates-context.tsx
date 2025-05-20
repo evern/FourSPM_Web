@@ -1,9 +1,9 @@
 import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect } from 'react';
-import { useMSALAuth } from '../../contexts/msal-auth';
 import { v4 as uuidv4 } from 'uuid';
 import { DeliverableGatesState, DeliverableGatesContextProps } from './deliverable-gates-types';
 import { deliverableGatesReducer } from './deliverable-gates-reducer';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
+import { useTokenAcquisition } from '@/hooks/use-token-acquisition';
 
 const initialState: DeliverableGatesState = {
   loading: false,
@@ -38,7 +38,6 @@ export const DELIVERABLE_GATE_VALIDATION_RULES: ValidationRule[] = [
 export const DEFAULT_DELIVERABLE_GATE_VALUES = {
   guid: uuidv4(),
   name: '',
-  description: '',
   maxPercentage: 0
 };
 
@@ -54,7 +53,14 @@ const DeliverableGatesContext = createContext<DeliverableGatesContextProps | und
 
 export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(deliverableGatesReducer, initialState);
-  const msalAuth = useMSALAuth();
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading, 
+    error: tokenError, 
+    acquireToken 
+  } = useTokenAcquisition();
 
   const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
@@ -68,24 +74,17 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     dispatch({ type: 'SET_TOKEN', payload: token });
   }, []);
   
-  // Method to acquire a fresh token and update state
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const token = await msalAuth.acquireToken();
-      if (token) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAuth.acquireToken, setToken]);
+  // Update local state when token changes from the hook
+  useEffect(() => {
+    setToken(token);
+    setError(tokenError);
+    setLoading(tokenLoading);
+  }, [token, tokenError, tokenLoading, setToken, setError, setLoading]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
-    // Implement React Query cache invalidation here if needed
+    // This will be handled by React Query's cache invalidation
+    // The actual implementation would use queryClient.invalidateQueries
     console.log('Invalidating deliverable gates cache');
   }, []);
 
@@ -93,18 +92,17 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     return getDefaultDeliverableGateValues();
   }, []);
 
-  // Acquire token when context is initialized
-  useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+  // Token acquisition is now handled by the useTokenAcquisition hook
+  // No need for manual token acquisition in useEffect
 
   const contextValue = useMemo(
     () => ({ 
-      state, 
+      state: {
+        ...state,
+        token, // Ensure token from hook is always up to date
+        loading: state.loading || tokenLoading,
+        error: state.error || tokenError
+      },
       setLoading, 
       setError,
       setToken,
@@ -113,7 +111,7 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
       validationRules: DELIVERABLE_GATE_VALIDATION_RULES,
       getDefaultValues
     }),
-    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
+    [state, token, tokenLoading, tokenError, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
   );
 
   return (

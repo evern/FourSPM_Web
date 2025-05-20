@@ -31,9 +31,10 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
     handleGridInitialized
   } = useDeliverableGateGridHandlers({ acquireToken });
 
-  // For demonstration, assume loading/error state comes from context only
+  // Get loading, error, and token state from context
   const isLoading = state.loading;
   const hasError = !!state.error;
+  const hasToken = !!state.token;
 
   return (
     <div className="deliverable-gates-container">
@@ -53,13 +54,13 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
       )}
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Deliverable Gates</div>
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && hasToken && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLE_GATES_ENDPOINT}
             columns={deliverableGateColumns}
             keyField="guid"
-            token={state.token} // Pass the token from context
+            token={state.token!} // We already checked hasToken
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -70,7 +71,7 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             customGridHeight={900}
           />
         )}
-        {!isLoading && !hasError && !state.token && (
+        {!isLoading && !hasError && !hasToken && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."

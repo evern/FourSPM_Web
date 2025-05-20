@@ -7,7 +7,7 @@ import { Discipline } from '@/types/odata-types';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { baseApiService } from '@/api/base-api.service';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '@/hooks/use-token-acquisition';
 
 /**
  * Default validation rules for disciplines
@@ -63,8 +63,18 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
   const queryClient = useQueryClient();
   
   // For token management
-  const { acquireToken: msalAcquireToken } = useMSALAuth();
   const isMountedRef = useRef(true);
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   useEffect(() => {
     // Set mounted flag to true when component mounts
@@ -93,43 +103,37 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management functions
+  // Token management functions - kept for backward compatibility
   const setToken = useCallback((token: string | null) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_TOKEN', payload: token });
   }, []);
   
-  // Method to acquire a fresh token and update state
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAcquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAcquireToken, setToken]);
-  
-  // Acquire token when context is initialized
+  // Update local state when token changes from the hook
   useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
+    if (!isMountedRef.current) return;
     
-    getInitialToken();
-  }, [acquireToken]);
+    // Update token in local state
+    setToken(userToken);
+    
+    // Update loading and error states
+    dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+    
+    if (tokenError) {
+      dispatch({ type: 'SET_ERROR', payload: tokenError });
+    }
+  }, [userToken, tokenLoading, tokenError, setToken]);
+  
+  // Alias for backward compatibility
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    return userToken || null;
+  }, [userToken]);
   
   // For Collection View Doctrine patterns, the ODataGrid handles data fetching directly
   // We provide minimal implementations to satisfy the interface
   const disciplines: Discipline[] = [];
-  const disciplinesLoading = false;
-  const disciplinesError = null;
+  const disciplinesLoading = tokenLoading || false;
+  const disciplinesError = tokenError || null;
   
   // This refetch function would be used if a component needs to manually trigger a refresh
   const refetchDisciplines = useCallback(async () => {
@@ -172,7 +176,7 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     setError,
     setDataLoaded,
     
-    // Token management
+    // Token management - kept for backward compatibility
     setToken,
     acquireToken,
     

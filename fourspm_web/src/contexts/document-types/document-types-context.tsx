@@ -6,7 +6,7 @@ import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interface
 import { v4 as uuidv4 } from 'uuid';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 
@@ -71,41 +71,30 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   // Initialize state with reducer
   const [state, dispatch] = useReducer(documentTypesReducer, initialDocumentTypesState);
   
-  // Get auth context for token
+  // Get user from auth context
   const { user } = useAuth();
-  const msalAuth = useMSALAuth();
   
-  // Token management functions
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
+  
+  // Token management function for backward compatibility
   const setToken = useCallback((token: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: token });
+    // This is a no-op now as token is managed by useTokenAcquisition
+    console.log('setToken called, but token is now managed by useTokenAcquisition');
   }, []);
   
-  // Method to acquire a fresh token and update state
+  // Alias for backward compatibility
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAuth.acquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAuth.acquireToken, setToken]);
-  
-  // Acquire token when context is initialized
-  useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    return userToken || null;
+  }, [userToken]);
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -176,7 +165,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
       projectId,
       isLookupDataLoading
     }),
-    [state, setToken, acquireToken, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
+    [state, userToken, tokenLoading, tokenError, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
   );
   
   return (

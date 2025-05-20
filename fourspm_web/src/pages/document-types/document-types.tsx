@@ -1,7 +1,7 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
-import { useMSALAuth } from '../../contexts/msal-auth';
+// Token management is now handled by the DocumentTypesContext
 import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './document-types.scss';
@@ -24,15 +24,12 @@ export function DocumentTypes(): React.ReactElement {
  * Internal component that uses the document types context
  */
 const DocumentTypesContent = React.memo((): React.ReactElement => {
-  // Get everything from the context including token
-  
   // Use the document types context
   const {
-    state,
+    state: { token, loading: tokenLoading, error: tokenError },
     documentTypesLoading,
     documentTypesError,
     isLookupDataLoading,
-    acquireToken
   } = useDocumentTypes();
 
   // Use the dedicated grid handlers hook
@@ -44,14 +41,14 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useDocumentTypeGridHandlers({
-    acquireToken
+    acquireToken: () => Promise.resolve(token || '')
   });
   
   // Determine if we're still loading - combine all loading states including project loading
-  const isLoading = isLookupDataLoading || documentTypesLoading || state.loading;
+  const isLoading = isLookupDataLoading || documentTypesLoading || tokenLoading;
   
   // Check for errors - account for both context and query errors
-  const hasError = state.error !== null || documentTypesError !== null;
+  const hasError = tokenError !== null || documentTypesError !== null;
   
   return (
     <div className="document-types-container">
@@ -69,19 +66,19 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
       {hasError && (
         <ErrorMessage
           title="Error Loading Document Types"
-          message={state.error || (documentTypesError ? String(documentTypesError) : 'An unknown error occurred')}
+          message={tokenError || (documentTypesError ? String(documentTypesError) : 'An unknown error occurred')}
         />
       )}
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Document Types</div>
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && token && (
           <ODataGrid
             title=" "
             endpoint={DOCUMENT_TYPES_ENDPOINT}
             columns={documentTypeColumns}
             keyField="guid"
-            token={state.token}
+            token={token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -92,7 +89,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             customGridHeight={900}
           />
         )}
-        {!isLoading && !hasError && !state.token && (
+        {!isLoading && !hasError && !token && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."

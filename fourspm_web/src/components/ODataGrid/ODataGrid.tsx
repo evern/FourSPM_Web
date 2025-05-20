@@ -91,7 +91,7 @@ interface ODataGridProps {
   customGridHeight?: string | number;
   loading?: boolean; // Loading state prop
   storeOptions?: any; // Options passed to the ODataStore
-  token: string; // Required token prop for authentication
+  token: string; // Authentication token for API requests
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -119,8 +119,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   countColumn,
   customGridHeight,
   loading = false, // Default to false if not provided
-  storeOptions = {},  // We now use the token prop directly instead of acquiring it dynamically
-  token,
+  storeOptions = {},
+  token, // Required token for API authentication API requests
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
@@ -146,40 +146,21 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       beforeSend: (options: any) => {
         console.log('ODataGrid: beforeSend called for URL:', options.url);
         
-        // Use the token prop directly - it's now required
-        if (!token) {
-          console.error('ODataGrid: No auth token available for API request');
-          return false;
-        }
-        
-        console.log('ODataGrid: Setting headers with auth token:', token.substring(0, 10) + '...');
-        
-        // Initialize headers if they don't exist
+        // Ensure headers object exists
         if (!options.headers) {
           options.headers = {};
         }
-
-        // Add authorization headers without overwriting the entire headers object
-        options.headers['Authorization'] = `Bearer ${token}`;
-        options.headers['Accept'] = 'application/json';
+        
+        // Add Authorization header if token is provided
+        if (token) {
+          options.headers['Authorization'] = `Bearer ${token}`;
+        }
         
         // Add method-specific headers for write operations
         const method = (options.method || '').toLowerCase();
         if (['patch', 'put', 'post'].includes(method)) {
           options.headers['Content-Type'] = 'application/json;odata.metadata=minimal';
           options.headers['Prefer'] = 'return=representation';
-        }
-        
-        // For maximum compatibility, also set headers directly on XHR object if available
-        if (options.httpRequest && options.httpRequest.setRequestHeader) {
-          console.log('ODataGrid: Also setting headers directly on XHR object');
-          options.httpRequest.setRequestHeader('Authorization', `Bearer ${token}`);
-          options.httpRequest.setRequestHeader('Accept', 'application/json');
-          
-          if (['patch', 'put', 'post'].includes(method)) {
-            options.httpRequest.setRequestHeader('Content-Type', 'application/json;odata.metadata=minimal');
-            options.httpRequest.setRequestHeader('Prefer', 'return=representation');
-          }
         }
         
         console.log('ODataGrid: Headers set, options:', JSON.stringify(options, (key, value) => 
@@ -223,6 +204,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           }
         }
         
+        // Update the URL in the options
         options.url = url.toString();
         
         return true;

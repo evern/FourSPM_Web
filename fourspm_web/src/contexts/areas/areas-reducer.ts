@@ -17,6 +17,8 @@ export function areasReducer(
       return { ...state, dataLoaded: action.payload };
     case 'SET_TOKEN':
       return { ...state, token: action.payload };
+    case 'SET_NEXT_AREA_NUMBER':
+      return { ...state, nextAreaNumber: action.payload };
     default:
       return state;
   }

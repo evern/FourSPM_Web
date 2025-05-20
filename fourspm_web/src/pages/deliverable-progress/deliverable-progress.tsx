@@ -250,16 +250,16 @@ const DeliverableProgressContent = (): React.ReactElement => {
               columns={columns}
               keyField="guid"
               token={state.token}
-            onRowUpdating={handleRowUpdating}
-            onRowValidating={handleRowValidating}
-            onInitialized={onGridInitialized}
-            onEditorPreparing={handleEditorPreparing}
-            allowAdding={false}
-            allowDeleting={false}
-            showRecordCount={true}
-            countColumn="guid"
-            customGridHeight={isMobile ? 500 : 800}
-            defaultSort={[{ selector: 'created', desc: false }]}
+              onRowUpdating={handleRowUpdating}
+              onRowValidating={handleRowValidating}
+              onInitialized={onGridInitialized}
+              onEditorPreparing={handleEditorPreparing}
+              allowAdding={false}
+              allowDeleting={false}
+              showRecordCount={true}
+              countColumn="guid"
+              customGridHeight={isMobile ? 500 : 800}
+              defaultSort={[{ selector: 'created', desc: false }]}
             />
           ) : (
             <div className="error-message">

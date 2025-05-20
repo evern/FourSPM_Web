@@ -1,4 +1,4 @@
-import { sharedApiService } from '../api/shared-api.service';
+import { apiService } from '../api/api.service';
 import { baseApiService } from '../api/base-api.service';
 import { API_CONFIG } from '../config/api';
 import { createProjectFilter } from '../utils/odata-filters';
@@ -54,7 +54,8 @@ export const getDeliverables = async (projectId?: string): Promise<Deliverable[]
       query = createProjectFilter(projectId);
     }
     
-    return await sharedApiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, query);
+    const response = await apiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, { $filter: query });
+    return response.value || [];
   } catch (error) {
     console.error('Error fetching deliverables:', error);
     throw error;
@@ -78,7 +79,6 @@ export const getSuggestedDocumentNumber = async (
   areaNumber: string, 
   discipline: string, 
   documentType: string,
-  token: string,
   excludeDeliverableGuid?: string
 ): Promise<string> => {
   try {
@@ -91,11 +91,10 @@ export const getSuggestedDocumentNumber = async (
                `${excludeDeliverableGuid ? `&excludeDeliverableGuid=${encodeURIComponent(excludeDeliverableGuid)}` : ''}`;
     
     // Use the baseApiService which already handles token management
+    // No need to manually add token headers when using fetch interceptor
     const response = await baseApiService.request(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      method: 'GET'
+      // Auth header will be added by the useAuthInterceptor hook
     });
     
     const data = await response.json();
@@ -122,7 +121,7 @@ export const updateDeliverableGate = async (
       deliverableGateGuid: gateGuid
     };
 
-    return sharedApiService.update<any>(
+    return apiService.update<any>(
       DELIVERABLES_ENDPOINT,
       deliverableKey,
       payload
@@ -187,10 +186,10 @@ export const addOrUpdateVariationDeliverable = async (
     const response = await baseApiService.request(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
+      // Auth header will be added by the useAuthInterceptor hook
     });
     
     const data = await response.json();
@@ -241,10 +240,10 @@ export const createNewVariationDeliverable = async (
     const response = await baseApiService.request(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
+      // Auth header will be added by the useAuthInterceptor hook
     });
     
     const data = await response.json();
@@ -269,7 +268,7 @@ export const getDeliverablesByVariation = async (
   
   try {
     const url = getDeliverablesByVariationUrl(variationGuid);
-    const response = await sharedApiService.get<any>(url);
+    const response = await apiService.get<any>(url);
     return response.value || [];
   } catch (error) {
     console.error('Error fetching variation deliverables:', error);
@@ -309,11 +308,11 @@ export const cancelDeliverable = async (
     const response = await baseApiService.request(url, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'  // Ask server to return updated entity
       },
       body: JSON.stringify(patchBody)
+      // Auth header will be added by the useAuthInterceptor hook
     });
     
     if (!response.ok) {
@@ -370,10 +369,10 @@ export const updateDeliverableProgress = async (
     const response = await baseApiService.request(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(progressUpdate)
+      // Auth header will be added by the useAuthInterceptor hook
     });
     
     if (!response.ok) {

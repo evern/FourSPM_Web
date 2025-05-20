@@ -6,7 +6,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { Deliverable } from '../../types/odata-types';
 import { getDeliverables, getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
@@ -74,10 +74,20 @@ const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(
  * Implements a sequential loading pattern for better performance
  */
 export function DeliverablesProvider({ children, projectId: projectIdProp }: DeliverablesProviderProps): React.ReactElement {
-  // Get route parameters and authentication
+  // Get route parameters
   const params = useParams<{ projectId: string }>();
   const projectId = projectIdProp || params.projectId;
-  const { acquireToken } = useMSALAuth();
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   // Get query client for cache invalidation
   const queryClient = useQueryClient();
@@ -109,37 +119,31 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
   
-  // Token management functions
+  // Token management functions - kept for backward compatibility
   const setToken = useCallback((token: string | null) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_TOKEN', payload: token });
   }, []);
   
-  // Method to acquire a fresh token and update state
-  const acquireTokenWithState = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await acquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [acquireToken, setToken]);
-  
-  // Acquire token when context is initialized
+  // Update local state when token changes from the hook
   useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireTokenWithState();
-    };
+    if (!isMountedRef.current) return;
     
-    getInitialToken();
-  }, [acquireTokenWithState]);
+    // Update token in local state
+    setToken(userToken);
+    
+    // Update loading and error states
+    dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+    
+    if (tokenError) {
+      dispatch({ type: 'SET_ERROR', payload: tokenError });
+    }
+  }, [userToken, tokenLoading, tokenError, setToken]);
+  
+  // Alias for backward compatibility
+  const acquireTokenWithState = useCallback(async (): Promise<string | null> => {
+    return userToken || null;
+  }, [userToken]);
   
   // setProjectGuid function removed - project ID now passed explicitly to functions
   
@@ -304,21 +308,13 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       
       // Convert to string for consistency with API call
       const deliverableTypeIdStr = deliverableTypeId?.toString() || '';
-      
-      // Acquire token using MSAL authentication
-      const token = await acquireToken();
-      
-      if (!token) {
-        throw new Error('Authentication token required for document number generation');
-      }
-      
+
       const suggestedNumber = await getSuggestedDocumentNumber(
         projectId,
         deliverableTypeIdStr,
         areaNumber, 
         discipline, 
         documentType,
-        token,
         currentDeliverableGuid 
       );
       
@@ -335,281 +331,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       return '';
     }
-  }, [projectId, acquireToken, processApiError, dispatch]);
-
-  // Fetch all deliverables for a project
-  const fetchDeliverables = useCallback(async (projectId: string) => {
-    if (!projectId) {
-      // Skip if no project ID
-      return;
-    }
-
-    dispatch({ type: 'FETCH_DELIVERABLES_START' });
-
-    try {
-      // Acquire token using MSAL authentication
-      const token = await acquireToken();
-      
-      // Token is no longer needed as authentication is handled by MSAL internally
-      const loadedDeliverables = await getDeliverables(projectId);
-      
-      // Convert the adapter Deliverable type to the odata-types Deliverable type
-      // by ensuring numeric fields are treated as strings to match odata-types
-      const convertedDeliverables = loadedDeliverables.map(deliverable => ({
-        ...deliverable,
-        deliverableTypeId: String(deliverable.deliverableTypeId), // Convert number to string
-        variationStatus: deliverable.variationStatus !== undefined
-          ? String(deliverable.variationStatus) // Convert number to string if present
-          : undefined
-      }));
-      
-      // Update state with fetched deliverables
-      dispatch({ 
-        type: 'FETCH_DELIVERABLES_SUCCESS', 
-        payload: convertedDeliverables 
-      });
-    } catch (error) {
-      // Process error using the standard error handling function
-      const errorMessage = processApiError(error);
-      dispatch({ type: 'FETCH_DELIVERABLES_ERROR', payload: errorMessage });
-    }
-  }, [dispatch, acquireToken, processApiError]);
-  
-  /**
-   * Add a new deliverable with validation
-   * @param deliverable The deliverable to add
-   * @param isVariation Whether this is a variation deliverable
-   * @returns The newly created deliverable
-   */
-  const addDeliverable = useCallback(async (
-    deliverable: Partial<Deliverable>,
-    isVariation: boolean = false
-  ): Promise<Deliverable> => {
-    // Acquire token using MSAL authentication
-    const token = await acquireToken();
-    if (!token) {
-      throw new Error('Authentication token required for adding deliverable');
-    }
-    
-    // Validate the deliverable before saving
-    const validationResult = validateDeliverable(deliverable as Deliverable);
-    if (!validationResult.isValid) {
-      const errorMessage = Object.values(validationResult.errors)
-        .flat()
-        .join(', ');
-      dispatch({ 
-        type: 'ADD_DELIVERABLE_ERROR', 
-        payload: { 
-          error: errorMessage, 
-          deliverable 
-        }
-      });
-      throw new Error(errorMessage);
-    }
-    
-    try {
-      dispatch({ type: 'ADD_DELIVERABLE_START', payload: deliverable });
-      
-      // If the deliverable doesn't have a document number, try to generate one
-      if (!deliverable.internalDocumentNumber && 
-          deliverable.areaNumber && 
-          deliverable.discipline && 
-          deliverable.documentType) {
-        const generatedNumber = await generateDocumentNumber(
-          deliverable.deliverableTypeId || 'Deliverable',
-          deliverable.areaNumber,
-          deliverable.discipline,
-          deliverable.documentType,
-          undefined,
-          isVariation
-        );
-        deliverable.internalDocumentNumber = generatedNumber;
-      }
-      
-      // In a real implementation, you would call an adapter method like:
-      // const result = await createDeliverable(deliverable, token);
-      
-      // For now, we'll simulate a successful creation by generating a new GUID and adding timestamps
-      const newDeliverable = {
-        ...deliverable,
-        guid: deliverable.guid || uuidv4(), // Use provided GUID or generate a new one
-        created: new Date(),
-        createdBy: 'system' // User identification would be handled by the backend with the token
-      };
-      
-      // Convert numeric types to string to match odata-types
-      const convertedDeliverable = {
-        ...newDeliverable,
-        deliverableTypeId: String(newDeliverable.deliverableTypeId),
-        variationStatus: newDeliverable.variationStatus !== undefined 
-          ? String(newDeliverable.variationStatus) 
-          : undefined
-      } as Deliverable;
-      
-      dispatch({ type: 'ADD_DELIVERABLE_SUCCESS', payload: convertedDeliverable });
-      
-      // Invalidate any relevant queries
-      queryClient.invalidateQueries({ queryKey: ['deliverables', projectId] });
-      
-      return convertedDeliverable;
-    } catch (error) {
-      const errorMessage = processApiError(error);
-      dispatch({ 
-        type: 'ADD_DELIVERABLE_ERROR', 
-        payload: { 
-          error: errorMessage, 
-          deliverable 
-        }
-      });
-      throw error;
-    }
-  }, [validateDeliverable, generateDocumentNumber, dispatch, processApiError, queryClient, projectId, acquireToken]);
-  
-  /**
-   * Update an existing deliverable with validation
-   * @param deliverable The deliverable to update
-   * @param isVariation Whether this is a variation deliverable
-   * @returns The updated deliverable
-   */
-  const updateDeliverable = useCallback(async (
-    deliverable: Deliverable,
-    isVariation: boolean = false
-  ): Promise<Deliverable> => {
-    // Acquire token using MSAL authentication
-    const token = await acquireToken();
-    if (!token) {
-      throw new Error('Authentication token required for updating deliverable');
-    }
-    
-    // First validate the deliverable
-    const validationResult = validateDeliverable(deliverable);
-    if (!validationResult.isValid) {
-      const errorMessage = Object.values(validationResult.errors)
-        .flat()
-        .join(', ');
-      dispatch({ 
-        type: 'UPDATE_DELIVERABLE_ERROR', 
-        payload: { 
-          error: errorMessage, 
-          deliverable 
-        }
-      });
-      throw new Error(errorMessage);
-    }
-
-    try {
-      dispatch({ type: 'UPDATE_DELIVERABLE_START', payload: deliverable });
-      
-      // If fields that affect document number have changed, regenerate document number
-      const needsDocumentNumberUpdate = 
-        deliverable.areaNumber !== undefined && 
-        deliverable.discipline !== undefined && 
-        deliverable.documentType !== undefined;
-
-      if (needsDocumentNumberUpdate) {
-        // Check if we need to update the document number
-        try {
-          const suggestedNumber = await generateDocumentNumber(
-            deliverable.deliverableTypeId || '',
-            deliverable.areaNumber || '',
-            deliverable.discipline || '',
-            deliverable.documentType || '',
-            deliverable.guid || '',
-            isVariation
-          );
-          
-          // Only update if it's different
-          if (suggestedNumber && suggestedNumber !== deliverable.internalDocumentNumber) {
-            deliverable.internalDocumentNumber = suggestedNumber;
-          }
-        } catch (docNumError) {
-          // Log but don't fail the update if we can't get a document number
-          console.warn('Could not update document number during update:', docNumError);
-        }
-      }
-      
-      // In a real implementation, you would call an adapter method like:
-      // const result = await updateDeliverableApi(deliverable, token);
-      
-      // For this simulation, we'll just add updated timestamp
-      const updatedDeliverable = {
-        ...deliverable,
-        updated: new Date(),
-        updatedBy: 'system' // User identification would be handled by the backend with the token
-      };
-      
-      // Convert numeric types to string to match odata-types
-      const convertedDeliverable = {
-        ...updatedDeliverable,
-        deliverableTypeId: String(updatedDeliverable.deliverableTypeId),
-        variationStatus: updatedDeliverable.variationStatus !== undefined 
-          ? String(updatedDeliverable.variationStatus) 
-          : undefined
-      };
-      
-      dispatch({ type: 'UPDATE_DELIVERABLE_SUCCESS', payload: convertedDeliverable });
-      
-      // Invalidate any relevant queries
-      queryClient.invalidateQueries({ queryKey: ['deliverables', projectId] });
-      
-      return convertedDeliverable;
-    } catch (error) {
-      const errorMessage = processApiError(error);
-      dispatch({ 
-        type: 'UPDATE_DELIVERABLE_ERROR', 
-        payload: { 
-          error: errorMessage,
-          deliverable
-        } 
-      });
-      throw error;
-    }
-  }, [dispatch, validateDeliverable, generateDocumentNumber, processApiError, queryClient, projectId, acquireToken]);
-  
-  /**
-   * Delete a deliverable with confirmation and error handling
-   * @param id The GUID of the deliverable to delete
-   * @returns Promise resolving when delete is complete
-   */
-  const deleteDeliverable = useCallback(async (id: string): Promise<void> => {
-    // Acquire token using MSAL authentication
-    const token = await acquireToken();
-    if (!token) {
-      throw new Error('Authentication token required for deleting deliverable');
-    }
-    
-    if (!id) {
-      throw new Error('Deliverable ID is required for deletion');
-    }
-    
-    try {
-      dispatch({ type: 'DELETE_DELIVERABLE_START', payload: id });
-      
-      // In a real implementation, you would call an adapter method like:
-      // await deleteDeliverableApi(id, token);
-      
-      // For simulation, we'll just dispatch the success action
-      // This would normally happen after the API call succeeds
-      
-      dispatch({ type: 'DELETE_DELIVERABLE_SUCCESS', payload: id });
-      
-      // Invalidate any relevant queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['deliverables', projectId] });
-      
-      // Return void to maintain Promise<void> return type
-      return;
-    } catch (error) {
-      const errorMessage = processApiError(error);
-      dispatch({ 
-        type: 'DELETE_DELIVERABLE_ERROR', 
-        payload: { 
-          error: errorMessage,
-          id
-        } 
-      });
-      throw error;
-    }
-  }, [dispatch, processApiError, queryClient, projectId, acquireToken]);
+  }, [projectId, processApiError, dispatch]);
 
   // Use React Query to fetch reference data
   const { 
@@ -642,8 +364,8 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     console.log('Invalidated all lookup data after deliverable change');
   }, [queryClient]);
   
-  // Combine loading states for lookup data
-  const isLookupDataLoading = referenceDataLoading || projectLoading;
+  // Combine loading states for lookup data and token
+  const isLookupDataLoading = referenceDataLoading || projectLoading || tokenLoading;
   
   // Process and format errors from different data sources
   const processError = useCallback((error: any): string | null => {
@@ -673,12 +395,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     }
   }, [isLookupDataLoading, setLookupDataLoaded]);
   
-  // Fetch deliverables when project ID is available
-  useEffect(() => {
-    if (projectId) {
-      fetchDeliverables(projectId);
-    }
-  }, [projectId, fetchDeliverables]);
+  // Fetch deliverables useEffect removed as ODataGrid loads data directly
   
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
@@ -689,12 +406,8 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     setToken,
     acquireToken: acquireTokenWithState,
     
-    // CRUD operations
+    // Validation
     validateDeliverable,
-    fetchDeliverables,
-    addDeliverable,
-    updateDeliverable,
-    deleteDeliverable,
     
     // Document & Field Management
     initializeDeliverable,
@@ -720,10 +433,6 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   }), [
     state, 
     validateDeliverable,
-    fetchDeliverables,
-    addDeliverable,
-    updateDeliverable,
-    deleteDeliverable,
     initializeDeliverable,
     generateDocumentNumber,
     setLoading,

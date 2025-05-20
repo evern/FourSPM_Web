@@ -9,7 +9,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useVariationInfo } from '../../hooks/utils/useVariationInfo';
 import { useAuth } from '../auth';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { useDeliverables, DEFAULT_DELIVERABLE_VALIDATION_RULES } from '../deliverables/deliverables-context';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { 
@@ -58,11 +58,19 @@ export function VariationDeliverablesProvider({
   const variationId = variationGuidProp || params.variationId;
   const { user } = useAuth();
   
-  // For token management
-  const { acquireToken: msalAcquireToken } = useMSALAuth();
-  
   // Track component mount state to prevent state updates after unmounting
   const isMountedRef = useRef(true);
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   // Set up mounted ref
   useEffect(() => {
@@ -93,37 +101,16 @@ export function VariationDeliverablesProvider({
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management functions
+  // Token management function for backward compatibility
   const setToken = useCallback((token: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: token });
+    // This is a no-op now as token is managed by useTokenAcquisition
+    console.log('setToken called, but token is now managed by useTokenAcquisition');
   }, []);
   
-  // Method to acquire a fresh token and update state
+  // Alias for backward compatibility
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAcquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAcquireToken, setToken]);
-  
-  // Acquire token when context is initialized
-  useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    return userToken || null;
+  }, [userToken]);
   
   // Step 1: Load variation using the existing hook
   const {
@@ -626,8 +613,13 @@ export function VariationDeliverablesProvider({
   
   // Create context value with all functions and state
   const contextValue = useMemo(() => ({
-    // State
-    state: stableState,
+    // State with token from the hook
+    state: {
+      ...stableState,
+      token: userToken,
+      loading: tokenLoading || stableState.loading,
+      error: tokenError || stableState.error
+    },
     
     // State management functions
     setLoading,
@@ -667,6 +659,9 @@ export function VariationDeliverablesProvider({
   }), [
     // State and state setters
     stableState,
+    userToken,
+    tokenLoading,
+    tokenError,
     setLoading,
     setError,
     setLookupDataLoaded,

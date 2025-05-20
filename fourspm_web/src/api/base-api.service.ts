@@ -1,6 +1,9 @@
 import { User } from '../types';
 import { PublicClientApplication } from '@azure/msal-browser';
 
+// Import constants from msal-auth
+import { API_SCOPES } from '../contexts/msal-auth';
+
 export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
   useMsal?: boolean; // Flag to use MSAL for token acquisition instead of localStorage
@@ -27,7 +30,7 @@ class BaseApiService {
         if (account) {
           // Try to acquire a token silently
           const request = {
-            scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User'],
+            scopes: [API_SCOPES.USER],
             account: account
           };
           

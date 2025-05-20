@@ -8,7 +8,7 @@ import './deliverables.scss';
 import { DELIVERABLES_ENDPOINT } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useAuth } from '@/contexts/auth';
+// Token management is now handled by the DeliverablesContext
 import { DeliverablesProvider, useDeliverables } from '@/contexts/deliverables/deliverables-context';
 import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 
@@ -56,8 +56,8 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     // Project data
     project,
     
-    // Token acquisition
-    acquireToken
+    // Token state
+    state: { token, loading: tokenLoading, error: tokenError }
   } = useDeliverables();
   
   // Get grid handlers directly from the hook
@@ -79,10 +79,10 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
   const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
   
   // Determine if we're still loading any data
-  const isLoading = isLookupDataLoading;
+  const isLoading = isLookupDataLoading || tokenLoading;
   
   // Combine all error sources
-  const hasError = state.error !== null;
+  const hasError = state.error !== null || tokenError !== null;
   
   // Create columns with the lookup data sources from dedicated providers
   const columns = React.useMemo(() => {
@@ -126,13 +126,13 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}
         </div>
         
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && token && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLES_ENDPOINT}
             columns={mobileAdjustedColumns}
             keyField="guid"
-            token={state.token}
+            token={token}
             onRowValidating={handleRowValidating}
             onInitNewRow={handleInitNewRow}
             onEditorPreparing={handleEditorPreparing}
@@ -146,7 +146,7 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             customGridHeight={900}
           />
         )}
-        {!isLoading && !hasError && !state.token && (
+        {!isLoading && !hasError && !token && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."

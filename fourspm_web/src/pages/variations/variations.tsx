@@ -43,7 +43,12 @@ const VariationsContent = (): React.ReactElement => {
   // Get data from our combined context - now including token and token acquisition
   
   // Get data from our combined context - now including project data, token and token acquisition
-  const { state, project, isLookupDataLoading, acquireToken } = useVariations();
+  const { 
+    state: { token, loading, error, editorError }, 
+    project, 
+    isLookupDataLoading, 
+    acquireToken 
+  } = useVariations();
   
   // Use our custom grid handlers
   const {
@@ -96,9 +101,9 @@ const VariationsContent = (): React.ReactElement => {
   // Display error notifications whenever errors occur
   useEffect(() => {
     // Show error notification if there is one
-    if (state.error || state.editorError) {
+    if (error || editorError) {
       notify({
-        message: `Error: ${state.error || state.editorError}`,
+        message: `Error: ${error || editorError}`,
         type: 'error',
         displayTime: 3500,
         position: {
@@ -108,14 +113,14 @@ const VariationsContent = (): React.ReactElement => {
         }
       });
     }
-  }, [state.error, state.editorError]);
+  }, [error, editorError]);
   
   return (
     <div className="variations-container">      
       {/* Loading indicator */}
       <LoadPanel 
         visible={isLookupDataLoading} 
-        message={state.loading ? 'Loading variations...' : 'Loading project data...'}
+        message={loading ? 'Loading variations...' : 'Loading project data...'}
         position={{ of: '.custom-grid-wrapper' }}
       />
       
@@ -124,13 +129,13 @@ const VariationsContent = (): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
         </div>
         
-        {state.token && (
+        {token && (
           <ODataGrid
             title=" "
             endpoint={VARIATIONS_ENDPOINT}
             columns={variationColumns(variationColumnsConfig)}
             keyField="guid"
-            token={state.token}
+
           onRowValidating={handleRowValidating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
@@ -145,9 +150,10 @@ const VariationsContent = (): React.ReactElement => {
           customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
+          token={token}
           />
         )}
-        {!state.token && (
+        {!token && (
           <div className="auth-error-message">
             <h3>Authentication Error</h3>
             <p>Unable to acquire authentication token. Please try refreshing the page.</p>

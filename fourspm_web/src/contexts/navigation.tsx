@@ -1,8 +1,8 @@
-import React, { useState, createContext, useContext, useEffect, useCallback, useMemo, useRef, ReactElement, PropsWithChildren } from 'react';
+import React, { useState, createContext, useContext, useCallback, PropsWithChildren, ReactElement, useEffect, useMemo, useRef } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
+import { useMSALAuth } from './msal-auth';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../adapters/project.adapter';
-import { useAuth } from './auth';
 
 interface NavigationData {
   currentPath?: string;
@@ -27,15 +27,19 @@ const useNavigation = (): NavigationContextType => useContext(NavigationContext)
 function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [navigationData, setNavigationData] = useState<NavigationData>({});
   const [navigation, setNavigation] = useState<NavigationItem[]>(appNavigation);
-  const { user } = useAuth();
-
+  const msalAuth = useMSALAuth();
+  
+  // Refresh navigation when authenticated
   const refreshNavigation = useCallback(async () => {
     try {
-      if (!user?.token) return;
-
-
+      // Only proceed if user is authenticated
+      if (!msalAuth.user) {
+        console.log('NavigationProvider: Waiting for authentication');
+        return;
+      }
+      
+      console.log('NavigationProvider: Refreshing navigation');
       const staticNav = getStaticNavigation();
-      // Token is now handled by MSAL internally
       const projectNav = await getProjectNavigation();
       
       // Create project status navigation structure
@@ -68,11 +72,11 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
     } catch (error) {
 
     }
-  }, [user?.token]);
+  }, [msalAuth.user]);
 
   useEffect(() => {
     refreshNavigation();
-  }, [user?.token, refreshNavigation]); // Refresh when auth token changes or when the function reference changes
+  }, [msalAuth.user, refreshNavigation]); // Refresh when auth state or function reference changes
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({

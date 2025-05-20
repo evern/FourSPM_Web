@@ -1,4 +1,4 @@
-import { sharedApiService } from '../api/shared-api.service';
+import { apiService } from '../api/api.service';
 import { Client } from '../types/index';
 import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
 
@@ -12,7 +12,8 @@ import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
  */
 export const getClients = async (): Promise<Client[]> => {
   try {
-    return await sharedApiService.getAll<Client>(CLIENTS_ENDPOINT);
+    const response = await apiService.getAll<Client>(CLIENTS_ENDPOINT);
+    return response.value || [];
   } catch (error) {
     console.error('Error fetching clients:', error);
     throw error;
@@ -26,7 +27,7 @@ export const getClients = async (): Promise<Client[]> => {
  */
 export const getClientDetails = async (clientId: string): Promise<Client> => {
   try {
-    return await sharedApiService.getById<Client>(CLIENTS_ENDPOINT, clientId);
+    return await apiService.getById<Client>(CLIENTS_ENDPOINT, clientId);
   } catch (error) {
     console.error(`Error fetching client details for ID ${clientId}:`, error);
     throw error;

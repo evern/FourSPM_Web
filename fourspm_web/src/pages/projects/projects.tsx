@@ -5,7 +5,7 @@ import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { useMSALAuth } from '../../contexts/msal-auth';
+import { ErrorMessage } from '../../components/error-message/error-message';
 import './projects.scss';
 
 /**
@@ -34,8 +34,14 @@ const ProjectsContent = (): React.ReactElement => {
     clientDataLoaded,
     nextProjectNumber,
     refreshNextNumber,
-    acquireToken // Use acquireToken from context instead of direct MSAL auth
+    acquireToken // Use acquireToken from context for backward compatibility
   } = useProjects();
+  
+  // Destructure state for easier access
+  const { token, loading, error } = state;
+  
+  // Determine if there's an error to display
+  const hasError = Boolean(error) || !token;
   
   // Get the grid event handlers from our custom hook
   const { 
@@ -72,25 +78,26 @@ const ProjectsContent = (): React.ReactElement => {
   
   return (
     <div className="projects-container">
-      {/* Display error message if there is one */}
-      {state.error && (
-        <div className="alert alert-danger">
-          Error: {state.error}
-        </div>
-      )}
-      
-      {/* Loading indicators */}
+      {/* Loading indicator */}
       <LoadPanel 
-        visible={state.loading || !clientDataLoaded} 
-        message={state.loading ? 'Loading projects...' : 'Loading client data...'}
+        visible={loading || !clientDataLoaded} 
+        message={loading ? 'Loading projects...' : 'Loading client data...'}
         position={{ of: '.projects-grid' }}
       />
+      
+      {/* Error message */}
+      {hasError && (
+        <ErrorMessage
+          title="Error Loading Projects"
+          message={error || 'Unable to acquire authentication token. Please try refreshing the page.'}
+        />
+      )}
       
       <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
         
         {/* Only render the grid once client data is loaded and we have token */}
-        {clientDataLoaded && state.token && (
+        {clientDataLoaded && token && (
           <ODataGrid
             endpoint={PROJECTS_ENDPOINT}
             columns={createProjectColumns(clientDataSource, nextProjectNumber)}
@@ -106,18 +113,13 @@ const ProjectsContent = (): React.ReactElement => {
             allowDeleting={true}
             title=" "
             expand={['Client']}
-            token={state.token} // Pass token from context
+            token={token}
             // Add default sort to ensure consistent query parameters
             defaultSort={[{ selector: 'created', desc: true }]}
             // Set countColumn for proper record counting - memory #96c469d2
             countColumn="guid"
             customGridHeight={900}
           />
-        )}
-        {clientDataLoaded && !state.token && (
-          <div className="alert alert-danger">
-            Authentication Error: Unable to acquire authentication token. Please try refreshing the page.
-          </div>
         )}
       </div>
     </div>

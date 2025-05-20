@@ -13,11 +13,22 @@ import {
 } from '@azure/msal-browser';
 import { User } from '@/types';
 
+// Constants
+const CLIENT_ID = 'c67bf91d-8b6a-494a-8b99-c7a4592e08c1';
+const TENANT_ID = '3c7fa9e9-64e7-443c-905a-d9134ca00da9';
+const API_BASE_URL = `api://${CLIENT_ID}`;
+
+// API Scopes
+export const API_SCOPES = {
+  USER: `${API_BASE_URL}/Application.User`,
+  ADMIN: `${API_BASE_URL}/Application.Admin`
+} as const;
+
 // Define MSAL configuration
-const msalConfig: Configuration = {
+const msalConfig = {
   auth: {
-    clientId: 'c67bf91d-8b6a-494a-8b99-c7a4592e08c1',
-    authority: 'https://login.microsoftonline.com/3c7fa9e9-64e7-443c-905a-d9134ca00da9',
+    clientId: CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${TENANT_ID}`,
     redirectUri: window.location.origin,
   },
   cache: {
@@ -28,11 +39,11 @@ const msalConfig: Configuration = {
 
 // Define request scopes
 const loginRequest: PopupRequest = {
-  scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User']
+  scopes: [API_SCOPES.USER]
 };
 
 const adminLoginRequest: PopupRequest = {
-  scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.Admin']
+  scopes: [API_SCOPES.ADMIN]
 };
 
 // Define the auth context type
@@ -115,6 +126,8 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       }
     }
   }, [msalInstance]);
+  
+
 
   // Handle authentication result
   const handleAuthResult = useCallback((authResult: AuthenticationResult) => {
@@ -132,7 +145,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
     setLoading(true);
     try {
       const silentRequest: SilentRequest = {
-        scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User'],
+        scopes: [API_SCOPES.USER],
         account: account
       };
       
@@ -209,43 +222,101 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
     }
   }, [msalInstance, handleAuthResult]);
 
-  // Acquire token for API calls
+  // Acquire token for API calls with retry logic and better error handling
   const acquireToken = useCallback(async (): Promise<string | null> => {
     if (!msalInstance) {
+      console.error('MSAL not initialized');
       setError('MSAL not initialized');
       return null;
     }
     
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length === 0) {
-      setError('No signed-in account found');
-      return null;
-    }
+    const MAX_RETRIES = 2;
+    let retryCount = 0;
     
-    const account = accounts[0];
-    const request = {
-      scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User'],
-      account: account
-    };
-    
-    try {
-      const response = await msalInstance.acquireTokenSilent(request);
-      return response.accessToken;
-    } catch (error) {
-      if (error instanceof InteractionRequiredAuthError) {
-        try {
-          // Fallback to interactive method
-          const response = await msalInstance.acquireTokenPopup(request);
-          return response.accessToken;
-        } catch (err: any) {
-          setError(`Failed to acquire token interactively: ${err.message}`);
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+          console.warn('No signed-in account found');
+          setError('No signed-in account found');
           return null;
         }
-      } else {
-        setError(`Failed to acquire token silently: ${(error as Error).message}`);
-        return null;
+        
+        const account = accounts[0];
+        const silentRequest: SilentRequest = {
+          scopes: [API_SCOPES.USER],
+          account: account,
+          forceRefresh: retryCount > 0 // Force refresh on retry
+        };
+        
+        // Try to get token silently first
+        try {
+          const response = await msalInstance.acquireTokenSilent(silentRequest);
+          if (response?.accessToken) {
+            return response.accessToken;
+          }
+        } catch (silentError) {
+          console.log('Silent token acquisition failed, falling back to interactive', silentError);
+          
+          // If it's not an interaction required error, rethrow
+          if (!(silentError instanceof InteractionRequiredAuthError)) {
+            throw silentError;
+          }
+          
+          // If we're out of retries, try interactive
+          if (retryCount >= MAX_RETRIES - 1) {
+            console.log('Max silent retries reached, trying interactive...');
+            const response = await msalInstance.acquireTokenPopup(silentRequest);
+            if (response?.accessToken) {
+              return response.accessToken;
+            }
+          }
+        }
+        
+        // If we get here, we need to retry
+        retryCount++;
+        if (retryCount <= MAX_RETRIES) {
+          // Exponential backoff: 1s, 2s, 4s, etc.
+          const backoffTime = Math.pow(2, retryCount) * 500;
+          console.log(`Retrying token acquisition in ${backoffTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Token acquisition failed (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
+        
+        // If it's an interaction required error on the last attempt, try interactive
+        if (error instanceof InteractionRequiredAuthError && retryCount >= MAX_RETRIES - 1) {
+          try {
+            console.log('Falling back to interactive token acquisition');
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+              const response = await msalInstance.acquireTokenPopup({
+                scopes: [API_SCOPES.USER],
+                account: accounts[0]
+              });
+              if (response?.accessToken) {
+                return response.accessToken;
+              }
+            }
+          } catch (popupError) {
+            console.error('Interactive token acquisition failed:', popupError);
+            setError(`Failed to acquire token: ${popupError instanceof Error ? popupError.message : 'Unknown error'}`);
+            return null;
+          }
+        }
+        
+        // If we've exhausted all retries, give up
+        if (retryCount >= MAX_RETRIES) {
+          setError(`Failed to acquire token after ${MAX_RETRIES + 1} attempts: ${errorMessage}`);
+          return null;
+        }
+        
+        retryCount++;
       }
     }
+    
+    return null; // Should never get here due to retry logic above
   }, [msalInstance]);
 
   // Sign out
@@ -279,7 +350,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         const account = accounts[0];
         try {
           const silentRequest: SilentRequest = {
-            scopes: ['api://c67bf91d-8b6a-494a-8b99-c7a4592e08c1/Application.User'],
+            scopes: [API_SCOPES.USER],
             account: account,
             forceRefresh: true
           };
@@ -300,6 +371,9 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
 
     return () => clearInterval(tokenRefreshInterval);
   }, [user, msalInstance]);
+  
+  // No token callback setup - this is now handled by the auth interceptor
+  // which follows separation of concerns principle
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({

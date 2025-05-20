@@ -6,8 +6,7 @@ import { deliverableProgressReducer } from './deliverable-progress-reducer';
 import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
 import { compareGuids } from '../../utils/guid-utils';
-import { useAuth } from '../auth';
-import { useMSALAuth } from '../msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { useQuery } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
@@ -49,38 +48,32 @@ export function DeliverableProgressProvider({
     token: null
   });
   
-  // Get authentication token for API calls
-  const { user } = useAuth();
-  const msalAuth = useMSALAuth();
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading, 
+    error: tokenError, 
+    acquireToken 
+  } = useTokenAcquisition();
   
-  // MSAL token management
+  // MSAL token management - keep for backward compatibility
   const setToken = useCallback((token: string | null) => {
     dispatch({ type: 'SET_TOKEN', payload: token });
   }, []);
   
-  // Method to acquire a fresh token and update state
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const token = await msalAuth.acquireToken();
-      if (token) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAuth.acquireToken, setToken]);
-  
-  // Acquire token when context is initialized
+  // Update local state when token changes from the hook
   useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    setToken(token);
+    if (tokenError) {
+      dispatch({ type: 'SET_ERROR', payload: tokenError });
+    }
+    if (tokenLoading) {
+      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+    }
+  }, [token, tokenError, tokenLoading, setToken]);
+  
+  // Get the current token for API calls
+  const userToken = token;
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -108,7 +101,7 @@ export function DeliverableProgressProvider({
   } = useDeliverableGateDataProvider();
 
   // Pass-through to the period manager for consistency
-  const { selectedPeriod, progressDate, setSelectedPeriod, incrementPeriod, decrementPeriod } = periodManager;
+  const { selectedPeriod } = periodManager;
 
   /**
    * Validates that progress percentage doesn't exceed gate maximum
@@ -244,10 +237,10 @@ export function DeliverableProgressProvider({
         },
         selectedPeriod || 0, // Use the current period from context
         oldData,
-        user?.token || ''
+        userToken || '' // Use the token from the hook
       );
     }
-  }, [selectedPeriod, user?.token]);
+  }, [selectedPeriod, userToken]);
 
   // Fetch project details - key addition to prevent flickering
   const { 
@@ -257,39 +250,44 @@ export function DeliverableProgressProvider({
   } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!user?.token,
+    enabled: !!projectId && !!userToken, // Use userToken from the hook
     refetchOnWindowFocus: true // Auto-refresh data when window regains focus
   });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading || isGatesLoading;
 
-  // Create memoized context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
-    state,
-    // Token management
+  // Create the context value with all necessary properties
+  const contextValue = useMemo<DeliverableProgressContextType>(() => ({
+    state: {
+      ...state,
+      loading: state.loading || isLookupDataLoading || tokenLoading,
+      error: state.error || tokenError || null,
+      token: token || state.token, // Prefer token from hook if available
+    },
     setToken,
     acquireToken,
-    // Period management
-    setSelectedPeriod,
-    incrementPeriod,
-    decrementPeriod,
+    setSelectedPeriod: periodManager.setSelectedPeriod,
+    incrementPeriod: periodManager.incrementPeriod,
+    decrementPeriod: periodManager.decrementPeriod,
     selectedPeriod: periodManager.selectedPeriod,
     progressDate: periodManager.progressDate,
     projectId,
-    project,
-    isLookupDataLoading,
+    project: project, // Using the project from the useQuery hook
+    isLookupDataLoading: isLookupDataLoading || tokenLoading,
     deliverableGates,
     isGatesLoading,
-    gatesError,
-    validateProgress,
+    gatesError: gatesError || tokenError || null,
     validateGatePercentage,
-    processProgressUpdate
+    validateProgress,
+    processProgressUpdate, // Using the processProgressUpdate function defined above
   }), [
-    state, 
-    setSelectedPeriod, 
-    incrementPeriod, 
-    decrementPeriod,
+    state,
+    setToken,
+    acquireToken,
+    periodManager.setSelectedPeriod,
+    periodManager.incrementPeriod,
+    periodManager.decrementPeriod,
     periodManager.selectedPeriod,
     periodManager.progressDate,
     projectId,
@@ -298,9 +296,12 @@ export function DeliverableProgressProvider({
     deliverableGates,
     isGatesLoading,
     gatesError,
-    validateProgress,
     validateGatePercentage,
-    processProgressUpdate
+    validateProgress,
+    processProgressUpdate,
+    token,
+    tokenLoading,
+    tokenError,
   ]);
 
   return (

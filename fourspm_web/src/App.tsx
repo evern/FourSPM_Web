@@ -8,12 +8,21 @@ import LoadPanel from 'devextreme-react/load-panel';
 import { NavigationProvider } from './contexts/navigation';
 // All pages now use MSAL auth - legacy auth system has been removed
 import { MSALAuthProvider, useMSALAuth } from './contexts/msal-auth';
+import { useAuthInterceptor } from './hooks/use-auth-interceptor';
 import { useScreenSizeClass } from './utils/media-query';
 import Content from './Content';
 import UnauthenticatedContent from './UnauthenticatedContent';
 import { useThemeContext, ThemeContext } from './theme/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+const AppWithAuth: React.FC = () => {
+  // Set up auth interceptor to automatically add tokens to API requests
+  // This follows separation of concerns principle by decoupling auth from API services
+  useAuthInterceptor();
+  
+  return <AppContent />;
+}
 
 const AppContent: React.FC = () => {
   const { user, loading } = useMSALAuth(); // Use MSAL authentication
@@ -64,7 +73,7 @@ const RootApp = () => {
           {/* MSAL-based authentication */}
           <MSALAuthProvider>
             <NavigationProvider>
-              <AppContent />
+              <AppWithAuth />
             </NavigationProvider>
           </MSALAuthProvider>
           <ReactQueryDevtools initialIsOpen={false} />

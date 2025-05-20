@@ -1,4 +1,9 @@
-import { ClientsState, ClientsAction } from './clients-types';
+import { ClientsState } from './clients-types';
+
+type ClientsAction = 
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_TOKEN'; payload: string | null };
 
 export function clientsReducer(state: ClientsState, action: ClientsAction): ClientsState {
   switch (action.type) {

@@ -1,11 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
-import { AreasContextProps, AreasProviderProps, initialAreasState } from './areas-types';
+import { v4 as uuidv4 } from 'uuid';
+import { AreasContextProps, AreasProviderProps, initialAreasState, AREA_VALIDATION_RULES, getDefaultAreaValues } from './areas-types';
 import { areasReducer } from './areas-reducer';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { PROJECTS_ENDPOINT, AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { useAuth } from '../../contexts/auth';
-import { useMSALAuth } from '../../contexts/msal-auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
 /**
  * Fetch project details from the API with client data expanded
@@ -34,13 +36,31 @@ const AreasContext = createContext<AreasContextProps | undefined>(undefined);
 export function AreasProvider({ children, projectId }: AreasProviderProps): React.ReactElement {
   // Get authentication
   const { user } = useAuth();
-  const msalAuth = useMSALAuth();
+  
+  // Use the improved token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
   
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
+  
+  // Use auto-increment for area number - construct the exact URL format needed
+  const endpoint = `${AREAS_ENDPOINT}?$filter=(projectGuid eq ${projectId})&$orderby=number desc&$top=1`;
+  
+  const { nextNumber, refreshNextNumber: refreshNextAreaNumber } = useAutoIncrement({
+    endpoint, // Complete pre-built endpoint with exact OData query parameters
+    field: 'number',
+    padLength: 2,
+    startFrom: '01'
+    // No filter parameter since it's already in the endpoint
+  });
   
   useEffect(() => {
     // Set mounted flag to true when component mounts
@@ -71,37 +91,51 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management functions
-  const setToken = useCallback((token: string | null) => {
+  // Token management - using useTokenAcquisition hook
+  const setToken = useCallback((tokenValue: string | null) => {
     if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: token });
+    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
   }, []);
-  
-  // Method to acquire a fresh token and update state
+
+  // Method to acquire a token - wrapper around the hook's method
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!isMountedRef.current) return null;
-      
-      const token = await msalAuth.acquireToken();
-      if (token && isMountedRef.current) {
-        setToken(token);
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error acquiring token:', error);
-      return null;
-    }
-  }, [msalAuth.acquireToken, setToken]);
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
   
-  // Acquire token when context is initialized
+  // Update token in state when it changes from the hook
   useEffect(() => {
-    const getInitialToken = async () => {
-      await acquireToken();
-    };
-    
-    getInitialToken();
-  }, [acquireToken]);
+    if (isMountedRef.current) {
+      setToken(token);
+    }
+  }, [token, setToken]);
+  
+  // Handle token errors
+  useEffect(() => {
+    if (isMountedRef.current && tokenError) {
+      setError(tokenError);
+    }
+  }, [tokenError, setError]);
+  
+  // Handle auto-refresh of lookups on cache invalidation
+  useEffect(() => {
+    if (isMountedRef.current && projectId && token) {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    }
+  }, [queryClient, projectId, token]);
+
+  // Wrapper for refreshNextAreaNumber to ensure component is mounted
+  const refreshNextNumber = useCallback(() => {
+    if (isMountedRef.current) {
+      refreshNextAreaNumber();
+    }
+  }, [refreshNextAreaNumber]);
+  
+  // Set loading state based on token acquisition status
+  useEffect(() => {
+    if (isMountedRef.current) {
+      setLoading(tokenLoading);
+    }
+  }, [tokenLoading, setLoading]);
   
   // Set data loaded to true by default since the ODataGrid manages loading state
   useEffect(() => {
@@ -136,13 +170,21 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
   } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!user?.token,
+    enabled: !!projectId && !!token, // Use token from the hook
     refetchOnWindowFocus: true // Auto-refresh data when window regains focus
   });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
   
+  // Get default values for new areas
+  const getDefaultValues = useCallback(() => {
+    return {
+      ...getDefaultAreaValues(projectId),
+      guid: uuidv4()
+    };
+  }, [projectId]);
+
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State and actions
@@ -161,7 +203,13 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     isLookupDataLoading,
     
     // Cache invalidation
-    invalidateAllLookups
+    invalidateAllLookups,
+    
+    // Validation and defaults
+    validationRules: AREA_VALIDATION_RULES,
+    getDefaultValues,
+    nextAreaNumber: nextNumber || '01', // Use directly from the hook, not from state
+    refreshNextNumber
   }), [
     state,
     setLoading,
@@ -172,7 +220,10 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     projectId,
     project,
     isLookupDataLoading,
-    invalidateAllLookups
+    invalidateAllLookups,
+    getDefaultValues,
+    refreshNextNumber,
+    nextNumber // Add nextNumber to dependency array to ensure updates
   ]);
   
   return (

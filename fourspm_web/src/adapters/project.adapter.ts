@@ -1,6 +1,6 @@
 import { NavigationItem } from '../app-navigation';
 import { Project, projectStatuses, ProjectNavigationItem } from '../types/index';
-import { sharedApiService } from '../api/shared-api.service';
+import { apiService } from '../api/api.service';
 import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
@@ -16,7 +16,7 @@ import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
 export const fetchProject = async (projectId: string): Promise<Project> => {
   try {
     // Fetch project with expanded client information
-    const project = await sharedApiService.getById<Project>(PROJECTS_ENDPOINT, projectId, '$expand=Client');
+    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, 'Client');
     
     // Only transform date fields if needed
     if (project.progressStart) {
@@ -36,9 +36,8 @@ export const fetchProject = async (projectId: string): Promise<Project> => {
  */
 export const getProjectNavigation = async (): Promise<NavigationItem[]> => {
   try {
-    const projects: ProjectNavigationItem[] = await sharedApiService.getAll<ProjectNavigationItem>(
-      PROJECTS_ENDPOINT
-    );
+    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT);
+    const projects: ProjectNavigationItem[] = response.value || [];
     
     // Create status-based navigation structure
     const statusNavItems: NavigationItem[] = projectStatuses.map(status => ({
@@ -113,7 +112,7 @@ export const updateProject = async (
     };
     
     // Perform update
-    const result = await sharedApiService.update<Partial<Project>>(
+    const result = await apiService.update<Partial<Project>>(
       PROJECTS_ENDPOINT,
       projectId,
       apiData

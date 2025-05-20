@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { disciplineColumns } from './discipline-columns';
-import { useMSALAuth } from '../../contexts/msal-auth';
+// Token management is now handled by the DisciplinesContext
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './disciplines.scss';
@@ -28,10 +28,9 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
   
   // Use the disciplines context
   const {
-    state,
+    state: { token, loading: tokenLoading, error: tokenError },
     disciplinesLoading,
     disciplinesError,
-    acquireToken // Use acquireToken from context
   } = useDisciplines();
 
   // Use the dedicated grid handlers hook
@@ -43,16 +42,14 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useDisciplineGridHandlers({
-    acquireToken
+    acquireToken: () => Promise.resolve(token || '')
   });
   
-  // No longer need to acquire token manually as it's handled by the context
-  
   // Determine if we're still loading - combine context and query loading states
-  const isLoading = disciplinesLoading || state.loading;
+  const isLoading = disciplinesLoading || tokenLoading;
   
   // Check for errors - account for both context and query errors
-  const hasError = state.error !== null || disciplinesError !== null;
+  const hasError = tokenError !== null || disciplinesError !== null;
   
   return (
     <div className="disciplines-container">
@@ -70,19 +67,19 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
       {hasError && (
         <ErrorMessage
           title="Error Loading Disciplines"
-          message={state.error || (disciplinesError ? String(disciplinesError) : 'An unknown error occurred')}
+          message={tokenError || (disciplinesError ? String(disciplinesError) : 'An unknown error occurred')}
         />
       )}
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Disciplines</div>
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && token && (
           <ODataGrid
             title=" "
             endpoint={DISCIPLINES_ENDPOINT}
             columns={disciplineColumns}
             keyField="guid"
-            token={state.token} // Pass the token from context
+            token={token}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -93,7 +90,7 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             customGridHeight={900}
           />
         )}
-        {!isLoading && !hasError && !state.token && (
+        {!isLoading && !hasError && !token && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."

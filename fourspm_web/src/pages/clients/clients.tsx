@@ -1,7 +1,6 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { clientColumns } from './client-columns';
-import { useMSALAuth } from '../../contexts/msal-auth';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import './clients.scss';
 import { ClientsProvider, useClients } from '@/contexts/clients/clients-context';
@@ -19,8 +18,8 @@ const Clients: React.FC = () => {
 };
 
 const ClientsContent = React.memo((): React.ReactElement => {
-  // Get everything from context including token
-  const { state, acquireToken } = useClients();
+  // Get state and functions from context
+  const { state } = useClients();
   const {
     handleRowValidating,
     handleRowUpdating,
@@ -28,9 +27,9 @@ const ClientsContent = React.memo((): React.ReactElement => {
     handleRowRemoving,
     handleInitNewRow,
     handleGridInitialized
-  } = useClientGridHandlers({ acquireToken });
+  } = useClientGridHandlers();
 
-  // For demonstration, assume loading/error state comes from context only
+  // Loading and error states from context (which now comes from useTokenAcquisition)
   const isLoading = state.loading;
   const hasError = !!state.error;
 

@@ -67,8 +67,8 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   
   // Use the variation deliverables context
   const {
-    // State
-    state,
+    // State with token from the hook
+    state: { token, loading, error },
     
     // Reference data
     areasDataSource,
@@ -81,10 +81,8 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     variation,
     projectGuid,
     
-    // Token management
+    // Token management - kept for backward compatibility
     acquireToken
-    
-    // Field management functions are handled in grid handlers
   } = useVariationDeliverables();
   
   // We'll use the variation deliverables context for validation
@@ -108,10 +106,10 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
   
   // Determine if we're still loading any data
-  const isLoading = state.loading || isLookupDataLoading;
+  const isLoading = loading || isLookupDataLoading;
   
   // Combine all error sources
-  const hasError = state.error !== null;
+  const hasError = error !== null || !token;
   
   // Set the grid to read-only if the variation has been submitted
   const isReadOnly = variation?.submitted !== null && variation?.submitted !== undefined;
@@ -160,7 +158,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
       {hasError && (
         <ErrorMessage
           title="Error Loading Variation Deliverables"
-          message={state.error || 'An unknown error occurred'}
+          message={error || 'An unknown error occurred'}
         />
       )}
       
@@ -171,13 +169,13 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             : 'Variation Deliverables'}
         </div>
         
-        {!isLoading && !hasError && variation && variationId && state.token && (
+        {!isLoading && !hasError && variation && variationId && token && (
           <ODataGrid
             title=" "
             endpoint={getVariationDeliverablesWithParamUrl(variationId)}
             columns={mobileAdjustedColumns.length > 0 ? mobileAdjustedColumns : []}
             keyField="guid"
-            token={state.token}
+
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -190,6 +188,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={!isReadOnly}
             allowDeleting={false}
             customGridHeight={900}
+            token={token}
             // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
               fieldTypes: {
@@ -202,7 +201,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             // The ODataGrid component needs to be updated to support these advanced features
           />
         )}
-        {!isLoading && !hasError && variation && variationId && !state.token && (
+        {!isLoading && !hasError && variation && variationId && !token && (
           <ErrorMessage
             title="Authentication Error"
             message="Unable to acquire authentication token. Please try refreshing the page."
