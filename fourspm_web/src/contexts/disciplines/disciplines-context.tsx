@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useContext, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useReducer, useContext, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 import { disciplinesReducer, initialDisciplinesState } from './disciplines-reducer';
@@ -7,7 +7,7 @@ import { Discipline } from '@/types/odata-types';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { baseApiService } from '@/api/base-api.service';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
-import { useTokenAcquisition } from '@/hooks/use-token-acquisition';
+import { useToken } from '@/contexts/token-context';
 
 /**
  * Default validation rules for disciplines
@@ -65,16 +65,35 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
   // For token management
   const isMountedRef = useRef(true);
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  // Direct token access from localStorage instead of useToken hook
+  const [token, setTokenState] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState<boolean>(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  
+  // Initialize token from localStorage
+  useEffect(() => {
+    if (!isMountedRef.current) return;
+    
+    try {
+      // Get token directly from localStorage
+      const storedToken = localStorage.getItem('fourspm_auth_token');
+      if (storedToken) {
+        setTokenState(storedToken);
+        console.log('DisciplinesContext: Retrieved token from localStorage');
+      } else {
+        console.log('DisciplinesContext: No token found in localStorage');
+        setTokenError('No authentication token available');
+      }
+    } catch (error) {
+      console.error('Error retrieving token from localStorage:', error);
+      setTokenError('Failed to retrieve authentication token');
+    }
+  }, []);
   
   // Get the current token for API calls
   const userToken = token;
+  
+  // This will be used in place of the acquireToken function below
   
   useEffect(() => {
     // Set mounted flag to true when component mounts
@@ -109,12 +128,12 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     dispatch({ type: 'SET_TOKEN', payload: token });
   }, []);
   
-  // Update local state when token changes from the hook
+  // Update state when token changes
   useEffect(() => {
     if (!isMountedRef.current) return;
     
-    // Update token in local state
-    setToken(userToken);
+    // Update token in state used by components that consume this context
+    dispatch({ type: 'SET_TOKEN', payload: token });
     
     // Update loading and error states
     dispatch({ type: 'SET_LOADING', payload: tokenLoading });
@@ -122,11 +141,39 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     if (tokenError) {
       dispatch({ type: 'SET_ERROR', payload: tokenError });
     }
-  }, [userToken, tokenLoading, tokenError, setToken]);
+    
+    console.log('DisciplinesContext: State updated with token:', token);
+  }, [token, tokenLoading, tokenError]);
   
-  // Alias for backward compatibility
+  // Token acquisition function for ODataGrid's onTokenExpired callback
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
+    if (!isMountedRef.current) return null;
+    
+    setTokenLoading(true);
+    try {
+      // Try to get a fresh token from localStorage first
+      const storedToken = localStorage.getItem('fourspm_auth_token');
+      if (storedToken) {
+        setTokenState(storedToken);
+        console.log('DisciplinesContext: Refreshed token from localStorage');
+        return storedToken;
+      }
+      
+      // If we couldn't get a token from localStorage, return the current userToken
+      // or null if that's not available either
+      if (!userToken) {
+        setTokenError('Could not acquire a valid authentication token');
+      }
+      return userToken || null;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      setTokenError('Failed to acquire authentication token');
+      return null;
+    } finally {
+      if (isMountedRef.current) {
+        setTokenLoading(false);
+      }
+    }
   }, [userToken]);
   
   // For Collection View Doctrine patterns, the ODataGrid handles data fetching directly
@@ -170,14 +217,13 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
 
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    // State
+    // State - expose token directly in state to make it accessible
     state,
     setLoading,
     setError,
     setDataLoaded,
     
-    // Token management - kept for backward compatibility
-    setToken,
+    // Token management
     acquireToken,
     
     // Data
@@ -197,6 +243,7 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     setLoading,
     setError,
     setDataLoaded,
+    acquireToken,
     disciplines,
     disciplinesLoading,
     disciplinesError,

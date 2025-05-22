@@ -10,13 +10,15 @@ import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
 /**
  * Fetch project information from the API
  * @param projectId The project GUID to fetch information for
- * @param userToken The user's authentication token
+ * @param token The user's authentication token
+ * @param expandClient Whether to expand client data (default: true)
  * @returns A promise resolving to the project information
  */
-export const fetchProject = async (projectId: string, token?: string): Promise<Project> => {
+export const fetchProject = async (projectId: string, token: string, expandClient: boolean = true): Promise<Project> => {
   try {
-    // Fetch project with expanded client information
-    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, 'Client', token);
+    // Fetch project with expanded client information if requested
+    const expand = expandClient ? 'Client' : undefined;
+    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, token, expand);
     
     // Only transform date fields if needed
     if (project.progressStart) {
@@ -32,17 +34,17 @@ export const fetchProject = async (projectId: string, token?: string): Promise<P
 
 /**
  * Gets project navigation items for the application menu
+ * @param token Authentication token
  * @returns Array of navigation items for projects
  */
-export const getProjectNavigation = async (token?: string): Promise<NavigationItem[]> => {
+export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
   try {
-    // If no token is provided, return empty navigation
+    // Validate token
     if (!token) {
-      console.warn('No token available for getProjectNavigation, returning empty navigation');
-      return [];
+      throw new Error('Authentication token is required for API requests');
     }
     
-    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, undefined, token);
+    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, token);
     const projects: ProjectNavigationItem[] = response.value || [];
     
     // Create status-based navigation structure
@@ -103,12 +105,13 @@ export const getProjectNavigation = async (token?: string): Promise<NavigationIt
  * Updates a project's details
  * @param projectId Project GUID
  * @param data Partial project data to update
+ * @param token Authentication token
  * @returns Updated project details
  */
 export const updateProject = async (
   projectId: string, 
   data: Partial<Project>,
-  token?: string
+  token: string
 ): Promise<Project> => {
   try {
     // Format data for API
@@ -123,8 +126,8 @@ export const updateProject = async (
       PROJECTS_ENDPOINT,
       projectId,
       apiData,
-      false,  // Do not return representation
-      token   // Pass token to apiService
+      token,  // Pass token to apiService
+      false   // Do not return representation
     );
     
     // Fetch updated project details

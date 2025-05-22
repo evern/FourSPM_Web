@@ -33,9 +33,7 @@ export type ProjectsAction =
 export interface ProjectsContextType {
   state: ProjectsState;
   
-  // Token management
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token is available through useToken() directly
   
   // Core operations
   validateProject: (project: Project, rules?: ValidationRule[]) => boolean;

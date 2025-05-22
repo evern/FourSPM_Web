@@ -27,9 +27,7 @@ export interface DeliverableProgressContextType {
   // State management
   state: DeliverableProgressState;
   
-  // Token management
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   
   // Period management
   setSelectedPeriod: (period: number) => void;

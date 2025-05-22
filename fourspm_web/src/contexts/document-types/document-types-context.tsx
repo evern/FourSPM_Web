@@ -6,22 +6,11 @@ import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interface
 import { v4 as uuidv4 } from 'uuid';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
-import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { DOCUMENT_TYPES_ENDPOINT } from '../../config/api-endpoints';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
+import { getToken } from '../../utils/token-store';
 
-/**
- * Fetch project details from the API with client data expanded
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  // Add $expand=client to ensure the client navigation property is included
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
-  const data = await response.json();
-  return data;
-};
+// Project details are now fetched using useProjectInfo hook
 
 /**
  * Default validation rules for document types
@@ -74,28 +63,29 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   // Get user from auth context
   const { user } = useAuth();
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  // Get token directly from token-store
+  const [token, setTokenState] = React.useState<string | null>(getToken());
+  const [tokenLoading, setTokenLoading] = React.useState<boolean>(false);
+  const [tokenError, setTokenError] = React.useState<string | null>(null);
   
   // Get the current token for API calls
   const userToken = token;
   
   // Token management function for updating state
-  const setToken = useCallback((token: string | null) => {
+  const setToken = useCallback((newToken: string | null) => {
     if (isMountedRef.current) {
-      dispatch({ type: 'SET_TOKEN', payload: token });
+      dispatch({ type: 'SET_TOKEN', payload: newToken });
+      setTokenState(newToken);
     }
   }, []);
   
-  // Method to acquire a token - now just a pass-through to the hook
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
+  // Initialize token directly from token-store
+  useEffect(() => {
+    if (isMountedRef.current) {
+      const storedToken = getToken();
+      setToken(storedToken);
+    }
+  }, [setToken]);
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -110,21 +100,16 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
     };
   }, []);
   
-  // Sync token state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current && token !== undefined) {
-      setToken(token);
-    }
-  }, [token, setToken]);
+  // Token loading is now handled directly in the effect above
   
-  // Sync loading state from the hook to the context
+  // Sync loading state to the context
   useEffect(() => {
     if (isMountedRef.current) {
       dispatch({ type: 'SET_LOADING', payload: tokenLoading });
     }
   }, [tokenLoading]);
   
-  // Sync error state from the hook to the context
+  // Sync error state to the context
   useEffect(() => {
     if (isMountedRef.current && tokenError) {
       dispatch({ type: 'SET_ERROR', payload: tokenError });
@@ -139,17 +124,12 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   const documentTypesLoading = false;
   const documentTypesError = null;
   
-  // Fetch project details - key addition to prevent flickering
-  const { 
-    data: project, 
+  // Use the useProjectInfo hook to fetch project details - no need for client expansion
+  const {
+    project,
     isLoading: projectLoading,
     error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId || ''),
-    enabled: !!projectId && !!user?.token,
-    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
-  });
+  } = useProjectInfo(projectId, { expandClient: false });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
@@ -173,9 +153,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   const contextValue = useMemo(
     () => ({
       state,
-      // Token management
-      setToken,
-      acquireToken,
+      // Token management is done via token-store directly
       // Other functions
       invalidateAllLookups,
       documentTypesLoading,
@@ -183,11 +161,11 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
       validationRules: DOCUMENT_TYPE_VALIDATION_RULES,
       getDefaultValues,
       // Project data for title display - anti-flickering pattern
-      project,
+      project: project || undefined, // Convert null to undefined to match interface
       projectId,
       isLookupDataLoading
     }),
-    [state, setToken, acquireToken, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
+    [state, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
   );
   
   return (

@@ -6,9 +6,7 @@ import { API_SCOPES } from '../contexts/msal-auth';
 
 export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
-  useMsal?: boolean; // Flag to use MSAL for token acquisition instead of localStorage
-  msalInstance?: PublicClientApplication; // Optional MSAL instance for token acquisition
-  token?: string; // Explicit token to use for authentication, takes precedence over other methods
+  token: string; // Authentication token - temporarily optional during refactoring
 }
 
 class BaseApiService {
@@ -18,73 +16,49 @@ class BaseApiService {
    * @param options Request options like method, headers, body
    * @returns Promise with the fetch Response
    */
-  async request(url: string, options: RequestOptions = {}): Promise<Response> {
+  async request(url: string, options: RequestOptions): Promise<Response> {
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Check if an explicit token was provided (highest priority)
+    // Add the authorization header if token is provided
     if (options.token) {
       defaultHeaders['Authorization'] = `Bearer ${options.token}`;
-    }
-    // Check if we should use MSAL for token acquisition (second priority)
-    else if (options.useMsal && options.msalInstance) {
-      try {
-        // Get the active account from MSAL
-        const account = options.msalInstance.getActiveAccount();
-        if (account) {
-          // Try to acquire a token silently
-          const request = {
-            scopes: [API_SCOPES.USER],
-            account: account
-          };
-          
-          const response = await options.msalInstance.acquireTokenSilent(request);
-          if (response && response.accessToken) {
-            defaultHeaders['Authorization'] = `Bearer ${response.accessToken}`;
-          }
-        }
-      } catch (error) {
-        console.error('Failed to acquire MSAL token:', error);
-      }
-    } 
-    // Fallback to localStorage token if no other method is specified (lowest priority)
-    else {
-      const userStr = localStorage.getItem('user');
-      const user: User | null = userStr ? JSON.parse(userStr) : null;
-      if (user?.token) {
-        defaultHeaders['Authorization'] = `Bearer ${user.token}`;
-      }
+    } else {
+      console.warn('No token provided for API request. This may cause authentication errors.');
     }
 
-    const mergedOptions: RequestOptions = {
+    // Merge default headers with headers from options
+    const mergedHeaders = {
+      ...defaultHeaders,
+      ...options.headers,
+    };
+    
+    // Create a new options object with merged headers
+    const mergedOptions = {
       ...options,
-      headers: {
-        ...defaultHeaders,
-        ...(options.headers || {})
-      }
+      headers: mergedHeaders
     };
 
     try {
+      // Make the API request
       const response = await fetch(url, mergedOptions);
       
+      // Check if the response is ok (status 200-299)
       if (!response.ok) {
-        // Handle 401 Unauthorized specifically
+        // For 401 errors, clear the token and redirect to login
         if (response.status === 401) {
-          // Clear stored user data and redirect to login
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          throw new Error('Session expired. Please log in again.');
+          console.error('Unauthorized API request');
+          // The TokenContext will handle token refresh and redirect if needed
         }
 
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        // For other errors, handle them based on status code
+        console.error(`API error ${response.status}: ${response.statusText}`);
       }
       
       return response;
     } catch (error) {
-      console.error('Request failed:', error);
+      console.error('API request failed:', error);
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
         console.error('Network error - Check if the server is running and accessible');
         throw new Error('Unable to connect to the server. Please check if the server is running.');

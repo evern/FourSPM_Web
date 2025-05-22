@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect, useRef } from 'react';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { v4 as uuidv4 } from 'uuid';
 import { ClientsState, ClientsContextProps } from './clients-types';
 import { clientsReducer } from './clients-reducer';
@@ -58,7 +58,7 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loading: tokenLoading, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   useEffect(() => {
     // Cleanup on unmount
@@ -132,15 +132,15 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
       state, 
       setLoading, 
       setError,
-      setToken,
-      acquireToken, 
+      // Token management now handled by useToken() directly,
+
       invalidateAllLookups,
       validationRules: CLIENT_VALIDATION_RULES,
       getDefaultValues,
       nextNumber,
       refreshNextNumber
     }),
-    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues, nextNumber, refreshNextNumber]
+    [state, setLoading, setError, invalidateAllLookups, getDefaultValues, nextNumber, refreshNextNumber]
   );
 
   return (

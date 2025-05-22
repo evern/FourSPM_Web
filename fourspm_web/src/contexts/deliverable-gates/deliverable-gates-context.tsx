@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DeliverableGatesState, DeliverableGatesContextProps } from './deliverable-gates-types';
 import { deliverableGatesReducer } from './deliverable-gates-reducer';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
-import { useTokenAcquisition } from '@/hooks/use-token-acquisition';
+import { useToken } from '@/contexts/token-context';
 
 const initialState: DeliverableGatesState = {
   loading: false,
@@ -63,7 +63,7 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     loading: tokenLoading, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   useEffect(() => {
     // Cleanup on unmount
@@ -123,7 +123,7 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     return getDefaultDeliverableGateValues();
   }, []);
 
-  // Token acquisition is now handled by the useTokenAcquisition hook
+  // Token acquisition is now handled by the token context
   // No need for manual token acquisition in useEffect
 
   const contextValue = useMemo(
@@ -131,13 +131,13 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
       state, 
       setLoading, 
       setError,
-      setToken,
-      acquireToken, 
+      // Token management now handled by useToken() directly,
+
       invalidateAllLookups,
       validationRules: DELIVERABLE_GATE_VALIDATION_RULES,
       getDefaultValues
     }),
-    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
+    [state, setLoading, setError, invalidateAllLookups, getDefaultValues]
   );
 
   return (

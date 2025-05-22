@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useTokenAcquisition } from '../use-token-acquisition';
-import { setToken } from '../../utils/token-store';
+import { useToken } from '../../contexts/token-context';
 import { useAreaDataProvider } from '../data-providers/useAreaDataProvider';
 import { useDisciplineDataProvider } from '../data-providers/useDisciplineDataProvider';
 import { useDocumentTypeDataProvider } from '../data-providers/useDocumentTypeDataProvider';
@@ -13,34 +12,21 @@ import { useDocumentTypeDataProvider } from '../data-providers/useDocumentTypeDa
 export const useProjectData = (projectId?: string) => {
   const [tokenReady, setTokenReady] = useState(false);
   
-  // Use the token acquisition hook
-  const { token, acquireToken, loading: tokenLoading } = useTokenAcquisition();
+  // Use the token context
+  const { token, loading: tokenLoading } = useToken();
   
-  // Ensure token is available before enabling data providers
+  // Check if token is available and update readiness
   useEffect(() => {
-    const prepareToken = async () => {
-      if (!token) {
-        // Try to acquire a token
-        console.log('useProjectData: Acquiring token for data providers');
-        const newToken = await acquireToken();
-        
-        if (newToken) {
-          // Store token in the global token store for ODataStore to use
-          setToken(newToken);
-          setTokenReady(true);
-        } else {
-          console.warn('useProjectData: Failed to acquire token for data providers');
-          setTokenReady(false);
-        }
-      } else {
-        // We already have a token, store it and enable queries
-        setToken(token);
-        setTokenReady(true);
-      }
-    };
-    
-    prepareToken();
-  }, [token, acquireToken]);
+    if (token) {
+      // We have a token, enable queries
+      console.log('useProjectData: Token available from context');
+      setTokenReady(true);
+    } else {
+      // No token available yet
+      console.log('useProjectData: No token available from context');
+      setTokenReady(false);
+    }
+  }, [token]);
   
   // We need to pass projectId only if token is ready and we're authorized
   const effectiveProjectId = tokenReady ? projectId : undefined;
@@ -97,17 +83,10 @@ export const useProjectData = (projectId?: string) => {
 
   // Function to refetch all data
   const refetchAll = async () => {
-    // If token isn't ready, try to acquire one first
-    if (!tokenReady) {
-      console.log('useProjectData: Acquiring token before refetching data');
-      const newToken = await acquireToken();
-      if (newToken) {
-        setToken(newToken);
-        setTokenReady(true);
-      } else {
-        console.warn('useProjectData: Failed to acquire token during refetchAll');
-        return Promise.reject(new Error('Failed to acquire authentication token'));
-      }
+    // Check if we have a valid token before attempting to refetch
+    if (!token) {
+      console.warn('useProjectData: No token available during refetchAll');
+      return Promise.reject(new Error('No authentication token available'));
     }
     
     // Refetch all data sources in parallel

@@ -3,24 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { AreasContextProps, AreasProviderProps, initialAreasState, AREA_VALIDATION_RULES, getDefaultAreaValues } from './areas-types';
 import { areasReducer } from './areas-reducer';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT, AREAS_ENDPOINT } from '../../config/api-endpoints';
+import { AREAS_ENDPOINT } from '../../config/api-endpoints';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useAuth } from '../../contexts/auth';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
-/**
- * Fetch project details from the API with client data expanded
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  // Add $expand=client to ensure the client navigation property is included
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
-  const data = await response.json();
-  return data;
-};
+// Project details are now fetched using useProjectInfo hook
 
 // Create the context
 const AreasContext = createContext<AreasContextProps | undefined>(undefined);
@@ -43,7 +32,7 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     loading: tokenLoading, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -91,7 +80,7 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management - using useTokenAcquisition hook
+  // Token management - using token context
   const setToken = useCallback((tokenValue: string | null) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_TOKEN', payload: tokenValue });
@@ -162,17 +151,8 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     console.log('Invalidated all lookup data after areas change');
   }, [queryClient]);
   
-  // Fetch project details - this is the key addition to match Deliverables context
-  const { 
-    data: project, 
-    isLoading: projectLoading,
-    error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!token, // Use token from the hook
-    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
-  });
+  // Use the useProjectInfo hook to fetch project details
+  const { project, isLoading: projectLoading, error: projectError } = useProjectInfo(projectId, { expandClient: false });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
@@ -193,13 +173,11 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setError,
     setDataLoaded,
     
-    // Token management
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     
     // Project data
     projectId,
-    project,
+    project: project || undefined, // Convert null to undefined to match interface
     isLookupDataLoading,
     
     // Cache invalidation
@@ -215,8 +193,7 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setLoading,
     setError,
     setDataLoaded,
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     projectId,
     project,
     isLookupDataLoading,

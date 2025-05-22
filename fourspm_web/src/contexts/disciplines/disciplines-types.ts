@@ -37,8 +37,7 @@ export interface DisciplinesContextProps {
   setError: (error: string | null) => void;
   setDataLoaded: (loaded: boolean) => void;
   
-  // Token management
-  setToken: (token: string | null) => void;
+  // Token management 
   acquireToken: () => Promise<string | null>;
   
   // Data

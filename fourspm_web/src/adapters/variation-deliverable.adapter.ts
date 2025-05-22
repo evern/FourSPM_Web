@@ -13,20 +13,6 @@ import { VariationDeliverableUiStatus } from '../types/app-types';
 import { Deliverable } from '../types/odata-types';
 import { getAuthHeaders } from '../utils/auth-headers';
 
-/**
- * Get all deliverables for a specific project
- * @param projectGuid The project GUID
- * @returns Promise with array of deliverables
- */
-export async function getProjectDeliverables(projectGuid: string): Promise<Deliverable[]> {
-  const response = await fetch(`${DELIVERABLES_ENDPOINT}/ByProject/${projectGuid}`, {
-    method: 'GET',
-    headers: getAuthHeaders() // MSAL authentication is used internally
-  });
-  const data = await response.json();
-  const deliverables = data.value.filter((d: any) => d !== null && d !== undefined) as Deliverable[];
-  return deliverables;
-}
 
 /**
  * Get all deliverables for a specific variation using the new VariationDeliverables endpoint
@@ -136,16 +122,18 @@ export async function cancelDeliverableVariation(
 /**
  * Add a new deliverable to a variation
  * @param data The deliverable data
+ * @param token Authentication token
  * @returns Promise containing the created deliverable entity with server-calculated fields
  */
 export async function addNewDeliverableToVariation(
-  data: Deliverable
+  data: Deliverable,
+  token: string
 ): Promise<Deliverable> {
   // Use POST to the VariationDeliverables endpoint for creating new entities
   const response = await fetch(`${VARIATION_DELIVERABLES_ENDPOINT}`, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(), // MSAL authentication is used internally
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },

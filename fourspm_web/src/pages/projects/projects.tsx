@@ -1,7 +1,8 @@
 import React from 'react';
 import { ODataGrid } from '../../components';
 import { createProjectColumns } from './project-columns';
-import { useProjects, ProjectsProvider } from '../../contexts/projects/projects-context';
+import { ProjectsProvider, useProjects } from '../../contexts/projects/projects-context';
+import { useToken } from '../../contexts/token-context';
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
@@ -33,12 +34,14 @@ const ProjectsContent = (): React.ReactElement => {
     clientDataSource,
     clientDataLoaded,
     nextProjectNumber,
-    refreshNextNumber,
-    acquireToken // Use acquireToken from context for backward compatibility
+    refreshNextNumber // Token management now handled by useToken directly
   } = useProjects();
   
   // Destructure state for easier access
-  const { token, loading, error } = state;
+  const { loading, error } = state;
+  
+  // Get token and acquireToken directly from useToken
+  const { token, acquireToken } = useToken();
   
   // Determine if there's an error to display
   const hasError = Boolean(error) || !token;
@@ -54,8 +57,8 @@ const ProjectsContent = (): React.ReactElement => {
     resetGridState       // Reset grid state for virtual scrolling
   } = useProjectGridHandlers({
     nextProjectNumber,
-    refreshNextNumber,
-    acquireToken // Pass token acquisition function instead of static token
+    refreshNextNumber
+    // acquireToken is now obtained directly from useToken()
   });
 
   // Client data loading is now handled by the context

@@ -6,23 +6,11 @@ import { deliverableProgressReducer } from './deliverable-progress-reducer';
 import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
 import { compareGuids } from '../../utils/guid-utils';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { useQuery } from '@tanstack/react-query';
-import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 
-/**
- * Fetch project details from the API with client data expanded
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  // Add $expand=client to ensure the client navigation property is included
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
-  const data = await response.json();
-  return data;
-};
+// Project details are now fetched using useProjectInfo hook
 
 // Create a context with a default undefined value
 const DeliverableProgressContext = createContext<DeliverableProgressContextType | undefined>(undefined);
@@ -54,23 +42,9 @@ export function DeliverableProgressProvider({
     loading: tokenLoading, 
     error: tokenError, 
     acquireToken 
-  } = useTokenAcquisition();
+  } = useToken();
   
-  // MSAL token management - keep for backward compatibility
-  const setToken = useCallback((token: string | null) => {
-    dispatch({ type: 'SET_TOKEN', payload: token });
-  }, []);
-  
-  // Update local state when token changes from the hook
-  useEffect(() => {
-    setToken(token);
-    if (tokenError) {
-      dispatch({ type: 'SET_ERROR', payload: tokenError });
-    }
-    if (tokenLoading) {
-      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
-    }
-  }, [token, tokenError, tokenLoading, setToken]);
+  // Token management is now handled directly through useToken()
   
   // Get the current token for API calls
   const userToken = token;
@@ -221,14 +195,21 @@ export function DeliverableProgressProvider({
     // First, check if gate update is needed
     if (newData.deliverableGateGuid !== undefined && 
         oldData.deliverableGateGuid !== newData.deliverableGateGuid) {
-      // Update the deliverable gate in the backend using the adapter directly
-      // Token is now handled by MSAL internally
-      await updateDeliverableGate(key, newData.deliverableGateGuid);
+      // Update the deliverable gate in the backend with explicit token passing
+      if (!userToken) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      await updateDeliverableGate(key, newData.deliverableGateGuid, userToken);
     }
     
     // Next, check if progress update is needed
     if (newData.cumulativeEarntPercentage !== undefined) {
       // Call the progress service to update the backend
+      // Check for token validity
+      if (!userToken) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      
       await handleProgressUpdate(
         key,
         { 
@@ -236,23 +217,19 @@ export function DeliverableProgressProvider({
           totalHours: newData.totalHours || 0
         },
         selectedPeriod || 0, // Use the current period from context
-        oldData,
-        userToken || '' // Use the token from the hook
+        userToken, // Pass token before oldData (required parameter first)
+        oldData    // Optional parameter last
       );
     }
   }, [selectedPeriod, userToken]);
 
-  // Fetch project details - key addition to prevent flickering
-  const { 
-    data: project, 
+  // Use the useProjectInfo hook to fetch project details - no need for client expansion
+  const {
+    project,
     isLoading: projectLoading,
-    error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!userToken, // Use userToken from the hook
-    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
-  });
+    error: projectError,
+    currentPeriod: projectCurrentPeriod
+  } = useProjectInfo(projectId, { expandClient: false });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading || isGatesLoading;
@@ -265,15 +242,14 @@ export function DeliverableProgressProvider({
       error: state.error || tokenError || null,
       token: token || state.token, // Prefer token from hook if available
     },
-    setToken,
-    acquireToken,
+    // Token is available through useToken() directly
     setSelectedPeriod: periodManager.setSelectedPeriod,
     incrementPeriod: periodManager.incrementPeriod,
     decrementPeriod: periodManager.decrementPeriod,
     selectedPeriod: periodManager.selectedPeriod,
     progressDate: periodManager.progressDate,
     projectId,
-    project: project, // Using the project from the useQuery hook
+    project: project || undefined, // Convert null to undefined to match interface
     isLookupDataLoading: isLookupDataLoading || tokenLoading,
     deliverableGates,
     isGatesLoading,
@@ -283,8 +259,7 @@ export function DeliverableProgressProvider({
     processProgressUpdate, // Using the processProgressUpdate function defined above
   }), [
     state,
-    setToken,
-    acquireToken,
+    // Token now handled by useToken() directly
     periodManager.setSelectedPeriod,
     periodManager.incrementPeriod,
     periodManager.decrementPeriod,

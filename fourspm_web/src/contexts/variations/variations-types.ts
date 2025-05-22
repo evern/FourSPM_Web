@@ -61,9 +61,7 @@ export interface VariationsContextType {
   // Data state and operations
   state: VariationsState;
   
-  // Auth functions
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   
   // Validation methods
   validateVariation: (variation: Record<string, any>) => { isValid: boolean; errors: Record<string, string> };

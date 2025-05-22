@@ -14,8 +14,8 @@ export const useODataStore = (
   keyField: string = 'guid', 
   storeOptions: Record<string, any> = {}
 ) => {
-  // Use the token context for token operations
-  const { token, getToken, acquireToken } = useToken();
+  // Use the token context - token acquisition is now handled by the TokenProvider
+  const { token } = useToken();
   
   // Use useMemo to prevent creating a new store on every render
   return useMemo(() => {
@@ -36,30 +36,21 @@ export const useODataStore = (
         console.log('ODataStore: beforeSend called');
         
         try {
-          // Try to use the current token from context if available
-          let currentToken = token;
-          
-          // Only acquire a fresh token if we don't already have one
-          if (!currentToken) {
-            console.log('ODataStore: No token available, acquiring fresh token...');
-            currentToken = await acquireToken();
-          } else {
-            console.log('ODataStore: Using existing token from context');
-          }
-          
-          if (!currentToken) {
+          // Use the token from context - token acquisition is now handled by the TokenProvider
+          if (!token) {
             console.error('ODataStore: No valid token available!');
             // Let the request proceed without a token - it will likely 401 but this helps debugging
             // Alternatively, uncomment the next line to prevent the request entirely
             // return false;
           } else {
+            console.log('ODataStore: Using token from context');
             // Initialize headers if they don't exist
             if (!options.headers) {
               options.headers = {};
             }
 
             // Add the token to the Authorization header
-            options.headers['Authorization'] = `Bearer ${currentToken}`;
+            options.headers['Authorization'] = `Bearer ${token}`;
           } 
           console.log(`ODataStore: Added Authorization header to ${options.method} ${options.url}`);
           options.headers['Accept'] = 'application/json';
@@ -92,5 +83,5 @@ export const useODataStore = (
     });
     
     return store;
-  }, [endpointPath, keyField, acquireToken, storeOptions]); // Only recreate the store when these dependencies change
+  }, [endpointPath, keyField, token, storeOptions]); // Only recreate the store when these dependencies change
 };

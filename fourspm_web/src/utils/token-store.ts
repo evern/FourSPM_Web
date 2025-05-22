@@ -1,75 +1,41 @@
 /**
- * Token store module to share token between components
- * Provides centralized token management with expiration handling
- * This prevents race conditions when handling token expiration and refresh
+ * Simplified Token Store
+ * Provides basic token retrieval from localStorage
  */
 
-// Global token storage
-let currentToken: string | null = null;
-
-// Token expiration timestamp (milliseconds since epoch)
-let tokenExpiration: number | null = null;
+// Storage key for token in localStorage
+export const TOKEN_STORAGE_KEY = 'fourspm_auth_token';
 
 /**
- * Set the global token value with optional expiration
- * @param token New token value
- * @param expiresIn Optional seconds until token expires
- */
-export const setToken = (token: string | null, expiresIn?: number): void => {
-  console.log('TokenStore: Setting global token');
-  currentToken = token;
-  
-  // Set expiration timestamp if provided
-  if (token && expiresIn) {
-    // Convert seconds to milliseconds and add to current time
-    tokenExpiration = Date.now() + expiresIn * 1000;
-    console.log(`TokenStore: Token will expire in ${expiresIn} seconds`);
-  } else {
-    // If no expiration provided or token is null, clear expiration
-    tokenExpiration = null;
-  }
-};
-
-/**
- * Get the current token value, checking for expiration
- * @returns Current valid token or null if not set or expired
+ * Get the current token value from localStorage
+ * @returns Current token or null if not set
  */
 export const getToken = (): string | null => {
-  // Check if token has expired
-  if (tokenExpiration && Date.now() > tokenExpiration) {
-    console.log('TokenStore: Token has expired, clearing');
-    currentToken = null;
-    tokenExpiration = null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(TOKEN_STORAGE_KEY);
+    }
+    return null;
+  } catch (error) {
+    console.error('TokenStore: Error accessing localStorage', error);
     return null;
   }
-  
-  return currentToken;
 };
 
 /**
- * Check if the current token is about to expire
- * @param bufferSeconds Seconds before actual expiration to consider token as expiring soon
- * @returns True if token will expire within the buffer period
+ * Set the token value in localStorage
+ * @param token New token value or null to clear
  */
-export const isTokenExpiringSoon = (bufferSeconds: number = 60): boolean => {
-  if (!tokenExpiration || !currentToken) {
-    return false;
+export const setToken = (token: string | null): void => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    }
+  } catch (error) {
+    console.error('TokenStore: Error setting token in localStorage', error);
   }
-  
-  // Check if token will expire within buffer period
-  const bufferMs = bufferSeconds * 1000;
-  return Date.now() + bufferMs > tokenExpiration;
-};
-
-/**
- * Get remaining time until token expiration
- * @returns Seconds until expiration, or null if no token or expiration
- */
-export const getTokenRemainingTime = (): number | null => {
-  if (!tokenExpiration || !currentToken) {
-    return null;
-  }
-  
-  const remainingMs = tokenExpiration - Date.now();
-  return remainingMs > 0 ? Math.floor(remainingMs / 1000) : 0;
 };

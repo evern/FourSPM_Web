@@ -9,6 +9,7 @@ import { getVariationDeliverablesWithParamUrl } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '@/utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { VariationDeliverablesProvider, useVariationDeliverables } from '@/contexts/variation-deliverables/variation-deliverables-context';
+import { useToken } from '@/contexts/token-context';
 import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
 // Use the DeliverableEditor context from deliverables context
 import { useVariationDeliverableGridHandlers } from '@/hooks/grid-handlers/useVariationDeliverableGridHandlers';
@@ -31,7 +32,7 @@ export function VariationDeliverables(): React.ReactElement {
   
   // Get the variation info to retrieve the correct project ID
   // Always call hooks before any conditional returns
-  const { projectGuid, loading } = useVariationInfo(variationId || ''); // Token is now handled by MSAL internally
+  const { projectGuid, loading } = useVariationInfo(variationId || '');
   
   // Validate variationId exists
   if (!variationId) {
@@ -81,12 +82,14 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     variation,
     projectGuid,
     
-    // Token management - kept for backward compatibility
-    acquireToken
+    // Token management now handled by useToken directly
   } = useVariationDeliverables();
   
   // We'll use the variation deliverables context for validation
   // In a future step, this would use a dedicated deliverable editor context
+  
+  // Get token and acquireToken directly from useToken
+  const { token: tokenFromHook, acquireToken } = useToken();
   
   // Get grid handlers with both context dependencies
   const {
@@ -188,8 +191,8 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={!isReadOnly}
             allowDeleting={false}
             customGridHeight={900}
-            token={token}
-            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
+            token={tokenFromHook || token} // Use token from useToken, fall back to context token if needed
+            onTokenExpired={acquireToken} // Use acquireToken from useToken
             // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
               fieldTypes: {

@@ -1,6 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { useTokenAcquisition } from './use-token-acquisition';
-import { isTokenExpiringSoon, getTokenRemainingTime } from '../utils/token-store';
+import { useToken } from '../contexts/token-context';
 
 /**
  * Buffer time in seconds before token expiration when we should refresh
@@ -30,7 +29,7 @@ const CHECK_INTERVAL = 30 * 1000;
  * @returns Object containing refresh state information
  */
 export const useTokenRefresh = (bufferSeconds: number = DEFAULT_REFRESH_BUFFER) => {
-  const { acquireToken } = useTokenAcquisition();
+  const { acquireToken } = useToken();
   const lastRefreshAttempt = useRef<number>(0);
   const isRefreshing = useRef<boolean>(false);
   
@@ -49,23 +48,22 @@ export const useTokenRefresh = (bufferSeconds: number = DEFAULT_REFRESH_BUFFER) 
       return;
     }
     
-    // Check if token is expiring soon
-    if (isTokenExpiringSoon(bufferSeconds)) {
-      try {
-        console.log(`Token refresh: Token will expire soon (buffer: ${bufferSeconds}s). Refreshing...`);
-        isRefreshing.current = true;
-        lastRefreshAttempt.current = now;
-        
-        // Force refresh to get a new token
-        await acquireToken(true);
-        
-        const remainingTime = getTokenRemainingTime();
-        console.log(`Token refresh: Successfully refreshed token. New expiration in ${remainingTime}s`);
-      } catch (error) {
-        console.error('Token refresh: Failed to refresh token:', error);
-      } finally {
-        isRefreshing.current = false;
-      }
+    // Periodic refresh based on interval rather than expiration
+    try {
+      // We'll periodically refresh the token without checking expiration
+      // This approach relies on MSAL for actual token management
+      console.log('Token refresh: Performing periodic token refresh');
+      isRefreshing.current = true;
+      lastRefreshAttempt.current = now;
+      
+      // Force refresh to get a new token
+      await acquireToken(true);
+      
+      console.log('Token refresh: Successfully refreshed token');
+    } catch (error) {
+      console.error('Token refresh: Failed to refresh token:', error);
+    } finally {
+      isRefreshing.current = false;
     }
   }, [acquireToken, bufferSeconds]);
   

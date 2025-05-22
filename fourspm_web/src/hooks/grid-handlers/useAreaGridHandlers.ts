@@ -4,9 +4,10 @@ import { AREAS_ENDPOINT } from '@/config/api-endpoints';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import { useAreas } from '@/contexts/areas/areas-context';
+import { useToken } from '@/contexts/token-context';
 
+// Empty interface for future extensions if needed
 interface UseAreaGridHandlersProps {
-  acquireToken?: () => Promise<string | null>;
 }
 
 /**
@@ -14,7 +15,9 @@ interface UseAreaGridHandlersProps {
  * Provides handlers for grid events and validation
  * Following the Reference Data Implementation Doctrine
  */
-export function useAreaGridHandlers({ acquireToken }: UseAreaGridHandlersProps) {
+export function useAreaGridHandlers({}: UseAreaGridHandlersProps = {}) {
+  // Get token and acquireToken directly from useToken
+  const { token, acquireToken } = useToken();
   // Get the areas context for error reporting and cache invalidation
   const { setError, invalidateAllLookups, projectId } = useAreas();
   

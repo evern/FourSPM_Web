@@ -74,8 +74,7 @@ export interface AreasContextProps {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setDataLoaded: (loaded: boolean) => void;
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   invalidateAllLookups: () => void;
   projectId: string;
   project?: Project;

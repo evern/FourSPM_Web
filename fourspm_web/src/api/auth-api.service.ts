@@ -1,5 +1,5 @@
 import defaultUser from '../utils/default-user';
-import { apiRequest } from './base-api.service';
+import { baseApiService } from './base-api.service';
 import { User } from '../types';
 import { 
   LOGIN_ENDPOINT, 
@@ -15,6 +15,20 @@ export interface ApiResponse<T = any> {
   isOk: boolean;
   data?: T;
   message?: string;
+  errors?: Record<string, string[]>;
+}
+
+// Special helper for authentication endpoints that don't require a token
+async function authRequest(url: string, options: RequestInit = {}): Promise<Response> {
+  // Create a dummy token for auth endpoints
+  const dummyToken = 'AUTH_ENDPOINT';
+  
+  // Use baseApiService directly with our dummy token
+  return baseApiService.request(url, {
+    ...options,
+    headers: options.headers as Record<string, string>,
+    token: dummyToken // Provide a dummy token to satisfy the interface
+  });
 }
 
 /**
@@ -25,7 +39,7 @@ export interface ApiResponse<T = any> {
  */
 export async function signIn(email: string, password: string): Promise<ApiResponse<User>> {
   try {
-    const response = await apiRequest(LOGIN_ENDPOINT, {
+    const response = await authRequest(LOGIN_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
@@ -57,7 +71,7 @@ export async function signIn(email: string, password: string): Promise<ApiRespon
  */
 export async function signOut(): Promise<ApiResponse<void>> {
   try {
-    await apiRequest(LOGOUT_ENDPOINT, {
+    await authRequest(LOGOUT_ENDPOINT, {
       method: 'POST'
     });
     // Remove user from localStorage
@@ -92,16 +106,26 @@ export async function getUser(): Promise<ApiResponse<User>> {
 
     // Validate token with a backend request
     try {
-      // Use MSAL for authentication - this will validate the token automatically
-      // since the MSAL library handles token acquisition and refresh
-      const { acquireToken } = require('../contexts/msal-auth').useMSALAuth();
-      const token = await acquireToken();
+      // This function should be called from a React component that has access to the TokenContext
+      // The caller should pass the token explicitly
+      
+      // For backward compatibility, if we're still using localStorage
+      // Note: This approach is being phased out in favor of TokenContext
+      const storedToken = user?.token;
+      
+      if (!storedToken) {
+        localStorage.removeItem('user');
+        return {
+          isOk: false,
+          message: 'No valid token available'
+        };
+      }
       
       // Use projects endpoint to validate the token - a valid token will return a 200 response
       const validateResponse = await fetch(PROJECTS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${storedToken}`
         }
       });
 
@@ -150,7 +174,7 @@ export async function createAccount(
 ): Promise<ApiResponse> {
   try {
     // Send the registration data to the server
-    await apiRequest(REGISTER_ENDPOINT, {
+    await authRequest(REGISTER_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({
         email,
@@ -197,7 +221,7 @@ export async function changePassword(
     }
     
     // Send the password change request
-    await apiRequest(CHANGE_PASSWORD_ENDPOINT, {
+    await authRequest(CHANGE_PASSWORD_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -221,7 +245,7 @@ export async function changePassword(
 export async function resetPassword(email: string): Promise<ApiResponse> {
   try {
     // Send the reset password request
-    await apiRequest(RESET_PASSWORD_ENDPOINT, {
+    await authRequest(RESET_PASSWORD_ENDPOINT, {
       method: 'POST',
       body: JSON.stringify({ email })
     });

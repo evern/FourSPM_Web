@@ -1,7 +1,7 @@
 import React, { useState, createContext, useContext, useCallback, PropsWithChildren, ReactElement, useEffect, useMemo, useRef } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { useMSALAuth } from './msal-auth';
-import { useTokenAcquisition } from '../hooks/use-token-acquisition';
+import { useToken } from '../contexts/token-context';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../adapters/project.adapter';
 
@@ -34,7 +34,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const msalAuth = useMSALAuth();
   
   // Use the centralized token acquisition hook
-  const { token, acquireToken } = useTokenAcquisition();
+  const { token, acquireToken } = useToken();
   
   // Refresh navigation when authenticated
   const refreshNavigation = useCallback(async () => {
@@ -45,8 +45,16 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
         return;
       }
       
+      // Add small delay to ensure token provider is registered with API service
+      // This follows our pattern for handling auth token race conditions mentioned in memory [ae8865c1]
+      
       setIsLoading(true);
-      console.log('NavigationProvider: Refreshing navigation');
+      
+      // Small delay to ensure token provider is fully registered with the API service
+      // This prevents 401 errors that can occur when navigation refresh happens too quickly after auth
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('NavigationProvider: Refreshing navigation after token sync delay');
       
       // Ensure we have a token before proceeding
       let currentToken = token;

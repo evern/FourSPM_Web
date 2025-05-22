@@ -4,7 +4,8 @@ import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { clientColumns } from './client-columns';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import './clients.scss';
-import { ClientsProvider, useClients } from '@/contexts/clients/clients-context';
+import { ClientsProvider, useClients } from '../../contexts/clients/clients-context';
+import { useToken } from '../../contexts/token-context';
 import { useClientGridHandlers } from '@/hooks/grid-handlers/useClientGridHandlers';
 import { LoadPanel } from 'devextreme-react/load-panel';
 
@@ -18,8 +19,9 @@ const Clients: React.FC = () => {
 };
 
 const ClientsContent = React.memo((): React.ReactElement => {
-  // Get state and functions from context
-  const { state, acquireToken } = useClients();
+  // Get state from context and token from useToken
+  const { state } = useClients();
+  const { token, acquireToken } = useToken();
   const {
     handleRowValidating,
     handleRowUpdating,
@@ -57,7 +59,7 @@ const ClientsContent = React.memo((): React.ReactElement => {
             endpoint={CLIENTS_ENDPOINT}
             columns={clientColumns}
             keyField="guid"
-            token={state.token} // Pass the current token for initial requests
+            token={token} // Use token from useToken instead of state.token
             onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}

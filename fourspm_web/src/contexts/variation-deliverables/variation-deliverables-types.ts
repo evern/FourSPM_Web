@@ -65,9 +65,7 @@ export interface VariationDeliverablesContextProps {
   setError: (error: string | null) => void;
   setLookupDataLoaded: (loaded: boolean) => void;
   
-  // Token management
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management is handled directly through useToken()
   
   // Data operations have been moved to useVariationDeliverableGridHandlers.ts
   // They are no longer part of the context interface

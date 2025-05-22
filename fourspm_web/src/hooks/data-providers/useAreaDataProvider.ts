@@ -4,6 +4,7 @@ import { AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { Area } from '../../types/odata-types';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
+import { useToken } from '../../contexts/token-context';
 
 // This helps us normalize field names between Area and Deliverable entities
 type AreaWithAliases = Area & {
@@ -12,14 +13,27 @@ type AreaWithAliases = Area & {
 
 /**
  * Fetch areas data from the API
+ * @param token Authentication token
  * @param projectId Optional project ID to filter areas by
  * @returns Promise with array of areas
  */
-const fetchAreas = async (projectId?: string): Promise<Area[]> => {
+const fetchAreas = async (token?: string, projectId?: string): Promise<Area[]> => {
+  // Ensure we have a valid API request configuration
+  const requestOptions = {
+    method: 'GET'
+  } as any;
+  
+  // Add token if available
+  if (token) {
+    requestOptions.token = token;
+  } else {
+    console.warn('fetchAreas: No token provided, request may fail');
+  }
+  
   const filter = projectId ? `$filter=projectGuid eq ${projectId}` : '';
   const url = `${AREAS_ENDPOINT}?${filter}`;
   
-  const response = await baseApiService.request(url);
+  const response = await baseApiService.request(url, requestOptions);
   const data = await response.json();
   
   return data.value || [];
@@ -45,12 +59,16 @@ export interface AreaDataProviderResult {
  * @returns Object containing the areas store, data array, loading state, and helper methods
  */
 export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult => {
+  // Get token from the TokenContext
+  const { token } = useToken();
+  
   // Create a store for OData operations - this is used when we need direct grid operations
   const areasStore = useODataStore(AREAS_ENDPOINT, 'guid', {
     fieldTypes: {
       number: 'string', // The primary key is also a GUID and needs proper handling
       projectGuid: 'Guid'  // This ensures proper serialization of GUID values in filters
-    }
+    },
+    token // Pass token to ODataStore
   });
   
   // Use React Query to fetch and cache areas
@@ -60,9 +78,9 @@ export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['areas', projectId],
-    queryFn: () => fetchAreas(projectId),
-    enabled: !!projectId, // Only fetch if we have a projectId
+    queryKey: ['areas', projectId, token],
+    queryFn: () => fetchAreas(token || undefined, projectId),
+    enabled: !!token && !!projectId, // Only fetch if we have both token and projectId
     select: (data: Area[]) => data,
     refetchOnWindowFocus: true, // Refetch data when the window regains focus
     staleTime: 5 * 60 * 1000 // Consider data stale after 5 minutes

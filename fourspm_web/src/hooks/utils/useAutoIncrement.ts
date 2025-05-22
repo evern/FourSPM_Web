@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useMSALAuth } from '../../contexts/msal-auth';
+import { useToken } from '../../contexts/token-context';
 
 interface UseAutoIncrementProps {
   endpoint: string;
@@ -17,7 +17,7 @@ export const useAutoIncrement = ({
   filter
 }: UseAutoIncrementProps) => {
   const [nextNumber, setNextNumber] = useState<string>(startFrom);
-  const { acquireToken } = useMSALAuth();
+  const { token } = useToken();
   
   // Use refs to track hook initialization and request count
   const initCountRef = useRef(0);
@@ -104,9 +104,7 @@ export const useAutoIncrement = ({
 
       
       try {
-        // Acquire a token using MSAL
-        const token = await acquireToken();
-        
+        // Use token from useToken
         if (!token) {
           console.error('useAutoIncrement: No token available');
           return startFrom;
@@ -164,10 +162,10 @@ export const useAutoIncrement = ({
 
       return startFrom;
     }
-  }, [endpoint, field, filter, padLength, startFrom, acquireToken]);
+  }, [endpoint, field, filter, padLength, startFrom, token]);
 
   useEffect(() => {
-    // Always try to fetch on mount - acquireToken will handle authentication
+    // Always try to fetch on mount - token is handled by useToken()
     getNextNumber().then(number => {
       setNextNumber(number);
     }).catch(error => {

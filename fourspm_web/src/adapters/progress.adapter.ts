@@ -17,8 +17,8 @@ export const handleProgressUpdate = async (
   key: string, 
   values: Partial<DeliverableProgressDto>, 
   periodId: number, 
-  oldData?: Partial<DeliverableProgressDto>,
-  token?: string
+  token: string,
+  oldData?: Partial<DeliverableProgressDto>
 ) => {
   try {
     // Make sure we have the required data
@@ -62,7 +62,8 @@ export const handleProgressUpdate = async (
     // Use the shared API service to make the request
     const result = await apiService.post<any>(
       `${PROGRESS_ENDPOINT}/AddOrUpdateExisting`,
-      progressData
+      progressData,
+      token
     );
 
     // Return both the server response and the original key for row identification

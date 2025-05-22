@@ -4,7 +4,7 @@ import { useODataStore } from '../../stores/odataStores';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 
 // This helps us normalize field names between Client entities and other components
 type ClientWithAliases = Client & {
@@ -16,9 +16,17 @@ type ClientWithAliases = Client & {
  * @returns Promise with array of clients
  */
 const fetchClients = async (token?: string): Promise<Client[]> => {
-  const response = await baseApiService.request(CLIENTS_ENDPOINT, {
-    token // Pass token to the baseApiService for authentication
-  });
+  // Ensure we have a valid API request configuration
+  const requestOptions = {
+    method: 'GET'
+  } as any;
+  
+  // Add token if available
+  if (token) {
+    requestOptions.token = token;
+  }
+  
+  const response = await baseApiService.request(CLIENTS_ENDPOINT, requestOptions);
   const data = await response.json();
   return data.value || [];
 };
@@ -42,8 +50,8 @@ export interface ClientDataProviderResult {
  * @returns Object containing the clients store, data array, loading state, and helper methods
  */
 export const useClientDataProvider = (): ClientDataProviderResult => {
-  // Get token from the centralized token acquisition hook
-  const { token } = useTokenAcquisition();
+  // Get token from the TokenContext
+  const { token } = useToken();
   
   // Create a store for OData operations - this is used when we need direct grid operations
   const clientsStore = useODataStore(CLIENTS_ENDPOINT, 'guid', {

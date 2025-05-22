@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getVariationById } from '../../adapters/variation.adapter';
 import { Variation } from '../../types/odata-types';
+import { useToken } from '../../contexts/token-context';
 
 /**
  * Hook to load variation data and provide access to its properties
@@ -18,9 +19,17 @@ export const useVariationInfo = (variationGuid: string) => {
     return Boolean(variationGuid);
   }, [variationGuid]);
 
+  // Get token from the token acquisition hook
+  const { token } = useToken();
+
   // Load variation data when inputs change
   const loadVariation = useCallback(async () => {
     if (!hasValidParams()) {
+      return;
+    }
+
+    if (!token) {
+      setError(new Error('Authentication token is required for API requests'));
       return;
     }
 
@@ -28,8 +37,8 @@ export const useVariationInfo = (variationGuid: string) => {
     setError(null);
 
     try {
-      // Token is now handled by MSAL internally
-      const data = await getVariationById(variationGuid);
+      // Use explicit token passing instead of relying on MSAL internally
+      const data = await getVariationById(variationGuid, token);
       setVariation(data);
     } catch (err) {
       setError(err);
@@ -37,7 +46,7 @@ export const useVariationInfo = (variationGuid: string) => {
     } finally {
       setLoading(false);
     }
-  }, [variationGuid, hasValidParams]);
+  }, [variationGuid, hasValidParams, token]);
 
   // Load variation on mount and when dependencies change
   useEffect(() => {

@@ -21,6 +21,7 @@ import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 
 // Import context
 import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
+import { useToken } from '../../contexts/token-context';
 
 // URL params interface
 interface DeliverableProgressParams {
@@ -75,11 +76,12 @@ const DeliverableProgressContent = (): React.ReactElement => {
     deliverableGates,
     isGatesLoading: gatesLoading,
     gatesError,
-    // Get token acquisition function from context
-    acquireToken
+    // Token management is now handled by useToken directly
+    // acquireToken removed from context
   } = useDeliverableProgress();
   
-  // No longer need user context as we get token from our own context
+  // Get token and acquireToken directly from useToken
+  const { token, acquireToken } = useToken();
   
   // Get grid handlers directly from the hook
   const {
@@ -249,7 +251,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
               endpoint={endpoint}
               columns={columns}
               keyField="guid"
-              token={state.token}
+              token={token}
               onTokenExpired={acquireToken}
               onRowUpdating={handleRowUpdating}
               onRowValidating={handleRowValidating}

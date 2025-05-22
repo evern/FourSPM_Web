@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, PropsWithChildren } from 'react';
 import { useMSALAuth } from './msal-auth';
+import { getToken as getStoreToken, setToken as setStoreToken } from '../utils/token-store';
 
 /**
  * Buffer time in seconds before token expiration when we should refresh
@@ -63,6 +64,7 @@ export const TokenProvider: React.FC<PropsWithChildren<{
   const isMounted = useRef(true);
   const lastRefreshAttempt = useRef<number>(0);
   const isRefreshing = useRef<boolean>(false);
+  const tokenSyncedWithStore = useRef<boolean>(false);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -99,6 +101,28 @@ export const TokenProvider: React.FC<PropsWithChildren<{
     return remainingMs > 0 ? Math.floor(remainingMs / 1000) : 0;
   }, [token, tokenExpiration]);
   
+  // Effect to check for token in token-store on mount
+  useEffect(() => {
+    // Skip if we already have a token or if we've already synced
+    if (token || tokenSyncedWithStore.current) return;
+    
+    try {
+      // Try to get token from token-store (which checks localStorage)
+      const storeToken = getStoreToken();
+      if (storeToken) {
+        console.log('TokenContext: Found token in token-store during initialization');
+        setToken(storeToken);
+        // Use default 1 hour expiration if not available
+        setTokenExpiration(Date.now() + (3600 * 1000));
+        tokenSyncedWithStore.current = true;
+      } else {
+        console.log('TokenContext: No token found in token-store during initialization');
+      }
+    } catch (error) {
+      console.error('TokenContext: Error checking token-store during initialization', error);
+    }
+  }, [token]);
+  
   /**
    * Acquire a token and update state
    * @param forceRefresh Force a token refresh even if current token is valid
@@ -107,6 +131,21 @@ export const TokenProvider: React.FC<PropsWithChildren<{
   const acquireToken = useCallback(async (forceRefresh: boolean = false): Promise<string | null> => {
     try {
       if (!isMounted.current) return null;
+      
+      // First check token-store if we don't have a token yet
+      if (!token && !tokenSyncedWithStore.current) {
+        const storeToken = getStoreToken();
+        if (storeToken) {
+          console.log('TokenContext: Found token in token-store during acquireToken');
+          if (isMounted.current) {
+            setToken(storeToken);
+            // Use default 1 hour expiration if not available
+            setTokenExpiration(Date.now() + (3600 * 1000));
+            tokenSyncedWithStore.current = true;
+            return storeToken;
+          }
+        }
+      }
       
       // Check if we already have a valid token
       if (token && !forceRefresh && !isTokenExpiringSoon()) {
@@ -122,14 +161,18 @@ export const TokenProvider: React.FC<PropsWithChildren<{
       const newToken = await msalAuth.acquireToken();
       
       if (newToken && isMounted.current) {
-        // Default token expiration to 1 hour (3600 seconds) if not provided
-        // This is a reasonable default for MSAL tokens
-        const expiresIn = 3600;
-        const newExpiration = Date.now() + expiresIn * 1000;
+        // Calculate token expiration
+        // MSAL tokens typically have a 1 hour expiration (3600 seconds)
+        const expiresIn = 3600; // Default to 1 hour if not specified
+        const newExpiration = Date.now() + (expiresIn * 1000);
         
         // Update state
         setToken(newToken);
         setTokenExpiration(newExpiration);
+        
+        // Sync with token-store for persistence
+        setStoreToken(newToken);
+        tokenSyncedWithStore.current = true;
         
         console.log(`TokenContext: Token acquired, expires in ${expiresIn} seconds`);
         
@@ -172,6 +215,9 @@ export const TokenProvider: React.FC<PropsWithChildren<{
   const clearToken = useCallback(() => {
     setToken(null);
     setTokenExpiration(null);
+    // Also clear token in token-store
+    setStoreToken(null);
+    console.log('TokenContext: Cleared token and synced with token-store');
   }, []);
   
   /**

@@ -18,8 +18,7 @@ export interface ClientsContextProps {
   state: ClientsState;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   invalidateAllLookups: () => void;
   validationRules: ValidationRule[];
   getDefaultValues: () => Partial<Client>;

@@ -9,7 +9,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useVariationInfo } from '../../hooks/utils/useVariationInfo';
 import { useAuth } from '../auth';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { useDeliverables, DEFAULT_DELIVERABLE_VALIDATION_RULES } from '../deliverables/deliverables-context';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { 
@@ -67,7 +67,7 @@ export function VariationDeliverablesProvider({
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   // Get the current token for API calls
   const userToken = token;
@@ -101,23 +101,7 @@ export function VariationDeliverablesProvider({
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management - updates reducer state when token changes
-  const setToken = useCallback((tokenValue: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
-  }, []);
-  
-  // Method to acquire a token - wrapper around the hook's method
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
-  
-  // Update token in state when it changes from the hook
-  useEffect(() => {
-    if (isMountedRef.current) {
-      setToken(token);
-    }
-  }, [token, setToken]);
+  // Token management is handled directly through useToken()
   
   // Acquire token on first load
   useEffect(() => {
@@ -132,7 +116,7 @@ export function VariationDeliverablesProvider({
     loading: variationLoading,
     error: variationError,
     projectGuid: variationProjectGuid
-  } = useVariationInfo(variationId); // Token is now handled by MSAL internally
+  } = useVariationInfo(variationId);
   
   // Determine which project ID to use (from variation or props)
   const projectGuid = variationProjectGuid || projectGuidProp;
@@ -142,7 +126,7 @@ export function VariationDeliverablesProvider({
     project,
     isLoading: projectLoading,
     error: projectError
-  } = useProjectInfo(projectGuid); // Token is now handled by MSAL internally
+  } = useProjectInfo(projectGuid);
   
   // Step 3: Fetch reference data only when project data is available
   const { 
@@ -345,7 +329,12 @@ export function VariationDeliverablesProvider({
         uiStatus: 'Add' as VariationDeliverableUiStatus
       };
       
-      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable); // Token is now handled by MSAL internally
+      // Ensure token is available before making API call
+      if (!userToken) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      
+      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable, userToken);
       dispatch({ type: 'ADD_DELIVERABLE_SUCCESS', payload: result });
       
       // Invalidate any relevant queries
@@ -488,7 +477,12 @@ export function VariationDeliverablesProvider({
           guid: deliverableToAdd.guid || uuidv4(),
           variationGuid: variationId
         };
-        await addNewDeliverableToVariation(preparedDeliverable as Deliverable); // Token is now handled by MSAL internally
+        // Ensure token is available before making API call
+        if (!userToken) {
+          throw new Error('Authentication token is required for API requests');
+        }
+        
+        await addNewDeliverableToVariation(preparedDeliverable as Deliverable, userToken);
         
         // Still invalidate queries to maintain data consistency
         queryClient.invalidateQueries({ queryKey: ['variation-deliverables', variationId] });
@@ -641,9 +635,7 @@ export function VariationDeliverablesProvider({
     setError,
     setLookupDataLoaded,
     
-    // Token management
-    setToken,
-    acquireToken,
+    // Token management is handled directly through useToken()
     
     // Field and validation utilities
     isFieldEditable,
@@ -680,8 +672,6 @@ export function VariationDeliverablesProvider({
     setLoading,
     setError,
     setLookupDataLoaded,
-    setToken,
-    acquireToken,
     
     // Field and validation utilities
     isFieldEditable,

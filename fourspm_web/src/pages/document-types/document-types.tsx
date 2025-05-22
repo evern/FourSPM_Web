@@ -6,6 +6,7 @@ import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './document-types.scss';
 import { DocumentTypesProvider, useDocumentTypes } from '@/contexts/document-types/document-types-context';
+// Token is now obtained directly from token-store via the context
 import { useDocumentTypeGridHandlers } from '@/hooks/grid-handlers/useDocumentTypeGridHandlers';
 import { ErrorMessage } from '@/components';
 
@@ -29,9 +30,10 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     state: { token, loading: tokenLoading, error: tokenError },
     documentTypesLoading,
     documentTypesError,
-    isLookupDataLoading,
-    acquireToken
+    isLookupDataLoading
   } = useDocumentTypes();
+
+  // Token now comes from the document types context which gets it from token-store
 
   // Use the dedicated grid handlers hook
   const { 
@@ -42,7 +44,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useDocumentTypeGridHandlers({
-    acquireToken: () => Promise.resolve(token || '')
+    // No need to pass acquireToken, the handlers will use token-store directly
   });
   
   // Determine if we're still loading - combine all loading states including project loading
@@ -79,8 +81,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             endpoint={DOCUMENT_TYPES_ENDPOINT}
             columns={documentTypeColumns}
             keyField="guid"
-            token={token}
-            onTokenExpired={acquireToken}
+            token={token} // Use token from useToken hook
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}

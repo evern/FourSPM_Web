@@ -7,7 +7,8 @@ import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
 import { useMSALAuth } from '../../contexts/msal-auth';
 // Removed useProjectInfo import as we now get project from context
-import { VariationsProvider, useVariations } from '../../contexts/variations/variations-context';
+import { VariationsProvider, useVariations } from '@/contexts/variations/variations-context';
+import { useToken } from '@/contexts/token-context';
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';
 import ScrollToTop from '../../components/scroll-to-top';
 import './variations.scss';
@@ -46,10 +47,12 @@ const VariationsContent = (): React.ReactElement => {
   const { 
     state: { token, loading, error, editorError }, 
     project, 
-    isLookupDataLoading, 
-    acquireToken 
+    isLookupDataLoading
   } = useVariations();
   
+  // Get token and acquireToken directly from useToken
+  const { token: tokenFromHook, acquireToken } = useToken();
+
   // Use our custom grid handlers
   const {
     // Row operations
@@ -64,7 +67,7 @@ const VariationsContent = (): React.ReactElement => {
     handleRejectVariation
   } = useVariationGridHandlers({
     projectId,
-    acquireToken
+    acquireToken: acquireToken // Pass acquireToken from useToken
   });
   
   // Create variation columns configuration with handlers
@@ -135,8 +138,8 @@ const VariationsContent = (): React.ReactElement => {
             endpoint={VARIATIONS_ENDPOINT}
             columns={variationColumns(variationColumnsConfig)}
             keyField="guid"
-          token={token} // Pass the current token for initial requests
-          onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
+          token={tokenFromHook || token} // Use token from useToken, fall back to context token if needed
+          onTokenExpired={acquireToken} // Use acquireToken from useToken
           onRowValidating={handleRowValidating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}

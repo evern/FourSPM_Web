@@ -28,9 +28,7 @@ export interface ProjectProfileContextType {
   // State
   state: ProjectProfileState;
   
-  // Token management
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   
   // Client data - matching the original implementation pattern
   clients: Client[];

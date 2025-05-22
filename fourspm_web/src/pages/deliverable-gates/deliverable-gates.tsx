@@ -3,7 +3,8 @@ import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { deliverableGateColumns } from './deliverable-gate-columns';
 import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
 import './deliverable-gates.scss';
-import { DeliverableGatesProvider, useDeliverableGates } from '@/contexts/deliverable-gates/deliverable-gates-context';
+import { DeliverableGatesProvider, useDeliverableGates } from '../../contexts/deliverable-gates/deliverable-gates-context';
+import { useToken } from '../../contexts/token-context';
 import { useDeliverableGateGridHandlers } from '@/hooks/grid-handlers/useDeliverableGateGridHandlers';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { ErrorMessage } from '@/components';
@@ -18,8 +19,9 @@ const DeliverableGates: React.FC = () => {
 };
 
 const DeliverableGatesContent = React.memo((): React.ReactElement => {
-  // Get state and functions from context (same pattern as clients.tsx)
-  const { state, acquireToken } = useDeliverableGates();
+  // Get state from context and token from useToken
+  const { state } = useDeliverableGates();
+  const { token, acquireToken } = useToken();
 
   const {
     handleRowValidating,
@@ -59,7 +61,7 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             endpoint={DELIVERABLE_GATES_ENDPOINT}
             columns={deliverableGateColumns}
             keyField="guid"
-            token={state.token} // Pass the current token for initial requests
+            token={token} // Use token from useToken instead of state.token
             onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}

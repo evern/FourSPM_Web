@@ -4,9 +4,8 @@ import { deliverablesReducer, initialDeliverablesState } from './deliverables-re
 import { DeliverablesContextProps, DeliverablesProviderProps, ValidationResult } from './deliverables-types';
 import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
+import { useToken } from '../../contexts/token-context';
 import { Deliverable } from '../../types/odata-types';
 import { getDeliverables, getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
@@ -52,18 +51,7 @@ export const DEFAULT_DELIVERABLE_VALIDATION_RULES: ValidationRule[] = [
   }
 ];
 
-/**
- * Fetch project details from the API with client data expanded
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  // Add $expand=client to ensure the client navigation property is included
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
-  const data = await response.json();
-  return data;
-};
+// Project details are now fetched using useProjectInfo hook
 
 // Create the context
 const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(undefined);
@@ -84,7 +72,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken 
-  } = useTokenAcquisition();
+  } = useToken();
   
   // Get the current token for API calls
   const userToken = token;
@@ -308,6 +296,11 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       
       // Convert to string for consistency with API call
       const deliverableTypeIdStr = deliverableTypeId?.toString() || '';
+      
+      // Ensure token is available before making API call
+      if (!userToken) {
+        throw new Error('Authentication token is required for document number generation');
+      }
 
       const suggestedNumber = await getSuggestedDocumentNumber(
         projectId,
@@ -315,6 +308,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
         areaNumber, 
         discipline, 
         documentType,
+        userToken,
         currentDeliverableGuid 
       );
       
@@ -342,17 +336,12 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     error: referenceDataError 
   } = useProjectData(projectId);
   
-  // Fetch project details
-  const { 
-    data: project, 
+  // Use the useProjectInfo hook to fetch project details - needs client data for document number generation
+  const {
+    project,
     isLoading: projectLoading,
     error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId),
-    enabled: !!projectId,
-    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
-  });
+  } = useProjectInfo(projectId, { expandClient: true });
   
   // Cache invalidation function
   const invalidateAllLookups = useCallback(() => {
@@ -408,7 +397,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     isLookupDataLoading,
     
     // Project data
-    project
+    project: project || undefined // Convert null to undefined to match interface
   }), [
     state, 
     validateDeliverable,

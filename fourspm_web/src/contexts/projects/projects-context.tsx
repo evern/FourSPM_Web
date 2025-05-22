@@ -9,7 +9,7 @@ import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 
 /**
  * Default validation rules for projects
@@ -40,7 +40,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   // Get the current token for API calls
   const userToken = token;
@@ -68,16 +68,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     };
   }, []);
   
-  // Token management function for backward compatibility
-  const setToken = useCallback((token: string | null) => {
-    // This is a no-op now as token is managed by useTokenAcquisition
-    console.log('setToken called, but token is now managed by useTokenAcquisition');
-  }, []);
-  
-  // Alias for backward compatibility
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
-  }, [userToken]);
+  // Token management is now handled by token-context.tsx
   
   // CRUD operations are now handled directly by ODataGrid
   // The context now focuses only on validation and maintaining state
@@ -141,9 +132,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
       error: tokenError
     },
     
-    // Token management - kept for backward compatibility
-    setToken,
-    acquireToken,
+    // Token is available through useToken() directly
     
     // Core validation and project functions
     validateProject,
@@ -162,8 +151,6 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     userToken,
     tokenLoading,
     tokenError,
-    setToken,
-    acquireToken,
     validateProject,
     generateProjectId,
     setProjectDefaults,

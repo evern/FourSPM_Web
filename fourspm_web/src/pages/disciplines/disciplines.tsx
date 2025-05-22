@@ -6,6 +6,7 @@ import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './disciplines.scss';
 import { DisciplinesProvider, useDisciplines } from '@/contexts/disciplines/disciplines-context';
+import { useToken } from '@/contexts/token-context';
 import { useDisciplineGridHandlers } from '@/hooks/grid-handlers/useDisciplineGridHandlers';
 import { ErrorMessage } from '@/components';
 
@@ -30,9 +31,12 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
   const {
     state: { token, loading: tokenLoading, error: tokenError },
     disciplinesLoading,
-    disciplinesError,
-    acquireToken
+    disciplinesError
   } = useDisciplines();
+
+  // Get acquireToken from the disciplines context
+  // This will use the context's implementation that works with localStorage
+  const { acquireToken } = useDisciplines();
 
   // Use the dedicated grid handlers hook
   const { 

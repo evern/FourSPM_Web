@@ -22,8 +22,7 @@ export type DocumentTypesAction =
 
 export interface DocumentTypesContextType {
   state: DocumentTypesState;
-  setToken: (token: string | null) => void;
-  acquireToken: () => Promise<string | null>;
+  // Token management now handled by useToken() directly
   invalidateAllLookups: () => void;
   documentTypesLoading: boolean;
   documentTypesError: unknown;

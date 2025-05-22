@@ -29,7 +29,10 @@ const UnauthenticatedContent: React.FC = () => {
           <ChangePasswordForm />
         </SingleCard>
       </Route>
-      <Redirect to={'/login'} />
+      {/* Any other paths when unauthenticated will redirect to login */}
+      <Route path='/'>
+        <Redirect to={'/login'} />
+      </Route>
     </Switch>
   );
 };

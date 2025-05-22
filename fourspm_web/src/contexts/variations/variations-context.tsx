@@ -4,12 +4,11 @@ import { variationsReducer, initialVariationsState } from './variations-reducer'
 import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { baseApiService } from '../../api/base-api.service';
-import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
+import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useParams } from 'react-router-dom';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 
@@ -31,18 +30,7 @@ export const DEFAULT_VARIATION_VALIDATION_RULES: ValidationRule[] = [
   }
 ];
 
-/**
- * Fetch project details from the API with client data expanded
- * @param projectId Project ID to fetch details for
- */
-const fetchProject = async (projectId: string) => {
-  if (!projectId) return null;
-  
-  // Add $expand=client to ensure the client navigation property is included
-  const response = await baseApiService.request(`${PROJECTS_ENDPOINT}(${projectId})?$expand=client`);
-  const data = await response.json();
-  return data;
-};
+// Project details are now fetched using useProjectInfo hook
 
 // Create the context with a default undefined value
 const VariationsContext = createContext<VariationsContextType | undefined>(undefined);
@@ -65,7 +53,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
 
   // Get the current token for API calls
   const userToken = token;
@@ -106,7 +94,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
 
-  // Token management using useTokenAcquisition hook
+  // Token management using token context
   const setToken = useCallback((tokenValue: string | null) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_TOKEN', payload: tokenValue });
@@ -271,11 +259,15 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
       
       // Call the appropriate adapter method based on approve flag
-      // Token is now handled by MSAL internally
+      // Explicit token passing instead of relying on MSAL internally
+      if (!userToken) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      
       if (approve) {
-        await approveVariation(variationId);
+        await approveVariation(variationId, userToken);
       } else {
-        await rejectVariation(variationId);
+        await rejectVariation(variationId, userToken);
       }
       
       // Dispatch success action if still mounted and not skipping state updates
@@ -306,17 +298,12 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     }
   }, [token, invalidateAllLookups]);
 
-  // Fetch project details - key addition to prevent flickering
-  const { 
-    data: project, 
+  // Use the useProjectInfo hook to fetch project details - no need for client expansion
+  const {
+    project,
     isLoading: projectLoading,
     error: projectError
-  } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!token,
-    refetchOnWindowFocus: true // Auto-refresh data when window regains focus
-  });
+  } = useProjectInfo(projectId, { expandClient: false });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
@@ -333,9 +320,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     setLoading,
     setError,
     
-    // Token management
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     
     // Validation methods
     validateVariation,
@@ -347,7 +332,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     
     // Project data (for anti-flickering pattern)
     projectId,
-    project,
+    project: project || undefined, // Convert null to undefined to match interface
     isLookupDataLoading,
     
     // Editor functions
@@ -361,8 +346,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     state,
     setLoading,
     setError,
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     // Validation method dependencies
     validateVariation,
     handleRowValidating,

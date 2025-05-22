@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useMSALAuth } from '../contexts/msal-auth';
-import { setToken as setGlobalToken, getToken as getGlobalToken, isTokenExpiringSoon } from '../utils/token-store';
+import { setToken as setGlobalToken, getToken as getGlobalToken } from '../utils/token-store';
 
 /**
  * Hook for standardized token acquisition across feature contexts
@@ -31,8 +31,9 @@ export const useTokenAcquisition = () => {
    * @returns Boolean indicating if token should be refreshed
    */
   const shouldRefreshToken = useCallback((): boolean => {
-    // Check if the token is expiring soon (within 5 minutes)
-    return isTokenExpiringSoon(300); // 5 minutes in seconds
+    // Since we no longer have expiration checking in token-store,
+    // always return false to rely on MSAL for token management
+    return false;
   }, []);
 
   /**
@@ -68,8 +69,8 @@ export const useTokenAcquisition = () => {
         // Update local state
         setToken(newToken);
         
-        // Update global token store with expiration
-        setGlobalToken(newToken, expiresIn);
+        // Update global token store
+        setGlobalToken(newToken);
         
         return newToken;
       }

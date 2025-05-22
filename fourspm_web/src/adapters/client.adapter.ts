@@ -8,11 +8,12 @@ import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Gets all clients
+ * @param token Authentication token
  * @returns Array of clients
  */
-export const getClients = async (token?: string): Promise<Client[]> => {
+export const getClients = async (token: string): Promise<Client[]> => {
   try {
-    const response = await apiService.getAll<Client>(CLIENTS_ENDPOINT, undefined, token);
+    const response = await apiService.getAll<Client>(CLIENTS_ENDPOINT, token);
     return response.value || [];
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -23,11 +24,12 @@ export const getClients = async (token?: string): Promise<Client[]> => {
 /**
  * Gets client details by ID
  * @param clientId Client GUID
+ * @param token Authentication token
  * @returns Client details
  */
-export const getClientDetails = async (clientId: string, token?: string): Promise<Client> => {
+export const getClientDetails = async (clientId: string, token: string): Promise<Client> => {
   try {
-    return await apiService.getById<Client>(CLIENTS_ENDPOINT, clientId, undefined, token);
+    return await apiService.getById<Client>(CLIENTS_ENDPOINT, clientId, token);
   } catch (error) {
     console.error(`Error fetching client details for ID ${clientId}:`, error);
     throw error;

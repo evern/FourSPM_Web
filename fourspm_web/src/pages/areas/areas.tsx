@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useMSALAuth } from '../../contexts/msal-auth';
+import { useToken } from '../../contexts/token-context';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
@@ -46,12 +46,14 @@ const AreasContent = React.memo((): React.ReactElement => {
     state,
     projectId,
     project,
-    isLookupDataLoading,
-    acquireToken
+    isLookupDataLoading
   } = useAreas();
 
   // Define filter to only show areas for the current project
   const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];
+
+  // Get token and acquireToken from useToken hook at the top level
+  const { token, acquireToken } = useToken();
   
   // Use the dedicated grid handlers hook
   const { 
@@ -62,7 +64,7 @@ const AreasContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useAreaGridHandlers({
-    acquireToken
+    token: useToken().token
   });
 
   // Use the combined loading state from context - prevents flickering
@@ -103,8 +105,8 @@ const AreasContent = React.memo((): React.ReactElement => {
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"
-            token={state.token} // Pass the current token for initial requests
-            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
+            token={token} // Use token from the useToken hook declared at the top level
+            onTokenExpired={acquireToken} // Use acquireToken from the useToken hook declared at the top level
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}

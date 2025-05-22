@@ -3,7 +3,7 @@ import { ProjectProfileContextType } from './project-profile-types';
 import { projectProfileReducer, initialProjectProfileState } from './project-profile-reducer';
 import { Project } from '../../types/index';
 import { useAuth } from '../auth';
-import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
+import { useToken } from '../../contexts/token-context';
 import { useNavigation } from '../navigation';
 // We don't directly import useProjects as it requires ProjectsProvider
 import { fetchProject, updateProject } from '../../adapters/project.adapter';
@@ -32,7 +32,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
-  } = useTokenAcquisition();
+  } = useToken();
   
   // Form reference for DevExtreme form
   const formRef = useRef<any>(null);
@@ -144,15 +144,21 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
       
       try {
-        // Pass token explicitly to the adapter, converting null to undefined for type compatibility
-        const projectData = await fetchProject(projectId, token || undefined);
+        // Ensure token is available before making API call
+        if (!token) {
+          throw new Error('Authentication token is required for API requests');
+        }
+        const projectData = await fetchProject(projectId, token);
         
         // After loading the project, also load the client details if a client is selected
         if (projectData && projectData.clientGuid && isMountedRef.current) {
           try {
     
-            // Pass token explicitly to the adapter
-            const clientData = await getClientDetails(projectData.clientGuid, token || undefined);
+            // Ensure token is available before making API call
+            if (!token) {
+              throw new Error('Authentication token is required for API requests');
+            }
+            const clientData = await getClientDetails(projectData.clientGuid, token);
     
             
             // Check if we have the data we need
@@ -271,8 +277,11 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         // Audit fields (created, updated, etc.) are managed by the server
       };
       
-      // Pass token explicitly to the adapter, converting null to undefined for type compatibility
-      const updatedProject = await updateProject(project.guid, projectToSave, token || undefined);
+      // Ensure token is available before making API call
+      if (!token) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      const updatedProject = await updateProject(project.guid, projectToSave, token);
       
       if (isMountedRef.current) {
         dispatch({ type: 'SET_PROJECT', payload: updatedProject });
@@ -316,7 +325,11 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     }
     
     try {
-      const clientData = await getClientDetails(clientId, token || undefined);
+      // Ensure token is available before making API call
+      if (!token) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      const clientData = await getClientDetails(clientId, token);
       
       // Get form instance for updating
       const formInstance = formRef.current.instance;
@@ -360,7 +373,11 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     }
     
     try {
-      const clientData = await getClientDetails(clientId, token || undefined);
+      // Ensure token is available before making API call
+      if (!token) {
+        throw new Error('Authentication token is required for API requests');
+      }
+      const clientData = await getClientDetails(clientId, token);
       
       if (!project) return null;
       
@@ -399,9 +416,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       token // Include token from useTokenAcquisition
     },
     
-    // Token management
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     
     // Client data from useClientDataProvider - matching original implementation
     clients,
@@ -419,8 +434,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
   }), [
     state,
     token,
-    setToken,
-    acquireToken,
+    // Token management now handled by useToken() directly
     clients,
     isClientLoading,
     formRef,

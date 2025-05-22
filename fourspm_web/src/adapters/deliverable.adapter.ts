@@ -1,9 +1,6 @@
-import { apiService } from '../api/api.service';
 import { baseApiService } from '../api/base-api.service';
-import { API_CONFIG } from '../config/api';
 import { createProjectFilter } from '../utils/odata-filters';
-import { DELIVERABLES_ENDPOINT, getDeliverablesByVariationUrl } from '../config/api-endpoints';
-import { useMSALAuth } from '../contexts/msal-auth';
+import { DELIVERABLES_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -39,11 +36,12 @@ export interface Deliverable {
  */
 
 /**
- * Gets all deliverables, optionally filtered by project
+ * Gets all deliverables with optional project filtering
+ * @param token Authentication token
  * @param projectId Optional project GUID to filter deliverables
  * @returns Array of deliverables
  */
-export const getDeliverables = async (projectId?: string): Promise<Deliverable[]> => {
+export const getDeliverables = async (token: string, projectId?: string): Promise<Deliverable[]> => {
   try {
     let query = '';
     if (projectId) {
@@ -54,8 +52,22 @@ export const getDeliverables = async (projectId?: string): Promise<Deliverable[]
       query = createProjectFilter(projectId);
     }
     
-    const response = await apiService.getAll<Deliverable>(DELIVERABLES_ENDPOINT, { $filter: query });
-    return response.value || [];
+    // Build the URL with query parameters
+    const queryParams = query ? `?$filter=${encodeURIComponent(query)}` : '';
+    const url = `${DELIVERABLES_ENDPOINT}${queryParams}`;
+    
+    // Use baseApiService directly with explicit token passing
+    if (!token) {
+      throw new Error('Authentication token is required for fetching deliverables');
+    }
+    
+    const response = await baseApiService.request(url, {
+      method: 'GET',
+      token
+    });
+    
+    const data = await response.json();
+    return data.value || [];
   } catch (error) {
     console.error('Error fetching deliverables:', error);
     throw error;
@@ -79,6 +91,7 @@ export const getSuggestedDocumentNumber = async (
   areaNumber: string, 
   discipline: string, 
   documentType: string,
+  token: string,
   excludeDeliverableGuid?: string
 ): Promise<string> => {
   try {
@@ -90,18 +103,22 @@ export const getSuggestedDocumentNumber = async (
                `&documentType=${encodeURIComponent(documentType)}` +
                `${excludeDeliverableGuid ? `&excludeDeliverableGuid=${encodeURIComponent(excludeDeliverableGuid)}` : ''}`;
     
-    // Use the baseApiService which already handles token management
-    // No need to manually add token headers when using fetch interceptor
+    // Ensure token is available
+    if (!token) {
+      throw new Error('Authentication token is required for generating document numbers');
+    }
+    
+    // Use the baseApiService with explicit token passing
     const response = await baseApiService.request(url, {
-      method: 'GET'
-      // Auth header will be added by the useAuthInterceptor hook
+      method: 'GET',
+      token
     });
     
     const data = await response.json();
     return data.suggestedNumber || '';
   } catch (error) {
-    console.error('Error fetching document number:', error);
-    return '';
+    console.error('Error fetching suggested document number:', error);
+    throw error;
   }
 };
 
@@ -109,278 +126,46 @@ export const getSuggestedDocumentNumber = async (
  * Update a deliverable's gate
  * @param deliverableKey The GUID of the deliverable to update
  * @param gateGuid The GUID of the new gate
+ * @param token Authentication token
  * @returns A promise that resolves when the update is complete
  */
 export const updateDeliverableGate = async (
   deliverableKey: string, 
-  gateGuid: string
+  gateGuid: string,
+  token: string
 ): Promise<void> => {
   try {
-    // Create the request payload
-    const payload = {
-      deliverableGateGuid: gateGuid
-    };
-
-    return apiService.update<any>(
-      DELIVERABLES_ENDPOINT,
-      deliverableKey,
-      payload
-    );
-  } catch (error) {
-    console.error(`Error updating deliverable ${deliverableKey} to gate ${gateGuid}: ${error}`);
-    throw error;
-  }
-};
-
-/**
- * Interface for a variation deliverable request
- */
-export interface VariationDeliverableRequest {
-  originalDeliverableGuid: string; // GUID of the original deliverable to create a variation for
-  variationGuid: string;          // GUID of the variation
-  variationHours: number;         // Hours to add or remove with this variation
-  isCancellation?: boolean;       // Whether this is a cancellation (default: false)
-  documentTitle?: string;         // Optional override for document title
-  documentType?: string;          // Optional override for document type
-  clientDocumentNumber?: string;  // Optional override for client document number
-}
-
-/**
- * Add or update a variation copy of an existing deliverable
- * @param request The variation deliverable request details
- * @param token User authentication token
- * @returns The created or updated variation deliverable
- */
-export const addOrUpdateVariationDeliverable = async (
-  request: VariationDeliverableRequest,
-  token: string
-): Promise<Deliverable> => {
-  try {
     if (!token) {
-      throw new Error('Token is required');
+      throw new Error('Authentication token is required');
     }
     
-    // Validate required fields
-    if (!request.originalDeliverableGuid) {
-      throw new Error('Original deliverable GUID is required');
-    }
-    
-    if (!request.variationGuid) {
-      throw new Error('Variation GUID is required');
-    }
-    
-    const url = `${DELIVERABLES_ENDPOINT}/AddOrUpdateVariation`;
-    
-    // Create the request payload
-    const payload = {
-      originalDeliverableGuid: request.originalDeliverableGuid,
-      variationGuid: request.variationGuid,
-      variationHours: request.variationHours || 0,
-      isCancellation: request.isCancellation || false,
-      documentTitle: request.documentTitle,
-      documentType: request.documentType,
-      clientDocumentNumber: request.clientDocumentNumber
-    };
-    
-    // Use the baseApiService which already handles token management
-    const response = await baseApiService.request(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-      // Auth header will be added by the useAuthInterceptor hook
-    });
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error adding or updating variation deliverable:', error);
-    throw error;
-  }
-};
-
-/**
- * Create a brand new deliverable for a variation (not a copy of an existing one)
- * @param deliverable The deliverable data to create
- * @param variationGuid The GUID of the variation
- * @param token User authentication token
- * @returns The created deliverable
- */
-export const createNewVariationDeliverable = async (
-  deliverable: Partial<Deliverable>,
-  variationGuid: string,
-  token: string
-): Promise<Deliverable> => {
-  try {
-    if (!token) {
-      throw new Error('Token is required');
-    }
-    
-    if (!variationGuid) {
-      throw new Error('Variation GUID is required');
-    }
-    
-    const url = `${DELIVERABLES_ENDPOINT}/CreateForVariation`;
-    
-    // Ensure the variation GUID is set
-    const payload = {
-      ...deliverable,
-      variationGuid: variationGuid,
-      // Set default values for remaining fields if not provided
-      bookingCode: deliverable.bookingCode || '',
-      clientDocumentNumber: deliverable.clientDocumentNumber || '',
-      projectNumber: deliverable.projectNumber || '',
-      totalCost: deliverable.totalCost || 0,
-      totalHours: deliverable.totalHours || 0,
-      variationHours: deliverable.variationHours || 0
-    };
-    
-    // Use the baseApiService which already handles token management
-    const response = await baseApiService.request(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-      // Auth header will be added by the useAuthInterceptor hook
-    });
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error creating new variation deliverable:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets all deliverables for a specific variation
- * @param variationGuid The GUID of the variation
- * @returns Array of deliverables associated with the variation
- */
-export const getDeliverablesByVariation = async (
-  variationGuid: string
-): Promise<Deliverable[]> => {
-  if (!variationGuid) {
-    throw new Error('Variation GUID is required');
-  }
-  
-  try {
-    const url = getDeliverablesByVariationUrl(variationGuid);
-    const response = await apiService.get<any>(url);
-    return response.value || [];
-  } catch (error) {
-    console.error('Error fetching variation deliverables:', error);
-    throw error;
-  }
-};
-
-/**
- * Cancels a deliverable by setting its variationStatus to UnapprovedCancellation using OData PATCH
- * @param deliverableGuid The GUID of the deliverable to cancel
- * @param token User authentication token
- * @returns The updated deliverable with cancellation status
- */
-export const cancelDeliverable = async (
-  deliverableGuid: string,
-  token: string
-): Promise<Deliverable> => {
-  try {
-    if (!token) {
-      throw new Error('Token is required');
-    }
-    
-    if (!deliverableGuid) {
+    if (!deliverableKey) {
       throw new Error('Deliverable GUID is required');
     }
     
-    // Following established OData pattern
-    const url = `${DELIVERABLES_ENDPOINT}(${deliverableGuid})`;
+    if (!gateGuid) {
+      throw new Error('Gate GUID is required');
+    }
+    
+    // Construct URL for the PATCH operation
+    const url = `${DELIVERABLES_ENDPOINT}(${deliverableKey})`;
     
     // Only send the specific field being updated
-    const patchBody = {
-      // Using string value for enum as per OData serialization requirements
-      variationStatus: 'UnapprovedCancellation'
-    };
+    const patchBody = { gateGuid };
     
-    // Use the baseApiService which handles token management
-    const response = await baseApiService.request(url, {
+    // Use baseApiService with token
+    await baseApiService.request(url, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'  // Ask server to return updated entity
-      },
-      body: JSON.stringify(patchBody)
-      // Auth header will be added by the useAuthInterceptor hook
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to cancel deliverable: ${response.status} ${errorText}`);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error cancelling deliverable:', error);
-    throw error;
-  }
-};
-
-/**
- * Interface for deliverable progress update request
- */
-export interface DeliverableProgressUpdate {
-  deliverableGuid: string;
-  projectGuid: string;
-  cumulativeEarntPercentage: number;
-  period: number;
-  progressDate: string;
-}
-
-/**
- * Updates the progress percentage for a deliverable
- * @param progressUpdate The progress update details
- * @param token User authentication token
- * @returns Promise that resolves when the update is complete
- */
-export const updateDeliverableProgress = async (
-  progressUpdate: DeliverableProgressUpdate,
-  token: string
-): Promise<void> => {
-  try {
-    if (!token) {
-      throw new Error('Token is required');
-    }
-    
-    if (!progressUpdate.deliverableGuid) {
-      throw new Error('Deliverable GUID is required');
-    }
-
-    if (!progressUpdate.projectGuid) {
-      throw new Error('Project GUID is required');
-    }
-    
-    // Following established pattern for custom operations
-    const url = `${DELIVERABLES_ENDPOINT}/UpdateProgress`;
-    
-    // Use the baseApiService which handles token management
-    const response = await baseApiService.request(url, {
-      method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(progressUpdate)
-      // Auth header will be added by the useAuthInterceptor hook
+      body: JSON.stringify(patchBody),
+      token
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update deliverable progress: ${response.status} ${errorText}`);
-    }
   } catch (error) {
-    console.error('Error updating deliverable progress:', error);
+    console.error('Error updating deliverable gate:', error);
     throw error;
   }
 };
+
+
