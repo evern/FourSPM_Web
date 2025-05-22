@@ -3,6 +3,14 @@ import { useMSALAuth } from '../contexts/msal-auth';
 import { API_CONFIG } from '../config/api';
 
 /**
+ * Configuration object for the auth interceptor
+ * Used to enable/disable the interceptor for testing explicit token passing
+ */
+export const AUTH_INTERCEPTOR_CONFIG = {
+  enabled: false, // Set to false to disable the interceptor and test explicit token passing
+};
+
+/**
  * Hook that sets up a global fetch interceptor to inject authentication tokens
  * This follows the separation of concerns principle by keeping authentication
  * separate from API service implementation.
@@ -18,11 +26,15 @@ export const useAuthInterceptor = () => {
     };
   }, []);
 
-  // Set up global fetch interceptor when component mounts
+  // Set up global fetch interceptor when component mounts (if enabled)
+  // This effect will re-run if the enabled flag changes, allowing runtime toggling
   useEffect(() => {
-    if (!isMounted.current) return;
+    if (!isMounted.current || !AUTH_INTERCEPTOR_CONFIG.enabled) {
+      console.log('AuthInterceptor: Interceptor disabled, using explicit token passing only');
+      return;
+    }
     
-    console.log('AuthInterceptor: Setting up fetch interceptor');
+    console.log('AuthInterceptor: Setting up fetch interceptor (enabled=' + AUTH_INTERCEPTOR_CONFIG.enabled + ')');
     const originalFetch = window.fetch;
     
     const getToken = async (): Promise<string | null> => {
@@ -90,11 +102,11 @@ export const useAuthInterceptor = () => {
       }
     };
     
-    // Cleanup function to restore original fetch
+    // Cleanup function to restore original fetch when component unmounts or interceptor is disabled
     return () => {
-      if (isMounted.current) {
-        console.log('AuthInterceptor: Restoring original fetch');
+      if (window.fetch !== originalFetch) {
         window.fetch = originalFetch;
+        console.log('AuthInterceptor: Restored original fetch');
       }
     };
   }, [acquireToken]);

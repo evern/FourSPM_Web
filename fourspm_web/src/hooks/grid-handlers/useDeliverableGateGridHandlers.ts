@@ -4,24 +4,34 @@ import { createGridOperationHook } from '@/hooks/factories/createGridOperationHo
 import { useDeliverableGates } from '@/contexts/deliverable-gates/deliverable-gates-context';
 
 export function useDeliverableGateGridHandlers({ acquireToken }: { acquireToken?: () => Promise<string | null> }) {
-  const { setError, invalidateAllLookups, validationRules, getDefaultValues } = useDeliverableGates();
-
+  // Get references without causing state changes
+  const { validationRules, getDefaultValues } = useDeliverableGates();
+  
+  // Create a non-state-updating version of error handling
+  const consoleErrorOnly = (operation: string, error: any) => {
+    // Log to console but don't update state to prevent flickering
+    console.error(`Failed to ${operation} deliverable gate:`, error);
+  };
+  
+  // Create a non-state-updating version of cache invalidation
+  const noOpInvalidate = () => {
+    // No-op function that does nothing to prevent state changes
+    // The grid handles its own internal cache
+  };
+  
   const gridOperations = createGridOperationHook({
     endpoint: DELIVERABLE_GATES_ENDPOINT,
     validationRules: validationRules,
-    onUpdateError: (error) => {
-      console.error('Failed to update deliverable gate:', error);
-      setError('Failed to update deliverable gate: ' + error.message);
-    },
-    onDeleteError: (error) => {
-      console.error('Failed to delete deliverable gate:', error);
-      setError('Failed to delete deliverable gate: ' + error.message);
-    },
-    onInsertError: (error) => {
-      console.error('Failed to create deliverable gate:', error);
-      setError('Failed to create deliverable gate: ' + error.message);
-    },
-    invalidateCache: invalidateAllLookups,
+    // Only log errors, don't update state
+    onUpdateError: (error) => consoleErrorOnly('update', error),
+    onDeleteError: (error) => consoleErrorOnly('delete', error),
+    onInsertError: (error) => consoleErrorOnly('create', error),
+    // Add empty success handlers to prevent automatic refreshes
+    onUpdateSuccess: () => {},
+    onDeleteSuccess: () => {},
+    onInsertSuccess: () => {},
+    // Don't invalidate cache to prevent state changes
+    invalidateCache: noOpInvalidate,
     defaultValues: getDefaultValues(),
     acquireToken
   });

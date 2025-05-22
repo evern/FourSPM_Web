@@ -56,6 +56,9 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     // Project data
     project,
     
+    // Token management
+    acquireToken,
+    
     // Token state
     state: { token, loading: tokenLoading, error: tokenError }
   } = useDeliverables();
@@ -133,6 +136,7 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             columns={mobileAdjustedColumns}
             keyField="guid"
             token={token}
+            onTokenExpired={acquireToken} // Add token refresh callback directly from context
             onRowValidating={handleRowValidating}
             onInitNewRow={handleInitNewRow}
             onEditorPreparing={handleEditorPreparing}

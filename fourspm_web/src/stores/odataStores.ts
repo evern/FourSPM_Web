@@ -1,6 +1,6 @@
 import ODataStore from 'devextreme/data/odata/store';
-import { useMSALAuth } from '../contexts/msal-auth';
 import { useMemo } from 'react';
+import { useToken } from '../contexts/token-context';
 
 /**
  * Custom hook to create a configured ODataStore with authentication
@@ -9,12 +9,18 @@ import { useMemo } from 'react';
  * @param storeOptions Additional options to pass to the ODataStore constructor
  * @returns An ODataStore instance configured for the specified endpoint
  */
-export const useODataStore = (endpointPath: string, keyField: string = 'guid', storeOptions: Record<string, any> = {}) => {
-  const { acquireToken } = useMSALAuth();
+export const useODataStore = (
+  endpointPath: string, 
+  keyField: string = 'guid', 
+  storeOptions: Record<string, any> = {}
+) => {
+  // Use the token context for token operations
+  const { token, getToken, acquireToken } = useToken();
   
   // Use useMemo to prevent creating a new store on every render
   return useMemo(() => {
-    return new ODataStore({
+    // Create the store instance
+    const store = new ODataStore({
       url: endpointPath, // Endpoint already includes the base URL from api-endpoints.ts
       version: 4,
       key: keyField,
@@ -25,45 +31,66 @@ export const useODataStore = (endpointPath: string, keyField: string = 'guid', s
         ...(storeOptions.fieldTypes || {})
       },
       ...storeOptions,
+      withCredentials: false,
       beforeSend: async (options: any) => {
+        console.log('ODataStore: beforeSend called');
+        
         try {
-          // Dynamically acquire a token using MSAL
-          const authToken = await acquireToken();
+          // Try to use the current token from context if available
+          let currentToken = token;
           
-          if (!authToken) {
-            console.error('No token available for API request');
-            return false;
+          // Only acquire a fresh token if we don't already have one
+          if (!currentToken) {
+            console.log('ODataStore: No token available, acquiring fresh token...');
+            currentToken = await acquireToken();
+          } else {
+            console.log('ODataStore: Using existing token from context');
           }
           
-          // Initialize headers if they don't exist
-          if (!options.headers) {
-            options.headers = {};
-          }
+          if (!currentToken) {
+            console.error('ODataStore: No valid token available!');
+            // Let the request proceed without a token - it will likely 401 but this helps debugging
+            // Alternatively, uncomment the next line to prevent the request entirely
+            // return false;
+          } else {
+            // Initialize headers if they don't exist
+            if (!options.headers) {
+              options.headers = {};
+            }
 
-          // Add authorization headers without overwriting the entire headers object
-          options.headers['Authorization'] = `Bearer ${authToken}`;
+            // Add the token to the Authorization header
+            options.headers['Authorization'] = `Bearer ${currentToken}`;
+          } 
+          console.log(`ODataStore: Added Authorization header to ${options.method} ${options.url}`);
           options.headers['Accept'] = 'application/json';
 
           if (options.method === 'PATCH') {
-            options.headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
-            options.headers['Prefer'] = 'return=minimal';
+            options.headers['Content-Type'] = 'application/json';
           }
-          
+
           return true;
         } catch (error) {
-          console.error('Error acquiring token:', error);
-          return false;
+          console.error('ODataStore: Error in beforeSend:', error);
+          
+          // Let the request proceed without a token - it will likely 401 but this helps debugging
+          return true;
         }
       },
       errorHandler: (error) => {
         if (error.httpStatus === 401) {
-          // Handle token expiration - redirect to login
-          // No need to clear localStorage as AuthContext will handle this
-          window.location.href = '/login';
+          console.log('ODataStore: 401 Unauthorized error detected in errorHandler');
+          
+          // Don't redirect here - the ODataGrid will handle token refresh
+          // The 401 will trigger ODataGrid's error handler which will refresh the token
+          // and update our token store
+          
+          // Just indicate that we're handling the error
           return true;
         }
         return false;
       }
     });
+    
+    return store;
   }, [endpointPath, keyField, acquireToken, storeOptions]); // Only recreate the store when these dependencies change
 };

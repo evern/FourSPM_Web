@@ -85,16 +85,17 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   // Get the current token for API calls
   const userToken = token;
   
-  // Token management function for backward compatibility
+  // Token management function for updating state
   const setToken = useCallback((token: string | null) => {
-    // This is a no-op now as token is managed by useTokenAcquisition
-    console.log('setToken called, but token is now managed by useTokenAcquisition');
+    if (isMountedRef.current) {
+      dispatch({ type: 'SET_TOKEN', payload: token });
+    }
   }, []);
   
-  // Alias for backward compatibility
+  // Method to acquire a token - now just a pass-through to the hook
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
-  }, [userToken]);
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -108,6 +109,27 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
       isMountedRef.current = false;
     };
   }, []);
+  
+  // Sync token state from the hook to the context
+  useEffect(() => {
+    if (isMountedRef.current && token !== undefined) {
+      setToken(token);
+    }
+  }, [token, setToken]);
+  
+  // Sync loading state from the hook to the context
+  useEffect(() => {
+    if (isMountedRef.current) {
+      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+    }
+  }, [tokenLoading]);
+  
+  // Sync error state from the hook to the context
+  useEffect(() => {
+    if (isMountedRef.current && tokenError) {
+      dispatch({ type: 'SET_ERROR', payload: tokenError });
+    }
+  }, [tokenError]);
   
   // Get React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -165,7 +187,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
       projectId,
       isLookupDataLoading
     }),
-    [state, userToken, tokenLoading, tokenError, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
+    [state, setToken, acquireToken, invalidateAllLookups, documentTypesLoading, documentTypesError, getDefaultValues, project, projectId, isLookupDataLoading]
   );
   
   return (

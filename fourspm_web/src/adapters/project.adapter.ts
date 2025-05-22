@@ -13,10 +13,10 @@ import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
  * @param userToken The user's authentication token
  * @returns A promise resolving to the project information
  */
-export const fetchProject = async (projectId: string): Promise<Project> => {
+export const fetchProject = async (projectId: string, token?: string): Promise<Project> => {
   try {
     // Fetch project with expanded client information
-    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, 'Client');
+    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, 'Client', token);
     
     // Only transform date fields if needed
     if (project.progressStart) {
@@ -34,9 +34,15 @@ export const fetchProject = async (projectId: string): Promise<Project> => {
  * Gets project navigation items for the application menu
  * @returns Array of navigation items for projects
  */
-export const getProjectNavigation = async (): Promise<NavigationItem[]> => {
+export const getProjectNavigation = async (token?: string): Promise<NavigationItem[]> => {
   try {
-    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT);
+    // If no token is provided, return empty navigation
+    if (!token) {
+      console.warn('No token available for getProjectNavigation, returning empty navigation');
+      return [];
+    }
+    
+    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, undefined, token);
     const projects: ProjectNavigationItem[] = response.value || [];
     
     // Create status-based navigation structure
@@ -101,7 +107,8 @@ export const getProjectNavigation = async (): Promise<NavigationItem[]> => {
  */
 export const updateProject = async (
   projectId: string, 
-  data: Partial<Project>
+  data: Partial<Project>,
+  token?: string
 ): Promise<Project> => {
   try {
     // Format data for API
@@ -115,11 +122,13 @@ export const updateProject = async (
     const result = await apiService.update<Partial<Project>>(
       PROJECTS_ENDPOINT,
       projectId,
-      apiData
+      apiData,
+      false,  // Do not return representation
+      token   // Pass token to apiService
     );
     
     // Fetch updated project details
-    return fetchProject(projectId);
+    return fetchProject(projectId, token);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;

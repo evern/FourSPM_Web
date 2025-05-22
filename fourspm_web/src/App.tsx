@@ -15,6 +15,7 @@ import UnauthenticatedContent from './UnauthenticatedContent';
 import { useThemeContext, ThemeContext } from './theme/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { TokenProvider } from './contexts/token-context';
 
 const AppWithAuth: React.FC = () => {
   // Set up auth interceptor to automatically add tokens to API requests
@@ -72,9 +73,12 @@ const RootApp = () => {
         <QueryClientProvider client={queryClient}>
           {/* MSAL-based authentication */}
           <MSALAuthProvider>
-            <NavigationProvider>
-              <AppWithAuth />
-            </NavigationProvider>
+            {/* Integrated token management and refresh provider */}
+            <TokenProvider bufferSeconds={300}>
+              <NavigationProvider>
+                <AppWithAuth />
+              </NavigationProvider>
+            </TokenProvider>
           </MSALAuthProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>

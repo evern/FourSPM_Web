@@ -189,6 +189,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             allowDeleting={false}
             customGridHeight={900}
             token={token}
+            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
               fieldTypes: {

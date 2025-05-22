@@ -8,6 +8,7 @@ export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
   useMsal?: boolean; // Flag to use MSAL for token acquisition instead of localStorage
   msalInstance?: PublicClientApplication; // Optional MSAL instance for token acquisition
+  token?: string; // Explicit token to use for authentication, takes precedence over other methods
 }
 
 class BaseApiService {
@@ -22,8 +23,12 @@ class BaseApiService {
       'Content-Type': 'application/json',
     };
 
-    // Check if we should use MSAL for token acquisition
-    if (options.useMsal && options.msalInstance) {
+    // Check if an explicit token was provided (highest priority)
+    if (options.token) {
+      defaultHeaders['Authorization'] = `Bearer ${options.token}`;
+    }
+    // Check if we should use MSAL for token acquisition (second priority)
+    else if (options.useMsal && options.msalInstance) {
       try {
         // Get the active account from MSAL
         const account = options.msalInstance.getActiveAccount();
@@ -42,8 +47,9 @@ class BaseApiService {
       } catch (error) {
         console.error('Failed to acquire MSAL token:', error);
       }
-    } else {
-      // Fallback to localStorage token if MSAL is not specified
+    } 
+    // Fallback to localStorage token if no other method is specified (lowest priority)
+    else {
       const userStr = localStorage.getItem('user');
       const user: User | null = userStr ? JSON.parse(userStr) : null;
       if (user?.token) {

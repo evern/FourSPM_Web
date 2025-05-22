@@ -40,21 +40,16 @@ export interface VariationsState {
 
 // Actions that can be dispatched
 export type VariationsAction = 
+  // State management actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_DATA_LOADED'; payload: boolean }
   // Auth-related actions
   | { type: 'SET_TOKEN'; payload: string | null }
   // Data operations actions
-  | { type: 'FETCH_VARIATIONS_START' }
-  | { type: 'FETCH_VARIATIONS_SUCCESS'; payload: Variation[] }
-  | { type: 'FETCH_VARIATIONS_ERROR'; payload: string }
-  | { type: 'ADD_VARIATION_START'; payload: Variation }
-  | { type: 'ADD_VARIATION_SUCCESS'; payload: Variation }
-  | { type: 'ADD_VARIATION_ERROR'; payload: { error: string, variation?: Variation } }
   | { type: 'UPDATE_VARIATION_START'; payload: Variation }
   | { type: 'UPDATE_VARIATION_SUCCESS'; payload: Variation }
   | { type: 'UPDATE_VARIATION_ERROR'; payload: { error: string, variation?: Variation } }
-  | { type: 'DELETE_VARIATION_START'; payload: string }
-  | { type: 'DELETE_VARIATION_SUCCESS'; payload: string }
-  | { type: 'DELETE_VARIATION_ERROR'; payload: { error: string, id?: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: Record<string, string[]> }
   | { type: 'CLEAR_VALIDATION_ERRORS' }
   // Editor-related actions
@@ -76,11 +71,7 @@ export interface VariationsContextType {
   validateRowUpdating: (oldData: any, newData: any) => { isValid: boolean; errors: Record<string, string> };
   
   // Data operations
-  fetchVariations: (projectId: string) => Promise<void>;
-  addVariation: (variation: Variation, skipStateUpdate?: boolean) => Promise<Variation>;
-  updateVariation: (variation: Variation) => Promise<Variation>;
-  deleteVariation: (id: string) => Promise<void>;
-  changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => Promise<void>;
+ changeVariationStatus: (params: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => Promise<void>;
   
   // Project data (for anti-flickering pattern)
   project?: Project; 

@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../config/api';
+import { baseApiService } from './base-api.service';
 
 /**
  * Define the OData response structure
@@ -91,16 +92,18 @@ export class ApiService {
    * @param query Optional query parameters
    * @returns A promise resolving to the response data
    */
-  async get<T = any>(url: string, query?: Record<string, any>): Promise<T> {
+  async get<T = any>(url: string, query?: Record<string, any>, token?: string): Promise<T> {
     // Handle OData-specific parameters ($select, $expand, etc)
     const queryString = query ? `?${new URLSearchParams(query).toString()}` : '';
     const fullUrl = `${url}${queryString}`;
 
     console.log(`ApiService: GET request to ${fullUrl.substring(0, 100)}${fullUrl.length > 100 ? '...' : ''}`);
     
-    const response = await fetch(fullUrl, {
+    // Use baseApiService.request which supports passing token explicitly
+    const response = await baseApiService.request(fullUrl, {
       method: 'GET',
-      headers: this.getHeaders('GET')
+      headers: this.getHeaders('GET'),
+      token: token // Pass token to the baseApiService
     });
 
     if (!response.ok) {
@@ -118,13 +121,14 @@ export class ApiService {
    * @param data The data to send
    * @returns A promise resolving to the response data
    */
-  async post<T = any>(url: string, data: any): Promise<T> {
+  async post<T = any>(url: string, data: any, token?: string): Promise<T> {
     console.log(`ApiService: POST request to ${url}`);
     
-    const response = await fetch(url, {
+    const response = await baseApiService.request(url, {
       method: 'POST',
       headers: this.getHeaders('POST'),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      token: token // Pass token to the baseApiService
     });
 
     if (!response.ok) {
@@ -140,15 +144,18 @@ export class ApiService {
    * @param data The data to send
    * @returns A promise resolving to the response data
    */
-  async put<T = any>(url: string, data: any): Promise<T> {
-    const response = await fetch(url, {
+  async put<T = any>(url: string, data: any, token?: string): Promise<T> {
+    console.log(`ApiService: PUT request to ${url}`);
+    
+    const response = await baseApiService.request(url, {
       method: 'PUT',
       headers: this.getHeaders('PUT'),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      token: token // Pass token to the baseApiService
     });
 
     if (!response.ok) {
-      throw await this.parseError(response);
+      throw await this.parseError(response, url);
     }
 
     return response.json();
@@ -167,10 +174,10 @@ export class ApiService {
    * @param returnRepresentation Whether to request full entity from server after update
    * @returns A promise resolving to the response data
    */
-  async patch<T = any>(url: string, data: any, returnRepresentation: boolean = false): Promise<T> {
+  async patch<T = any>(url: string, data: any, returnRepresentation: boolean = false, token?: string): Promise<T> {
     console.log(`ApiService: PATCH request to ${url}`);
     
-    // Get standard headers then customize for this request
+    // Set up headers specific to the PATCH operation
     const headers = this.getHeaders('PATCH');
     
     // Override Prefer header if full representation is requested
@@ -178,10 +185,11 @@ export class ApiService {
       headers['Prefer'] = 'return=representation';
     }
     
-    const response = await fetch(url, {
+    const response = await baseApiService.request(url, {
       method: 'PATCH',
       headers: headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      token: token // Pass token to the baseApiService
     });
 
     if (!response.ok) {
@@ -203,13 +211,14 @@ export class ApiService {
    * @param id Optional ID to append in OData format
    * @returns A promise that resolves when the request is complete
    */
-  async delete(endpoint: string, id?: string): Promise<void> {
+  async delete(endpoint: string, id?: string, token?: string): Promise<void> {
     const url = id ? `${endpoint}(${id})` : endpoint;
     console.log(`ApiService: DELETE request to ${url}`);
     
-    const response = await fetch(url, {
+    const response = await baseApiService.request(url, {
       method: 'DELETE',
-      headers: this.getHeaders('DELETE')
+      headers: this.getHeaders('DELETE'),
+      token: token // Pass token to the baseApiService
     });
 
     if (!response.ok) {
@@ -225,9 +234,9 @@ export class ApiService {
    * @param query Optional query parameters including OData system parameters
    * @returns Promise resolving to the full OData response
    */
-  async getAll<T>(endpoint: string, query?: Record<string, any>): Promise<ODataResponse<T>> {
+  async getAll<T>(endpoint: string, query?: Record<string, any>, token?: string): Promise<ODataResponse<T>> {
     // OData system query options ($select, $filter, $expand, etc) are passed in the query parameter
-    return this.get<ODataResponse<T>>(endpoint, query);
+    return this.get<ODataResponse<T>>(endpoint, query, token);
   }
 
   /**
@@ -237,13 +246,13 @@ export class ApiService {
    * @param query Optional query parameters
    * @returns Promise resolving to the item
    */
-  async getById<T>(endpoint: string, id: string, expand?: string): Promise<T> {
+  async getById<T>(endpoint: string, id: string, expand?: string, token?: string): Promise<T> {
     const query: Record<string, any> = {};
     if (expand) {
       query.$expand = expand;
     }
     const queryString = Object.keys(query).length > 0 ? `?${new URLSearchParams(query).toString()}` : '';
-    return this.get<T>(`${endpoint}(${id})${queryString}`);
+    return this.get<T>(`${endpoint}(${id})${queryString}`, undefined, token);
   }
 
   /**
@@ -252,8 +261,8 @@ export class ApiService {
    * @param data The data to send
    * @returns Promise resolving to the created item
    */
-  async create<T>(endpoint: string, data: any): Promise<T> {
-    return this.post<T>(endpoint, data);
+  async create<T>(endpoint: string, data: any, token?: string): Promise<T> {
+    return this.post<T>(endpoint, data, token);
   }
 
   /**
@@ -267,9 +276,9 @@ export class ApiService {
    * @param returnRepresentation Whether to request the server to return the full updated entity
    * @returns Promise resolving to the updated entity or empty object
    */
-  async update<T>(endpoint: string, id: string, data: any, returnRepresentation: boolean = false): Promise<T> {
+  async update<T>(endpoint: string, id: string, data: any, returnRepresentation: boolean = false, token?: string): Promise<T> {
     // This supports the OData convention of parentheses notation for entity keys
-    return this.patch<T>(`${endpoint}(${id})`, data, returnRepresentation);
+    return this.patch<T>(`${endpoint}(${id})`, data, returnRepresentation, token);
   }
 
   /**
@@ -278,8 +287,8 @@ export class ApiService {
    * @param id The ID of the item to delete
    * @returns Promise that resolves when the deletion is complete
    */
-  async deleteById(endpoint: string, id: string): Promise<void> {
-    return this.delete(`${endpoint}(${id})`);
+  async deleteById(endpoint: string, id: string, token?: string): Promise<void> {
+    return this.delete(`${endpoint}(${id})`, undefined, token);
   }
 }
 

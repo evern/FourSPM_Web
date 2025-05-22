@@ -14,7 +14,6 @@ import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
-import { setToken } from '../../utils/token-store';
 
 export interface ODataGridColumn extends Partial<Column> {
   // Standard column properties
@@ -92,7 +91,7 @@ interface ODataGridProps {
   customGridHeight?: string | number;
   loading?: boolean; // Loading state prop
   storeOptions?: any; // Options passed to the ODataStore
-  token: string | null; // Authentication token for API requests
+  token: string; // Authentication token for API requests
   onTokenExpired?: () => Promise<string | null>; // Optional callback for token refresh when 401 occurs
 }
 
@@ -300,9 +299,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onTokenExpired().then((newToken) => {
             if (newToken) {
               console.log('ODataGrid: Token refreshed successfully');
-              
-              // Update token in the global token store
-              setToken(newToken);
+              // Update current token reference
+              currentTokenRef.current = newToken;
               
               // Reload the data source to retry the operation
               console.log('ODataGrid: Reloading data source with new token');

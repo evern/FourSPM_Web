@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useMSALAuth } from '../../contexts/msal-auth';
-import { ODataGrid } from '../../components';
+import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
 import { ScrollToTop } from '../../components';
@@ -103,7 +103,8 @@ const AreasContent = React.memo((): React.ReactElement => {
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"
-            token={state.token!} // We already checked hasToken
+            token={state.token} // Pass the current token for initial requests
+            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}

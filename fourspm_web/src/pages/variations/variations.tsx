@@ -135,7 +135,8 @@ const VariationsContent = (): React.ReactElement => {
             endpoint={VARIATIONS_ENDPOINT}
             columns={variationColumns(variationColumnsConfig)}
             keyField="guid"
-
+          token={token} // Pass the current token for initial requests
+          onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
           onRowValidating={handleRowValidating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
@@ -150,7 +151,6 @@ const VariationsContent = (): React.ReactElement => {
           customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
-          token={token}
           />
         )}
         {!token && (

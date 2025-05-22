@@ -367,27 +367,6 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   // Combine loading states for lookup data and token
   const isLookupDataLoading = referenceDataLoading || projectLoading || tokenLoading;
   
-  // Process and format errors from different data sources
-  const processError = useCallback((error: any): string | null => {
-    if (!error) return null;
-    
-    // Handle Axios errors
-    if (error.response) {
-      return `Server Error: ${error.response.status} - ${error.response.data?.message || error.message}`;
-    }
-    
-    // Handle network errors
-    if (error.request) {
-      return `Network Error: Unable to connect to server. Please check your connection.`;
-    }
-    
-    // Handle other errors
-    return error.message || 'An unknown error occurred';
-  }, []);
-  
-  // Combine errors from different data sources and format them - removing unused variable
-  // Previously: const error = processError(referenceDataError || projectError);
-  
   // Update lookup data loaded flag when all data sources are loaded
   useEffect(() => {
     if (isMountedRef.current) {

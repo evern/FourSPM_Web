@@ -114,6 +114,7 @@ const ProjectsContent = (): React.ReactElement => {
             title=" "
             expand={['Client']}
             token={token}
+            onTokenExpired={acquireToken}
             // Add default sort to ensure consistent query parameters
             defaultSort={[{ selector: 'created', desc: true }]}
             // Set countColumn for proper record counting - memory #96c469d2

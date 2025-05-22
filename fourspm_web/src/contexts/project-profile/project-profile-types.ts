@@ -9,6 +9,7 @@ export interface ProjectProfileState {
   isEditing: boolean;
   error: any;
   validationErrors: Record<string, string[]>;
+  token: string | null; // Add token to state
 }
 
 // Action types
@@ -19,12 +20,17 @@ export type ProjectProfileAction =
   | { type: 'SET_EDITING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: any }
   | { type: 'SET_VALIDATION_ERRORS'; payload: Record<string, string[]> }
-  | { type: 'CLEAR_VALIDATION_ERRORS' };
+  | { type: 'CLEAR_VALIDATION_ERRORS' }
+  | { type: 'SET_TOKEN'; payload: string | null };
 
 // Context interface
 export interface ProjectProfileContextType {
   // State
   state: ProjectProfileState;
+  
+  // Token management
+  setToken: (token: string | null) => void;
+  acquireToken: () => Promise<string | null>;
   
   // Client data - matching the original implementation pattern
   clients: Client[];

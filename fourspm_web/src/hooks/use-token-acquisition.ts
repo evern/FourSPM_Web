@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useMSALAuth } from '../contexts/msal-auth';
+import { setToken as setGlobalToken, getToken as getGlobalToken, isTokenExpiringSoon } from '../utils/token-store';
 
 /**
  * Hook for standardized token acquisition across feature contexts
@@ -26,12 +27,31 @@ export const useTokenAcquisition = () => {
   }, []);
 
   /**
+   * Check if we should refresh the token
+   * @returns Boolean indicating if token should be refreshed
+   */
+  const shouldRefreshToken = useCallback((): boolean => {
+    // Check if the token is expiring soon (within 5 minutes)
+    return isTokenExpiringSoon(300); // 5 minutes in seconds
+  }, []);
+
+  /**
    * Acquire a token and update state
+   * @param forceRefresh Force a token refresh even if current token is valid
    * @returns Promise resolving to acquired token or null
    */
-  const acquireToken = useCallback(async (): Promise<string | null> => {
+  const acquireToken = useCallback(async (forceRefresh: boolean = false): Promise<string | null> => {
     try {
       if (!isMounted.current) return null;
+      
+      // Check if we already have a valid token in the global store
+      const existingToken = getGlobalToken();
+      if (existingToken && !forceRefresh && !shouldRefreshToken()) {
+        if (isMounted.current) {
+          setToken(existingToken);
+        }
+        return existingToken;
+      }
       
       if (isMounted.current) {
         setLoading(true);
@@ -41,7 +61,16 @@ export const useTokenAcquisition = () => {
       const newToken = await msalAuth.acquireToken();
       
       if (newToken && isMounted.current) {
+        // Default token expiration to 1 hour (3600 seconds) if not provided
+        // This is a reasonable default for MSAL tokens
+        const expiresIn = 3600;
+        
+        // Update local state
         setToken(newToken);
+        
+        // Update global token store with expiration
+        setGlobalToken(newToken, expiresIn);
+        
         return newToken;
       }
       
@@ -68,7 +97,20 @@ export const useTokenAcquisition = () => {
    * @returns Promise resolving to current/new token or null
    */
   const getToken = useCallback(async (): Promise<string | null> => {
+    // First check the global token store for a valid token
+    const globalToken = getGlobalToken();
+    if (globalToken) {
+      // Update local state with the global token
+      if (isMounted.current) {
+        setToken(globalToken);
+      }
+      return globalToken;
+    }
+
+    // If we have a token in local state, use it
     if (token) return token;
+
+    // Otherwise acquire a new token
     return acquireToken();
   }, [token, acquireToken]);
 
@@ -76,7 +118,9 @@ export const useTokenAcquisition = () => {
    * Clear the current token
    */
   const clearToken = useCallback(() => {
+    // Clear both local state and global store
     setToken(null);
+    setGlobalToken(null);
   }, []);
   
   // Acquire token on mount

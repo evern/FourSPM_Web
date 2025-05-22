@@ -30,6 +30,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     documentTypesLoading,
     documentTypesError,
     isLookupDataLoading,
+    acquireToken
   } = useDocumentTypes();
 
   // Use the dedicated grid handlers hook
@@ -79,6 +80,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             columns={documentTypeColumns}
             keyField="guid"
             token={token}
+            onTokenExpired={acquireToken}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}

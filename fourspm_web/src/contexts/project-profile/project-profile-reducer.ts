@@ -7,7 +7,8 @@ export const initialProjectProfileState: ProjectProfileState = {
   isSaving: false,
   isEditing: false,
   error: null,
-  validationErrors: {}
+  validationErrors: {},
+  token: null
 };
 
 export function projectProfileReducer(
@@ -32,6 +33,8 @@ export function projectProfileReducer(
       return { ...state, validationErrors: action.payload };
     case 'CLEAR_VALIDATION_ERRORS':
       return { ...state, validationErrors: {} };
+    case 'SET_TOKEN':
+      return { ...state, token: action.payload };
     default:
       return state;
   }

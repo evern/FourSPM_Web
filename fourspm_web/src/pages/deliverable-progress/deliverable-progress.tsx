@@ -250,6 +250,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
               columns={columns}
               keyField="guid"
               token={state.token}
+              onTokenExpired={acquireToken}
               onRowUpdating={handleRowUpdating}
               onRowValidating={handleRowValidating}
               onInitialized={onGridInitialized}

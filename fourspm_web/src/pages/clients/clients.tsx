@@ -1,12 +1,12 @@
 import React from 'react';
-import { ODataGrid } from '../../components';
+import { ErrorMessage } from '@/components';
+import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { clientColumns } from './client-columns';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import './clients.scss';
 import { ClientsProvider, useClients } from '@/contexts/clients/clients-context';
 import { useClientGridHandlers } from '@/hooks/grid-handlers/useClientGridHandlers';
 import { LoadPanel } from 'devextreme-react/load-panel';
-import { ErrorMessage } from '@/components';
 
 // Main Clients component following the Collection View Doctrine
 const Clients: React.FC = () => {
@@ -19,7 +19,7 @@ const Clients: React.FC = () => {
 
 const ClientsContent = React.memo((): React.ReactElement => {
   // Get state and functions from context
-  const { state } = useClients();
+  const { state, acquireToken } = useClients();
   const {
     handleRowValidating,
     handleRowUpdating,
@@ -51,13 +51,14 @@ const ClientsContent = React.memo((): React.ReactElement => {
       )}
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Clients</div>
-        {!isLoading && !hasError && state.token && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={CLIENTS_ENDPOINT}
             columns={clientColumns}
             keyField="guid"
-            token={state.token}
+            token={state.token} // Pass the current token for initial requests
+            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -66,12 +67,6 @@ const ClientsContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'number', desc: false }]}
             customGridHeight={900}
-          />
-        )}
-        {!isLoading && !hasError && !state.token && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

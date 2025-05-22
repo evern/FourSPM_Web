@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect } from 'react';
+import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { DeliverableGatesState, DeliverableGatesContextProps } from './deliverable-gates-types';
 import { deliverableGatesReducer } from './deliverable-gates-reducer';
@@ -54,13 +54,23 @@ const DeliverableGatesContext = createContext<DeliverableGatesContextProps | und
 export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(deliverableGatesReducer, initialState);
   
+  // Track component mount state to prevent updates after unmounting
+  const isMountedRef = useRef(true);
+  
   // Use the centralized token acquisition hook
   const { 
     token, 
     loading: tokenLoading, 
     error: tokenError, 
-    acquireToken 
+    acquireToken: acquireTokenFromHook 
   } = useTokenAcquisition();
+  
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
@@ -71,15 +81,36 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
   }, []);
   
   const setToken = useCallback((token: string | null) => {
-    dispatch({ type: 'SET_TOKEN', payload: token });
+    if (isMountedRef.current) {
+      dispatch({ type: 'SET_TOKEN', payload: token });
+    }
   }, []);
   
-  // Update local state when token changes from the hook
+  // Method to acquire a token - now just a pass-through to the hook
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
+  
+  // Sync token state from the hook to the context
   useEffect(() => {
-    setToken(token);
-    setError(tokenError);
-    setLoading(tokenLoading);
-  }, [token, tokenError, tokenLoading, setToken, setError, setLoading]);
+    if (isMountedRef.current && token !== undefined) {
+      setToken(token);
+    }
+  }, [token, setToken]);
+  
+  // Sync loading state from the hook to the context
+  useEffect(() => {
+    if (isMountedRef.current) {
+      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+    }
+  }, [tokenLoading]);
+  
+  // Sync error state from the hook to the context
+  useEffect(() => {
+    if (isMountedRef.current && tokenError) {
+      dispatch({ type: 'SET_ERROR', payload: tokenError });
+    }
+  }, [tokenError]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
@@ -97,21 +128,16 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
 
   const contextValue = useMemo(
     () => ({ 
-      state: {
-        ...state,
-        token, // Ensure token from hook is always up to date
-        loading: state.loading || tokenLoading,
-        error: state.error || tokenError
-      },
+      state, 
       setLoading, 
       setError,
       setToken,
-      acquireToken,
+      acquireToken, 
       invalidateAllLookups,
       validationRules: DELIVERABLE_GATE_VALIDATION_RULES,
       getDefaultValues
     }),
-    [state, token, tokenLoading, tokenError, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
+    [state, setLoading, setError, setToken, acquireToken, invalidateAllLookups, getDefaultValues]
   );
 
   return (

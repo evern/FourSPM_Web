@@ -3,6 +3,7 @@ import { ProjectProfileContextType } from './project-profile-types';
 import { projectProfileReducer, initialProjectProfileState } from './project-profile-reducer';
 import { Project } from '../../types/index';
 import { useAuth } from '../auth';
+import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
 import { useNavigation } from '../navigation';
 // We don't directly import useProjects as it requires ProjectsProvider
 import { fetchProject, updateProject } from '../../adapters/project.adapter';
@@ -24,6 +25,14 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
   const { user } = useAuth();
   const { refreshNavigation } = useNavigation();
   const queryClient = useQueryClient();
+  
+  // Use the centralized token acquisition hook
+  const { 
+    token, 
+    loading: tokenLoading = false, 
+    error: tokenError, 
+    acquireToken: acquireTokenFromHook 
+  } = useTokenAcquisition();
   
   // Form reference for DevExtreme form
   const formRef = useRef<any>(null);
@@ -83,6 +92,31 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       isMountedRef.current = false;
     };
   }, []);
+  
+  // Token management - updates reducer state when token changes
+  const setToken = useCallback((tokenValue: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
+  }, []);
+  
+  // Method to acquire a token - wrapper around the hook's method
+  const acquireToken = useCallback(async (): Promise<string | null> => {
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
+  
+  // Update token in state when it changes from the hook
+  useEffect(() => {
+    if (isMountedRef.current) {
+      setToken(token);
+    }
+  }, [token, setToken]);
+  
+  // Acquire token on first load
+  useEffect(() => {
+    if (isMountedRef.current && !token) {
+      acquireTokenFromHook();
+    }
+  }, []);
 
   // Extract project from state
   const { project } = state;
@@ -96,7 +130,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     }
     
     const loadProject = async () => {
-      if (!projectId || !user?.token) {
+      if (!projectId || !token) {
         // If no project ID or token, immediately set loading to false to avoid indefinite loading state
         if (isMountedRef.current) {
           dispatch({ type: 'SET_LOADING', payload: false });
@@ -110,15 +144,15 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
       
       try {
-        // Token is now handled by MSAL internally
-        const projectData = await fetchProject(projectId);
+        // Pass token explicitly to the adapter, converting null to undefined for type compatibility
+        const projectData = await fetchProject(projectId, token || undefined);
         
         // After loading the project, also load the client details if a client is selected
         if (projectData && projectData.clientGuid && isMountedRef.current) {
           try {
     
-            // Token is now handled by MSAL internally
-            const clientData = await getClientDetails(projectData.clientGuid);
+            // Pass token explicitly to the adapter
+            const clientData = await getClientDetails(projectData.clientGuid, token || undefined);
     
             
             // Check if we have the data we need
@@ -161,7 +195,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     };
     
     loadProject();
-  }, [projectId, user?.token]);
+  }, [projectId, token]);
 
   // Form operations
   const startEditing = useCallback(() => {
@@ -186,17 +220,28 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
   }, [state.originalProject]);
   
   const saveProject = useCallback(async (project: Project) => {
-    if (!user?.token || !project) return null;
+    if (!project) return null;
+    
+    // Ensure we have a token before proceeding
+    if (!token) {
+      const newToken = await acquireToken();
+      if (!newToken) {
+        notify('Unable to authenticate. Please try again.', 'error', 3000);
+        return null;
+      }
+    }
     
     // Basic validation - we're implementing this directly instead of using ProjectsContext
     // to avoid the dependency on ProjectsProvider
-    if (!project.name || !project.projectNumber) {
+    if (!validateProject(project)) {
       if (isMountedRef.current) {
-        dispatch({ 
-          type: 'SET_VALIDATION_ERRORS', 
-          payload: {
-            name: project.name ? [] : ['Project name is required'],
-            projectNumber: project.projectNumber ? [] : ['Project number is required']
+        notify({
+          message: 'Please correct validation errors',
+          type: 'error',
+          displayTime: 3000,
+          position: {
+            my: 'center top',
+            at: 'center top'
           } 
         });
       }
@@ -226,8 +271,8 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         // Audit fields (created, updated, etc.) are managed by the server
       };
       
-      // Token is now handled by MSAL internally
-      const updatedProject = await updateProject(project.guid, projectToSave);
+      // Pass token explicitly to the adapter, converting null to undefined for type compatibility
+      const updatedProject = await updateProject(project.guid, projectToSave, token || undefined);
       
       if (isMountedRef.current) {
         dispatch({ type: 'SET_PROJECT', payload: updatedProject });
@@ -252,7 +297,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
       return null;
     }
-  }, [user?.token, refreshNavigation, queryClient]);
+  }, [token, acquireToken, refreshNavigation, queryClient, validateProject]);
 
 
 
@@ -261,8 +306,17 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     const clientId = e.value;
     if (!clientId || !formRef.current?.instance) return;
     
+    // Ensure we have a token before proceeding
+    if (!token) {
+      const newToken = await acquireToken();
+      if (!newToken) {
+        notify('Unable to authenticate. Please try again.', 'error', 3000);
+        return;
+      }
+    }
+    
     try {
-      const clientData = await getClientDetails(clientId);
+      const clientData = await getClientDetails(clientId, token || undefined);
       
       // Get form instance for updating
       const formInstance = formRef.current.instance;
@@ -291,13 +345,22 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     } catch (error) {
       notify('Error loading client details', 'error', 3000);
     }
-  }, [project, user?.token]);
+  }, [project, token, acquireToken]);
   
   const updateProjectClient = useCallback(async (clientId: string) => {
-    if (!clientId || !user?.token || !formRef.current?.instance) return null;
+    if (!clientId || !formRef.current?.instance) return null;
+    
+    // Ensure we have a token before proceeding
+    if (!token) {
+      const newToken = await acquireToken();
+      if (!newToken) {
+        notify('Unable to authenticate. Please try again.', 'error', 3000);
+        return null;
+      }
+    }
     
     try {
-      const clientData = await getClientDetails(clientId);
+      const clientData = await getClientDetails(clientId, token || undefined);
       
       if (!project) return null;
       
@@ -326,11 +389,20 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       notify('Error updating client details', 'error', 3000);
       return null;
     }
-  }, [project, user?.token]);
+  }, [project, token, acquireToken]);
 
   // Create the context value with proper memoization
   const contextValue = useMemo(() => ({
-    state,
+    // State
+    state: {
+      ...state,
+      token // Include token from useTokenAcquisition
+    },
+    
+    // Token management
+    setToken,
+    acquireToken,
+    
     // Client data from useClientDataProvider - matching original implementation
     clients,
     isClientLoading,
@@ -346,6 +418,9 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     validateProject
   }), [
     state,
+    token,
+    setToken,
+    acquireToken,
     clients,
     isClientLoading,
     formRef,

@@ -31,6 +31,7 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
     state: { token, loading: tokenLoading, error: tokenError },
     disciplinesLoading,
     disciplinesError,
+    acquireToken
   } = useDisciplines();
 
   // Use the dedicated grid handlers hook
@@ -80,6 +81,7 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             columns={disciplineColumns}
             keyField="guid"
             token={token}
+            onTokenExpired={acquireToken}
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}

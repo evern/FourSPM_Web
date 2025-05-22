@@ -5,7 +5,7 @@ import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
 import { useTokenAcquisition } from '../../hooks/use-token-acquisition';
-import { createVariation, updateVariation, deleteVariation, getProjectVariations, approveVariation, rejectVariation } from '../../adapters/variation.adapter';
+import { approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { baseApiService } from '../../api/base-api.service';
@@ -59,17 +59,17 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
   
-  // Use the centralized token acquisition hook
+  // Use the improved token acquisition hook
   const { 
     token, 
     loading: tokenLoading = false, 
     error: tokenError, 
     acquireToken: acquireTokenFromHook 
   } = useTokenAcquisition();
-  
+
   // Get the current token for API calls
   const userToken = token;
-  
+
   // Set up the entity validator with variation-specific rules
   const {
     handleRowValidating: validatorHandleRowValidating,
@@ -95,128 +95,48 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     };
   }, []);
   
-  // Token management function for backward compatibility
-  const setToken = useCallback((token: string | null) => {
-    // This is a no-op now as token is managed by useTokenAcquisition
-    console.log('setToken called, but token is now managed by useTokenAcquisition');
+  // Action creators for state management
+  const setLoading = useCallback((loading: boolean) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_LOADING', payload: loading });
   }, []);
   
-  // Alias for backward compatibility
+  const setError = useCallback((error: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_ERROR', payload: error });
+  }, []);
+
+  // Token management using useTokenAcquisition hook
+  const setToken = useCallback((tokenValue: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
+  }, []);
+  
+  // Method to acquire a token - wrapper around the hook's method
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
-  }, [userToken]);
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
   
-  // Fetch variations for a project
-  const fetchVariations = useCallback(async (projectId: string) => {
-    if (!state.token || !isMountedRef.current) return;
-    
-    try {
-      dispatch({ type: 'FETCH_VARIATIONS_START' });
-      // Token is now handled by MSAL internally
-      const variations = await getProjectVariations(projectId);
-      
-      if (isMountedRef.current) {
-        dispatch({ type: 'FETCH_VARIATIONS_SUCCESS', payload: variations });
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        dispatch({ type: 'FETCH_VARIATIONS_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch variations' });
-      }
+  // Update token in state when it changes from the hook
+  useEffect(() => {
+    if (isMountedRef.current) {
+      setToken(token);
     }
-  }, [user?.token]);
+  }, [token, setToken]);
   
-  // Add a new variation
-  const addVariation = useCallback(async (variation: Variation, skipStateUpdate = false): Promise<Variation> => {
-    if (!user?.token || !isMountedRef.current) {
-      throw new Error('Unable to create variation - user is not authenticated');
+  // Handle token errors
+  useEffect(() => {
+    if (isMountedRef.current && tokenError) {
+      setError(tokenError);
     }
-    
-    try {
-      // Only dispatch start action if we're not skipping state updates
-      if (!skipStateUpdate) {
-        dispatch({ type: 'ADD_VARIATION_START', payload: variation });
-      }
-      
-      // Always call the API - token is now handled by MSAL internally
-      const newVariation = await createVariation(variation);
-      
-      // Only update state if we're not skipping state updates and component is still mounted
-      if (!skipStateUpdate && isMountedRef.current) {
-        dispatch({ type: 'ADD_VARIATION_SUCCESS', payload: newVariation });
-      }
-      
-      return newVariation;
-    } catch (error) {
-      // Still report errors to state unless skipping state updates
-      if (!skipStateUpdate && isMountedRef.current) {
-        dispatch({ 
-          type: 'ADD_VARIATION_ERROR', 
-          payload: { 
-            error: error instanceof Error ? error.message : 'Failed to create variation',
-            variation
-          } 
-        });
-      }
-      throw error;
-    }
-  }, [user?.token]);
+  }, [tokenError, setError]);
   
-  // Update an existing variation
-  const updateVariationFunc = useCallback(async (variation: Variation): Promise<Variation> => {
-    if (!user?.token || !isMountedRef.current) {
-      throw new Error('Unable to update variation - user is not authenticated');
+  // Handle auto-refresh of lookups on cache invalidation
+  useEffect(() => {
+    if (isMountedRef.current && projectId && token) {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
-    
-    try {
-      dispatch({ type: 'UPDATE_VARIATION_START', payload: variation });
-      // Token is now handled by MSAL internally
-      await updateVariation(variation);
-      
-      if (isMountedRef.current) {
-        dispatch({ type: 'UPDATE_VARIATION_SUCCESS', payload: variation });
-      }
-      return variation;
-    } catch (error) {
-      if (isMountedRef.current) {
-        dispatch({ 
-          type: 'UPDATE_VARIATION_ERROR', 
-          payload: { 
-            error: error instanceof Error ? error.message : 'Failed to update variation',
-            variation
-          } 
-        });
-      }
-      throw error;
-    }
-  }, [user?.token]);
-  
-  // Delete a variation
-  const deleteVariationFunc = useCallback(async (id: string): Promise<void> => {
-    if (!user?.token || !isMountedRef.current) {
-      throw new Error('Unable to delete variation - user is not authenticated');
-    }
-    
-    try {
-      dispatch({ type: 'DELETE_VARIATION_START', payload: id });
-      // Token is now handled by MSAL internally
-      await deleteVariation(id);
-      
-      if (isMountedRef.current) {
-        dispatch({ type: 'DELETE_VARIATION_SUCCESS', payload: id });
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        dispatch({ 
-          type: 'DELETE_VARIATION_ERROR', 
-          payload: { 
-            error: error instanceof Error ? error.message : 'Failed to delete variation',
-            id
-          } 
-        });
-      }
-      throw error;
-    }
-  }, [user?.token]);
+  }, [queryClient, projectId, token]);
   
   // Validation for variations
   // This implementation needs to be compatible with the VariationsContextType interface
@@ -337,7 +257,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   
   // Change variation status (approve/reject)
   const changeVariationStatus = useCallback(async ({ variationId, approve, projectGuid, skipStateUpdate = false }: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => {
-    if (!user?.token || !isMountedRef.current) {
+    if (!token || !isMountedRef.current) {
       throw new Error('Unable to change variation status - user is not authenticated');
     }
     
@@ -384,7 +304,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
       throw error;
     }
-  }, [user?.token, invalidateAllLookups]);
+  }, [token, invalidateAllLookups]);
 
   // Fetch project details - key addition to prevent flickering
   const { 
@@ -394,58 +314,63 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId),
-    enabled: !!projectId && !!user?.token,
+    enabled: !!projectId && !!token,
     refetchOnWindowFocus: true // Auto-refresh data when window regains focus
   });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
   
-  // CRITICAL:  // Create context value with all functions and state
+  // Create context value with all functions and state
   const contextValue = useMemo(() => ({
-    // State with token from the hook
+    // State management
     state: {
       ...state,
-      token: userToken,
+      token: token, // Use token directly from the hook
       loading: tokenLoading || state.loading,
       error: tokenError || state.error
     },
+    setLoading,
+    setError,
+    
+    // Token management
     setToken,
     acquireToken,
+    
     // Validation methods
     validateVariation,
     handleRowValidating,
     validateRowUpdating,
-    // Data operations
-    fetchVariations,
-    addVariation,
-    updateVariation: updateVariationFunc,
-    deleteVariation: deleteVariationFunc,
+    
     // Status change function
     changeVariationStatus,
+    
     // Project data (for anti-flickering pattern)
+    projectId,
     project,
     isLookupDataLoading,
+    
     // Editor functions
     getDefaultVariationValues,
     handleVariationEditorPreparing,
     handleVariationInitNewRow,
+    
     // Cache invalidation function
     invalidateAllLookups
   }), [
     state,
+    setLoading,
+    setError,
+    setToken,
+    acquireToken,
     // Validation method dependencies
     validateVariation,
     handleRowValidating,
     validateRowUpdating,
-    // Data operation dependencies
-    fetchVariations,
-    addVariation,
-    updateVariationFunc,
-    deleteVariationFunc,
     // Status change dependency
     changeVariationStatus,
     // Project data dependencies
+    projectId,
     project,
     isLookupDataLoading,
     // Editor dependencies

@@ -101,16 +101,30 @@ export function VariationDeliverablesProvider({
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management function for backward compatibility
-  const setToken = useCallback((token: string | null) => {
-    // This is a no-op now as token is managed by useTokenAcquisition
-    console.log('setToken called, but token is now managed by useTokenAcquisition');
+  // Token management - updates reducer state when token changes
+  const setToken = useCallback((tokenValue: string | null) => {
+    if (!isMountedRef.current) return;
+    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
   }, []);
   
-  // Alias for backward compatibility
+  // Method to acquire a token - wrapper around the hook's method
   const acquireToken = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
-  }, [userToken]);
+    return acquireTokenFromHook();
+  }, [acquireTokenFromHook]);
+  
+  // Update token in state when it changes from the hook
+  useEffect(() => {
+    if (isMountedRef.current) {
+      setToken(token);
+    }
+  }, [token, setToken]);
+  
+  // Acquire token on first load
+  useEffect(() => {
+    if (isMountedRef.current && !token) {
+      acquireTokenFromHook();
+    }
+  }, []);
   
   // Step 1: Load variation using the existing hook
   const {
@@ -205,9 +219,10 @@ export function VariationDeliverablesProvider({
   // CRUD Operations
   // 1. Fetch variation deliverables
   const fetchVariationDeliverables = useCallback(async () => {
-    if (!variationId || !user?.token) {
+    if (!variationId) {
       return;
     }
+    // Token is now managed through our token management system
     
     try {
       dispatch({ type: 'FETCH_DELIVERABLES_START' });
@@ -217,7 +232,7 @@ export function VariationDeliverablesProvider({
       const errorMessage = processError(error);
       dispatch({ type: 'FETCH_DELIVERABLES_ERROR', payload: errorMessage });
     }
-  }, [variationId, user?.token, processError]);
+  }, [variationId, processError]);
 
   // 2. Add existing deliverable to variation
   /**
@@ -271,13 +286,12 @@ export function VariationDeliverablesProvider({
       });
       throw error;
     }
-  }, [variationId, user?.token, processError, queryClient]);
+  }, [variationId, token, processError, queryClient]);
 
   // 3. Add new deliverable to variation
   const addNewToVariation = useCallback(async (deliverable: Partial<Deliverable>): Promise<Deliverable> => {
-    if (!user?.token) {
-      throw new Error('User token is required');
-    }
+    // No need to check for token here as our token management system
+    // handles token acquisition and state management
     
     // Validate the deliverable using the shared functionality
     const validationResult = deliverablesContext.validateDeliverable(deliverable);
@@ -328,9 +342,7 @@ export function VariationDeliverablesProvider({
         ...updatedDeliverable,
         guid: updatedDeliverable.guid || uuidv4(),
         variationGuid: variationId,
-        uiStatus: 'Add' as VariationDeliverableUiStatus,
-        created: new Date(),
-        createdBy: user.name || 'system'
+        uiStatus: 'Add' as VariationDeliverableUiStatus
       };
       
       const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable); // Token is now handled by MSAL internally
@@ -351,7 +363,7 @@ export function VariationDeliverablesProvider({
       });
       throw error;
     }
-  }, [variationId, user?.token, user?.name, deliverablesContext, processError, queryClient]);
+  }, [variationId, deliverablesContext, processError, queryClient]);
 
   /**
    * Cancel a deliverable in a variation
@@ -363,9 +375,12 @@ export function VariationDeliverablesProvider({
    * @returns Promise with the result of the cancellation
    */
   const cancelDeliverable = useCallback(async (originalDeliverableGuid: string, skipStateUpdate = false): Promise<any> => {
-    if (!user?.token || !variationId) {
-      throw new Error('User token and variation ID are required');
+    if (!variationId) {
+      throw new Error('Variation ID is required');
     }
+    
+    // We don't need to manually check token here since our token management system
+    // handles it via the reducer and useEffect hooks
     
     try {
       // Only update context state if not skipping state updates
@@ -400,7 +415,7 @@ export function VariationDeliverablesProvider({
       }
       throw error;
     }
-  }, [variationId, user?.token, processError, queryClient]);
+  }, [variationId, token, processError, queryClient]);
   
   // Removed redundant cancelVariationDeliverable function - using cancelDeliverable directly
   
@@ -466,7 +481,7 @@ export function VariationDeliverablesProvider({
       // - Let the grid handle its own refresh cycle
       // This prevents the simultaneous context update and grid refresh
       // that causes flickering in the UI
-      if (skipStateUpdate && user?.token) {
+      if (skipStateUpdate && token) {
         // Direct API call to prevent state updates but still create the entity
         const preparedDeliverable = {
           ...deliverableToAdd,

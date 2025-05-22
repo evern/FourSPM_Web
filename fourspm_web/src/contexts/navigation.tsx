@@ -1,6 +1,7 @@
 import React, { useState, createContext, useContext, useCallback, PropsWithChildren, ReactElement, useEffect, useMemo, useRef } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { useMSALAuth } from './msal-auth';
+import { useTokenAcquisition } from '../hooks/use-token-acquisition';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../adapters/project.adapter';
 
@@ -13,13 +14,15 @@ interface NavigationContextType {
   setNavigationData: React.Dispatch<React.SetStateAction<NavigationData>>;
   navigation: NavigationItem[];
   refreshNavigation: () => Promise<void>;
+  isLoading: boolean; // Indicate when navigation is being loaded
 }
 
 const NavigationContext = createContext<NavigationContextType>({
   navigationData: {},
   setNavigationData: () => {},
   navigation: appNavigation,
-  refreshNavigation: async () => {}
+  refreshNavigation: async () => {},
+  isLoading: false
 });
 
 const useNavigation = (): NavigationContextType => useContext(NavigationContext);
@@ -27,7 +30,11 @@ const useNavigation = (): NavigationContextType => useContext(NavigationContext)
 function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [navigationData, setNavigationData] = useState<NavigationData>({});
   const [navigation, setNavigation] = useState<NavigationItem[]>(appNavigation);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const msalAuth = useMSALAuth();
+  
+  // Use the centralized token acquisition hook
+  const { token, acquireToken } = useTokenAcquisition();
   
   // Refresh navigation when authenticated
   const refreshNavigation = useCallback(async () => {
@@ -38,9 +45,23 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
         return;
       }
       
+      setIsLoading(true);
       console.log('NavigationProvider: Refreshing navigation');
+      
+      // Ensure we have a token before proceeding
+      let currentToken = token;
+      if (!currentToken) {
+        console.log('NavigationProvider: Acquiring token for navigation');
+        currentToken = await acquireToken();
+        if (!currentToken) {
+          console.warn('NavigationProvider: Failed to acquire token for navigation');
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       const staticNav = getStaticNavigation();
-      const projectNav = await getProjectNavigation();
+      const projectNav = await getProjectNavigation(currentToken);
       
       // Create project status navigation structure
       const projectStatusNav: NavigationItem = {
@@ -69,10 +90,14 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
 
       // Update navigation with project status and configurations at the end
       setNavigation([...staticNav, projectStatusNav, configurationsItem].filter(Boolean) as NavigationItem[]);
+      
+      // Reset loading state after successful navigation update
+      setIsLoading(false);
     } catch (error) {
-
+      console.error('NavigationProvider: Error refreshing navigation:', error);
+      setIsLoading(false);
     }
-  }, [msalAuth.user]);
+  }, [msalAuth.user, token, acquireToken]);
 
   useEffect(() => {
     refreshNavigation();
@@ -83,8 +108,9 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
     navigationData,
     setNavigationData,
     navigation,
-    refreshNavigation
-  }), [navigationData, navigation, refreshNavigation]);
+    refreshNavigation,
+    isLoading
+  }), [navigationData, navigation, refreshNavigation, isLoading]);
 
   // Use the memoized value when providing the context
   return (
