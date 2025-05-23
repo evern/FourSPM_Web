@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, ReactNode } from 'react';
 import { ProjectsContextType } from './projects-types';
 import { projectsReducer, initialProjectsState } from './projects-reducer';
 import { Project } from '../../types/index';
@@ -9,7 +9,6 @@ import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
-import { useToken } from '../../contexts/token-context';
 
 /**
  * Default validation rules for projects
@@ -34,16 +33,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   // CRITICAL: Track the component mount state to prevent state updates after unmounting
   const isMountedRef = React.useRef(true);
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-  
-  // Get the current token for API calls
-  const userToken = token;
+  // No token state - will be accessed directly in leaf methods when needed
   
   // Use the client data provider hook from React Query instead of singleton
   const { clientsStore, isLoading: clientsLoading } = useClientDataProvider();
@@ -68,7 +58,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     };
   }, []);
   
-  // Token management is now handled by token-context.tsx
+  // No token management needed - direct access at leaf methods only
   
   // CRUD operations are now handled directly by ODataGrid
   // The context now focuses only on validation and maintaining state
@@ -125,14 +115,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   // CRITICAL: Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State and core functions
-    state: {
-      ...state,
-      token: userToken,
-      loading: tokenLoading,
-      error: tokenError
-    },
-    
-    // Token is available through useToken() directly
+    state,
     
     // Core validation and project functions
     validateProject,
@@ -148,9 +131,6 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     refreshNextNumber
   }), [
     state,
-    userToken,
-    tokenLoading,
-    tokenError,
     validateProject,
     generateProjectId,
     setProjectDefaults,

@@ -27,7 +27,7 @@ export function DocumentTypes(): React.ReactElement {
 const DocumentTypesContent = React.memo((): React.ReactElement => {
   // Use the document types context
   const {
-    state: { token, loading: tokenLoading, error: tokenError },
+    state: { loading, error },
     documentTypesLoading,
     documentTypesError,
     isLookupDataLoading
@@ -48,10 +48,10 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
   });
   
   // Determine if we're still loading - combine all loading states including project loading
-  const isLoading = isLookupDataLoading || documentTypesLoading || tokenLoading;
+  const isLoading = isLookupDataLoading || documentTypesLoading || loading;
   
   // Check for errors - account for both context and query errors
-  const hasError = tokenError !== null || documentTypesError !== null;
+  const hasError = error !== null || documentTypesError !== null;
   
   return (
     <div className="document-types-container">
@@ -69,19 +69,18 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
       {hasError && (
         <ErrorMessage
           title="Error Loading Document Types"
-          message={tokenError || (documentTypesError ? String(documentTypesError) : 'An unknown error occurred')}
+          message={error || (documentTypesError ? String(documentTypesError) : 'An unknown error occurred')}
         />
       )}
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Document Types</div>
-        {!isLoading && !hasError && token && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={DOCUMENT_TYPES_ENDPOINT}
             columns={documentTypeColumns}
             keyField="guid"
-            token={token} // Use token from useToken hook
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -90,12 +89,6 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
             customGridHeight={900}
-          />
-        )}
-        {!isLoading && !hasError && !token && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

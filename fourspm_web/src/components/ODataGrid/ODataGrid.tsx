@@ -14,7 +14,7 @@ import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
-import { setToken } from '../../utils/token-store';
+import { getToken } from '../../utils/token-store'; // Import getToken for direct token access
 
 export interface ODataGridColumn extends Partial<Column> {
   // Standard column properties
@@ -92,8 +92,7 @@ interface ODataGridProps {
   customGridHeight?: string | number;
   loading?: boolean; // Loading state prop
   storeOptions?: any; // Options passed to the ODataStore
-  token: string | null; // Authentication token for API requests
-  onTokenExpired?: () => Promise<string | null>; // Optional callback for token refresh when 401 occurs
+  // token and onTokenExpired props removed - using direct token access instead
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -122,19 +121,14 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   customGridHeight,
   loading = false, // Default to false if not provided
   storeOptions = {},
-  token, // Required token for API authentication API requests
-  onTokenExpired // Optional callback for token refresh
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
   
-  // Reference to current token for use in store operations
-  const currentTokenRef = useRef<string | null>(token);
+  // Get token directly from token-store when needed
+  const getCurrentToken = () => getToken();
   
-  // Update token ref when prop changes
-  useEffect(() => {
-    currentTokenRef.current = token;
-  }, [token]);
+  // No need to track token changes - getToken() will always return the latest
 
   let dataSourceInstance;
 
@@ -162,15 +156,11 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           options.headers = {};
         }
         
-        // Use the current token from ref
-        if (currentTokenRef.current) {
-          options.headers['Authorization'] = `Bearer ${currentTokenRef.current}`;
-          console.log('ODataGrid: Using token from ref');
-        } 
-        // Fall back to prop token if ref is not set
-        else if (token) {
+        // Get token directly from token-store
+        const token = getCurrentToken();
+        if (token) {
           options.headers['Authorization'] = `Bearer ${token}`;
-          console.log('ODataGrid: Using token from props');
+          console.log('ODataGrid: Using token from token-store');
         }
         
         // Add method-specific headers for write operations
@@ -289,41 +279,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   
     dataSourceInstance = new DataSource(dataSourceOptions);
     
-    // Add token refresh handler for 401 errors
-    if (onTokenExpired) {
-      dataSourceInstance.on('error', (e: any) => {
-        const xhr = e?.xhr;
-        if (xhr?.status === 401) {
-          console.log('ODataGrid: 401 Unauthorized error detected');
-          
-          // Call the token refresh callback
-          onTokenExpired().then((newToken) => {
-            if (newToken) {
-              console.log('ODataGrid: Token refreshed successfully');
-              
-              // Update token in the global token store
-              setToken(newToken);
-              
-              // Reload the data source to retry the operation
-              console.log('ODataGrid: Reloading data source with new token');
-              dataSourceInstance.reload();
-            } else {
-              console.log('ODataGrid: Token refresh failed, redirecting to login');
-              localStorage.removeItem('user');
-              window.location.href = '/login';
-            }
-          }).catch(err => {
-            console.error('ODataGrid: Error refreshing token:', err);
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-          });
-          
-          return true; // Prevent default error handling
-        }
-        
-        return false; // Allow default error handling for other errors
-      });
-    }
+    // Token refresh is now handled by MSAL and API interceptors
+    // No need for component-level token refresh logic
   } else {
     // Throw error if neither endpoint nor dataSource is provided
     throw new Error('Either endpoint or dataSource must be provided to ODataGrid');

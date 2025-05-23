@@ -1,6 +1,5 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useToken } from '../../contexts/token-context';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { areaColumns } from './area-columns';
 import { AREAS_ENDPOINT } from '@/config/api-endpoints';
@@ -39,9 +38,7 @@ function Areas(): React.ReactElement {
  * Internal component that uses the areas context
  */
 const AreasContent = React.memo((): React.ReactElement => {
-  // Get everything from context including token acquisition
-  
-  // Use the areas context - now including project data and token
+  // Use the areas context
   const {
     state,
     projectId,
@@ -52,9 +49,6 @@ const AreasContent = React.memo((): React.ReactElement => {
   // Define filter to only show areas for the current project
   const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];
 
-  // Get token and acquireToken from useToken hook at the top level
-  const { token, acquireToken } = useToken();
-  
   // Use the dedicated grid handlers hook
   const { 
     handleRowValidating,
@@ -63,16 +57,13 @@ const AreasContent = React.memo((): React.ReactElement => {
     handleRowRemoving,
     handleInitNewRow,
     handleGridInitialized
-  } = useAreaGridHandlers({
-    token: useToken().token
-  });
+  } = useAreaGridHandlers();
 
   // Use the combined loading state from context - prevents flickering
   const isLoading = state.loading;
   
   // Check for errors - account for context errors
   const hasError = !!state.error;
-  const hasToken = !!state.token;
   
   return (
     <div className="areas-container">
@@ -99,14 +90,12 @@ const AreasContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Areas` : 'Areas'}
         </div>
         
-        {!isLoading && !hasError && hasToken && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"
-            token={token} // Use token from the useToken hook declared at the top level
-            onTokenExpired={acquireToken} // Use acquireToken from the useToken hook declared at the top level
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -117,12 +106,6 @@ const AreasContent = React.memo((): React.ReactElement => {
             defaultSort={[{ selector: 'areaNumber', desc: false }]}
             customGridHeight={900}
             countColumn="guid"
-          />
-        )}
-        {!isLoading && !hasError && !hasToken && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

@@ -2,7 +2,7 @@ import 'devextreme/dist/css/dx.common.css';
 import './themes/generated/theme.base.css';
 import './themes/generated/theme.additional.css';
 import React from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { HashRouter as Router } from 'react-router-dom';
 import './dx-styles.scss';
 import LoadPanel from 'devextreme-react/load-panel';
 import { NavigationProvider } from './contexts/navigation';
@@ -14,7 +14,7 @@ import UnauthenticatedContent from './UnauthenticatedContent';
 import { useThemeContext, ThemeContext } from './theme/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { TokenProvider } from './contexts/token-context';
+// TokenProvider has been removed in favor of direct token access
 
 const AppContent: React.FC = () => {
   const { user, loading } = useMSALAuth(); // Use MSAL authentication
@@ -64,12 +64,9 @@ const RootApp = () => {
         <QueryClientProvider client={queryClient}>
           {/* MSAL-based authentication */}
           <MSALAuthProvider>
-            {/* Integrated token management and refresh provider */}
-            <TokenProvider bufferSeconds={300}>
               <NavigationProvider>
                 <AppContent />
               </NavigationProvider>
-            </TokenProvider>
           </MSALAuthProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>

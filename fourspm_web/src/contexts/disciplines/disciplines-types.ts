@@ -8,7 +8,6 @@ export interface DisciplinesState {
   loading: boolean;
   error: string | null;
   dataLoaded: boolean;
-  token: string | null;
 }
 
 /**
@@ -17,8 +16,7 @@ export interface DisciplinesState {
 export type DisciplinesAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_DATA_LOADED'; payload: boolean }
-  | { type: 'SET_TOKEN'; payload: string | null };
+  | { type: 'SET_DATA_LOADED'; payload: boolean };
 
 /**
  * Props for the disciplines context provider
@@ -37,8 +35,7 @@ export interface DisciplinesContextProps {
   setError: (error: string | null) => void;
   setDataLoaded: (loaded: boolean) => void;
   
-  // Token management 
-  acquireToken: () => Promise<string | null>;
+
   
   // Data
   disciplines: Discipline[];

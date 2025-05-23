@@ -4,7 +4,7 @@ import { useODataStore } from '../../stores/odataStores';
 import { CLIENTS_ENDPOINT } from '../../config/api-endpoints';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 // This helps us normalize field names between Client entities and other components
 type ClientWithAliases = Client & {
@@ -13,9 +13,10 @@ type ClientWithAliases = Client & {
 
 /**
  * Fetch clients data from the API
+ * @param token Optional token - can be string, null, or undefined
  * @returns Promise with array of clients
  */
-const fetchClients = async (token?: string): Promise<Client[]> => {
+const fetchClients = async (token?: string | null): Promise<Client[]> => {
   // Ensure we have a valid API request configuration
   const requestOptions = {
     method: 'GET'
@@ -50,9 +51,7 @@ export interface ClientDataProviderResult {
  * @returns Object containing the clients store, data array, loading state, and helper methods
  */
 export const useClientDataProvider = (): ClientDataProviderResult => {
-  // Get token from the TokenContext
-  const { token } = useToken();
-  
+  // Using Optimized Direct Access Pattern - token is retrieved directly in leaf methods
   // Create a store for OData operations - this is used when we need direct grid operations
   const clientsStore = useODataStore(CLIENTS_ENDPOINT, 'guid', {
     fieldTypes: {
@@ -61,19 +60,19 @@ export const useClientDataProvider = (): ClientDataProviderResult => {
     }
   });
   
-  // Use React Query to fetch and cache clients with token
+  // Use React Query to fetch and cache clients - token access is optimized
   const { 
     data: clientsData = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['clients', token], // Include token in query key to refetch when token changes
-    queryFn: () => fetchClients(token || undefined), // Create an anonymous function that calls fetchClients with the token
+    queryKey: ['clients'], // No token dependency in query key - using Optimized Direct Access Pattern
+    queryFn: () => fetchClients(getToken()), // Get token directly at the point of use
     select: (data: Client[]) => data,
     refetchOnWindowFocus: true, // Refetch data when the window regains focus
     staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
-    enabled: !!token // Only run query when token is available
+    enabled: true // Always enabled - token check is done inside fetchClients
   });
   
   // Use the transformed data from React Query

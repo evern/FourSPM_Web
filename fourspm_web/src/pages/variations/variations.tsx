@@ -8,7 +8,6 @@ import notify from 'devextreme/ui/notify';
 import { useMSALAuth } from '../../contexts/msal-auth';
 // Removed useProjectInfo import as we now get project from context
 import { VariationsProvider, useVariations } from '@/contexts/variations/variations-context';
-import { useToken } from '@/contexts/token-context';
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';
 import ScrollToTop from '../../components/scroll-to-top';
 import './variations.scss';
@@ -41,17 +40,12 @@ function Variations(): React.ReactElement {
 const VariationsContent = (): React.ReactElement => {
   const { projectId } = useParams<VariationParams>();
   
-  // Get data from our combined context - now including token and token acquisition
-  
-  // Get data from our combined context - now including project data, token and token acquisition
+  // Get data from our combined context - now including project data
   const { 
-    state: { token, loading, error, editorError }, 
+    state: { loading, error, editorError }, 
     project, 
     isLookupDataLoading
   } = useVariations();
-  
-  // Get token and acquireToken directly from useToken
-  const { token: tokenFromHook, acquireToken } = useToken();
 
   // Use our custom grid handlers
   const {
@@ -66,8 +60,7 @@ const VariationsContent = (): React.ReactElement => {
     handleApproveVariation,
     handleRejectVariation
   } = useVariationGridHandlers({
-    projectId,
-    acquireToken: acquireToken // Pass acquireToken from useToken
+    projectId
   });
   
   // Create variation columns configuration with handlers
@@ -132,14 +125,11 @@ const VariationsContent = (): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
         </div>
         
-        {token && (
-          <ODataGrid
-            title=" "
-            endpoint={VARIATIONS_ENDPOINT}
-            columns={variationColumns(variationColumnsConfig)}
-            keyField="guid"
-          token={tokenFromHook || token} // Use token from useToken, fall back to context token if needed
-          onTokenExpired={acquireToken} // Use acquireToken from useToken
+        <ODataGrid
+          title=" "
+          endpoint={VARIATIONS_ENDPOINT}
+          columns={variationColumns(variationColumnsConfig)}
+          keyField="guid"
           onRowValidating={handleRowValidating}
           onRowInserting={handleRowInserting}
           onRowRemoving={handleRowRemoving}
@@ -154,14 +144,7 @@ const VariationsContent = (): React.ReactElement => {
           customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
-          />
-        )}
-        {!token && (
-          <div className="auth-error-message">
-            <h3>Authentication Error</h3>
-            <p>Unable to acquire authentication token. Please try refreshing the page.</p>
-          </div>
-        )}
+        />
       </div>
       
       <ScrollToTop />

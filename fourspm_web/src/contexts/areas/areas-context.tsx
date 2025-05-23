@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useAuth } from '../../contexts/auth';
-import { useToken } from '../../contexts/token-context';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
 // Project details are now fetched using useProjectInfo hook
@@ -23,17 +22,6 @@ const AreasContext = createContext<AreasContextProps | undefined>(undefined);
  * hybrid architecture pattern where the grid connects directly to endpoints.
  */
 export function AreasProvider({ children, projectId }: AreasProviderProps): React.ReactElement {
-  // Get authentication
-  const { user } = useAuth();
-  
-  // Use the improved token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-  
   // Access React Query client for cache invalidation
   const queryClient = useQueryClient();
   
@@ -48,7 +36,6 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     field: 'number',
     padLength: 2,
     startFrom: '01'
-    // No filter parameter since it's already in the endpoint
   });
   
   useEffect(() => {
@@ -80,37 +67,12 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     dispatch({ type: 'SET_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management - using token context
-  const setToken = useCallback((tokenValue: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
-  }, []);
-
-  // Method to acquire a token - wrapper around the hook's method
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
-  
-  // Update token in state when it changes from the hook
-  useEffect(() => {
-    if (isMountedRef.current) {
-      setToken(token);
-    }
-  }, [token, setToken]);
-  
-  // Handle token errors
-  useEffect(() => {
-    if (isMountedRef.current && tokenError) {
-      setError(tokenError);
-    }
-  }, [tokenError, setError]);
-  
   // Handle auto-refresh of lookups on cache invalidation
   useEffect(() => {
-    if (isMountedRef.current && projectId && token) {
+    if (isMountedRef.current && projectId) {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
-  }, [queryClient, projectId, token]);
+  }, [queryClient, projectId]);
 
   // Wrapper for refreshNextAreaNumber to ensure component is mounted
   const refreshNextNumber = useCallback(() => {
@@ -119,12 +81,12 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     }
   }, [refreshNextAreaNumber]);
   
-  // Set loading state based on token acquisition status
+  // Set initial loading state
   useEffect(() => {
     if (isMountedRef.current) {
-      setLoading(tokenLoading);
+      setLoading(false);
     }
-  }, [tokenLoading, setLoading]);
+  }, [setLoading]);
   
   // Set data loaded to true by default since the ODataGrid manages loading state
   useEffect(() => {
@@ -173,8 +135,6 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setError,
     setDataLoaded,
     
-    // Token management now handled by useToken() directly
-    
     // Project data
     projectId,
     project: project || undefined, // Convert null to undefined to match interface
@@ -193,7 +153,6 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     setLoading,
     setError,
     setDataLoaded,
-    // Token management now handled by useToken() directly
     projectId,
     project,
     isLookupDataLoading,

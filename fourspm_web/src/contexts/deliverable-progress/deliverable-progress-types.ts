@@ -4,7 +4,6 @@ import { Project } from '../../types/odata-types';
 export interface DeliverableProgressState {
   loading: boolean;
   error: string | null;
-  token: string | null;
 }
 
 /**
@@ -19,8 +18,7 @@ export interface ValidationResult {
 // Types for the deliverable progress actions
 export type DeliverableProgressAction = 
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_TOKEN'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null };
 
 // Type for the deliverable progress context
 export interface DeliverableProgressContextType {

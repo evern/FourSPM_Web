@@ -28,7 +28,6 @@ export interface DeliverableGridHandlers {
 
 interface UseDeliverableGridHandlersProps {
   projectGuid?: string;
-  userToken?: string;
   project?: any;
 }
 
@@ -38,7 +37,6 @@ interface UseDeliverableGridHandlersProps {
  */
 export const useDeliverableGridHandlers = ({
   projectGuid,
-  userToken,
   project
 }: UseDeliverableGridHandlersProps) => {
   // Track the DataGrid instance for operations

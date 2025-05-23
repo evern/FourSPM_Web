@@ -21,7 +21,7 @@ import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 
 // Import context
 import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store'; // Import token-store for direct token access
 
 // URL params interface
 interface DeliverableProgressParams {
@@ -80,8 +80,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
     // acquireToken removed from context
   } = useDeliverableProgress();
   
-  // Get token and acquireToken directly from useToken
-  const { token, acquireToken } = useToken();
+  // Grid configuration
   
   // Get grid handlers directly from the hook
   const {
@@ -91,7 +90,6 @@ const DeliverableProgressContent = (): React.ReactElement => {
     handleGridInitialized
   } = useDeliverableProgressGridHandlers({
     projectGuid: projectId || '',
-    userToken: state.token || undefined, // Convert null to undefined to match expected type
     getSelectedPeriod: () => selectedPeriod || 0,
     progressDate: progressDate || new Date()
     // Note: deliverableGates is now obtained directly from context in the hook
@@ -245,31 +243,22 @@ const DeliverableProgressContent = (): React.ReactElement => {
             </div>
           </div>
         
-          {state.token ? (
-            <ODataGrid
-              title=""
-              endpoint={endpoint}
-              columns={columns}
-              keyField="guid"
-              token={token}
-              onTokenExpired={acquireToken}
-              onRowUpdating={handleRowUpdating}
-              onRowValidating={handleRowValidating}
-              onInitialized={onGridInitialized}
-              onEditorPreparing={handleEditorPreparing}
-              allowAdding={false}
-              allowDeleting={false}
-              showRecordCount={true}
-              countColumn="guid"
-              customGridHeight={isMobile ? 500 : 800}
-              defaultSort={[{ selector: 'created', desc: false }]}
-            />
-          ) : (
-            <div className="error-message">
-              <h3>Authentication Error</h3>
-              <p>Unable to acquire authentication token. Please try refreshing the page.</p>
-            </div>
-          )}
+          <ODataGrid
+            title=""
+            endpoint={endpoint}
+            columns={columns}
+            keyField="guid"
+            onRowUpdating={handleRowUpdating}
+            onRowValidating={handleRowValidating}
+            onInitialized={onGridInitialized}
+            onEditorPreparing={handleEditorPreparing}
+            allowAdding={false}
+            allowDeleting={false}
+            showRecordCount={true}
+            countColumn="guid"
+            customGridHeight={isMobile ? 500 : 800}
+            defaultSort={[{ selector: 'created', desc: false }]}
+          />
         </ScrollView>
       )}
     </div>

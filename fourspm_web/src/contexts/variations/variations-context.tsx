@@ -4,13 +4,14 @@ import { variationsReducer, initialVariationsState } from './variations-reducer'
 import { Variation } from '../../types/odata-types';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { useAuth } from '../auth';
-import { useToken } from '../../contexts/token-context';
 import { approveVariation, rejectVariation } from '../../adapters/variation.adapter';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useParams } from 'react-router-dom';
 import { useEntityValidator } from '../../hooks/utils/useEntityValidator';
+import { getToken } from '../../utils/token-store';
+import { useVariationInfo } from '../../hooks/utils/useVariationInfo';
 
 /**
  * Default validation rules for variations
@@ -47,16 +48,6 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   const [state, dispatch] = useReducer(variationsReducer, initialVariationsState);
   const { user } = useAuth();
   
-  // Use the improved token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-
-  // Get the current token for API calls
-  const userToken = token;
 
   // Set up the entity validator with variation-specific rules
   const {
@@ -94,37 +85,14 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
 
-  // Token management using token context
-  const setToken = useCallback((tokenValue: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: tokenValue });
-  }, []);
-  
-  // Method to acquire a token - wrapper around the hook's method
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
-  
-  // Update token in state when it changes from the hook
-  useEffect(() => {
-    if (isMountedRef.current) {
-      setToken(token);
-    }
-  }, [token, setToken]);
-  
-  // Handle token errors
-  useEffect(() => {
-    if (isMountedRef.current && tokenError) {
-      setError(tokenError);
-    }
-  }, [tokenError, setError]);
+  // No token management needed - direct access at leaf methods only
   
   // Handle auto-refresh of lookups on cache invalidation
   useEffect(() => {
-    if (isMountedRef.current && projectId && token) {
+    if (isMountedRef.current && projectId) {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     }
-  }, [queryClient, projectId, token]);
+  }, [queryClient, projectId]);
   
   // Validation for variations
   // This implementation needs to be compatible with the VariationsContextType interface
@@ -245,10 +213,6 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   
   // Change variation status (approve/reject)
   const changeVariationStatus = useCallback(async ({ variationId, approve, projectGuid, skipStateUpdate = false }: { variationId: string; approve: boolean; projectGuid: string; skipStateUpdate?: boolean }) => {
-    if (!token || !isMountedRef.current) {
-      throw new Error('Unable to change variation status - user is not authenticated');
-    }
-    
     try {
       // Dispatch a status change start action only if not skipping state updates
       if (!skipStateUpdate) {
@@ -259,15 +223,16 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
       
       // Call the appropriate adapter method based on approve flag
-      // Explicit token passing instead of relying on MSAL internally
-      if (!userToken) {
+      // Token accessed directly at the leaf method
+      const token = getToken();
+      if (!token) {
         throw new Error('Authentication token is required for API requests');
       }
       
       if (approve) {
-        await approveVariation(variationId, userToken);
+        await approveVariation(variationId, token);
       } else {
-        await rejectVariation(variationId, userToken);
+        await rejectVariation(variationId, token);
       }
       
       // Dispatch success action if still mounted and not skipping state updates
@@ -296,7 +261,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
       }
       throw error;
     }
-  }, [token, invalidateAllLookups]);
+  }, [invalidateAllLookups]);
 
   // Use the useProjectInfo hook to fetch project details - no need for client expansion
   const {
@@ -311,16 +276,11 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
   // Create context value with all functions and state
   const contextValue = useMemo(() => ({
     // State management
-    state: {
-      ...state,
-      token: token, // Use token directly from the hook
-      loading: tokenLoading || state.loading,
-      error: tokenError || state.error
-    },
+    state,
     setLoading,
     setError,
     
-    // Token management now handled by useToken() directly
+    // Token accessed directly at leaf methods only
     
     // Validation methods
     validateVariation,

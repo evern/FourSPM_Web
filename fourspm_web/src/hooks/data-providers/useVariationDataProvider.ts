@@ -3,26 +3,29 @@ import { useODataStore } from '../../stores/odataStores';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { Variation } from '../../types/odata-types';
 import { baseApiService } from '../../api/base-api.service';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 /**
  * Fetch variations data from the API
- * @param token Authentication token
+ * @param token Optional token - can be string, null, or undefined
  * @param projectId Optional project ID to filter variations by
  * @returns Promise with array of variations
  */
-const fetchVariations = async (token?: string, projectId?: string): Promise<Variation[]> => {
+const fetchVariations = async (token?: string | null, projectId?: string): Promise<Variation[]> => {
+  // Using Optimized Direct Access Pattern - get token directly if not provided
+  const authToken = token || getToken();
+  
+  // Validate token at the point of use
+  if (!authToken) {
+    console.error('fetchVariations: No token available');
+    throw new Error('Authentication token is required');
+  }
+  
   // Ensure we have a valid API request configuration
   const requestOptions = {
-    method: 'GET'
+    method: 'GET',
+    token: authToken
   } as any;
-  
-  // Add token if available
-  if (token) {
-    requestOptions.token = token;
-  } else {
-    console.warn('fetchVariations: No token provided, request may fail');
-  }
   
   const filter = projectId ? `$filter=projectGuid eq ${projectId}` : '';
   const url = `${VARIATIONS_ENDPOINT}?${filter}`;
@@ -52,28 +55,27 @@ export interface VariationDataProviderResult {
  * @returns Object containing the variations store, data array, loading state, and helper methods
  */
 export const useVariationDataProvider = (projectId?: string): VariationDataProviderResult => {
-  // Get token from TokenContext
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
   
-  // Create a store for OData operations with proper field types and token
+  // Create a store for OData operations with proper field types
   const variationsStore = useODataStore(VARIATIONS_ENDPOINT, 'guid', {
     fieldTypes: {
       guid: 'Guid',
       projectGuid: 'Guid'  // This ensures proper serialization of GUID values in filters
-    },
-    token // Pass token to ODataStore
+    }
+    // No token needed here, the store will get it directly when needed
   });
 
-  // Use React Query to fetch and cache variations
+  // Use React Query to fetch and cache variations - optimized token access
   const { 
     data: variations = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['variations', projectId, token], // Include token in query key to refetch when token changes
-    queryFn: () => fetchVariations(token || undefined, projectId), // Pass token to fetch function
-    enabled: !!token && !!projectId // Only run query if both token and projectId are provided
+    queryKey: ['variations', projectId], // No token dependency - using Optimized Direct Access Pattern
+    queryFn: () => fetchVariations(getToken(), projectId), // Get token directly at the point of use
+    enabled: !!projectId // Only need to check projectId - token check is done in fetchVariations
   });
   
   const error = queryError as Error | null;

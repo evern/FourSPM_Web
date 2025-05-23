@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
-import { useToken } from '../../contexts/token-context';
+import { useMemo } from 'react';
+import { getToken } from '../../utils/token-store';
 import { useAreaDataProvider } from '../data-providers/useAreaDataProvider';
 import { useDisciplineDataProvider } from '../data-providers/useDisciplineDataProvider';
 import { useDocumentTypeDataProvider } from '../data-providers/useDocumentTypeDataProvider';
@@ -10,34 +10,17 @@ import { useDocumentTypeDataProvider } from '../data-providers/useDocumentTypeDa
  * @param projectId The project ID to fetch data for
  */
 export const useProjectData = (projectId?: string) => {
-  const [tokenReady, setTokenReady] = useState(false);
-  
-  // Use the token context
-  const { token, loading: tokenLoading } = useToken();
-  
-  // Check if token is available and update readiness
-  useEffect(() => {
-    if (token) {
-      // We have a token, enable queries
-      console.log('useProjectData: Token available from context');
-      setTokenReady(true);
-    } else {
-      // No token available yet
-      console.log('useProjectData: No token available from context');
-      setTokenReady(false);
-    }
-  }, [token]);
-  
-  // We need to pass projectId only if token is ready and we're authorized
-  const effectiveProjectId = tokenReady ? projectId : undefined;
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
+  // No token state management needed here as data providers will get tokens directly
 
-  // Use the individual data providers
+
+  // Use the individual data providers - passing projectId directly
   const { 
     areas, 
     isLoading: areasLoading, 
     error: areasError,
     refetch: refetchAreas 
-  } = useAreaDataProvider(effectiveProjectId);
+  } = useAreaDataProvider(projectId);
 
   const { 
     disciplines, 
@@ -53,8 +36,8 @@ export const useProjectData = (projectId?: string) => {
     refetch: refetchDocumentTypes 
   } = useDocumentTypeDataProvider();
 
-  // Combine loading and error states
-  const isLoading = tokenLoading || areasLoading || disciplinesLoading || documentTypesLoading;
+  // Combine loading and error states from data providers
+  const isLoading = areasLoading || disciplinesLoading || documentTypesLoading;
   
   // Return the first error encountered, if any
   const error = areasError || disciplinesError || documentTypesError;
@@ -83,11 +66,8 @@ export const useProjectData = (projectId?: string) => {
 
   // Function to refetch all data
   const refetchAll = async () => {
-    // Check if we have a valid token before attempting to refetch
-    if (!token) {
-      console.warn('useProjectData: No token available during refetchAll');
-      return Promise.reject(new Error('No authentication token available'));
-    }
+    // Using Optimized Direct Access Pattern - token check is done in each data provider
+    // No need to check token here as each refetch function will handle that internally
     
     // Refetch all data sources in parallel
     return Promise.all([

@@ -9,7 +9,7 @@ import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { useVariationInfo } from '../../hooks/utils/useVariationInfo';
 import { useAuth } from '../auth';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 import { useDeliverables, DEFAULT_DELIVERABLE_VALIDATION_RULES } from '../deliverables/deliverables-context';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { 
@@ -61,16 +61,7 @@ export function VariationDeliverablesProvider({
   // Track component mount state to prevent state updates after unmounting
   const isMountedRef = useRef(true);
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-  
-  // Get the current token for API calls
-  const userToken = token;
+  // No token state - tokens will be accessed directly at leaf methods when needed
   
   // Set up mounted ref
   useEffect(() => {
@@ -101,14 +92,7 @@ export function VariationDeliverablesProvider({
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
   
-  // Token management is handled directly through useToken()
-  
-  // Acquire token on first load
-  useEffect(() => {
-    if (isMountedRef.current && !token) {
-      acquireTokenFromHook();
-    }
-  }, []);
+  // No token management needed - direct access at leaf methods only
   
   // Step 1: Load variation using the existing hook
   const {
@@ -121,7 +105,8 @@ export function VariationDeliverablesProvider({
   // Determine which project ID to use (from variation or props)
   const projectGuid = variationProjectGuid || projectGuidProp;
   
-  // Step 2: Load project using the existing hook
+  // Step 2: Load project using the existing hook - always call the hook but we'll only use its data when projectGuid is available
+  // This prevents the React Hook rule violation
   const {
     project,
     isLoading: projectLoading,
@@ -270,10 +255,20 @@ export function VariationDeliverablesProvider({
       });
       throw error;
     }
-  }, [variationId, token, processError, queryClient]);
+  }, [variationId, processError, queryClient]);
 
   // 3. Add new deliverable to variation
-  const addNewToVariation = useCallback(async (deliverable: Partial<Deliverable>): Promise<Deliverable> => {
+  /**
+   * Add a new deliverable to the variation
+   * 
+   * @param deliverable - The deliverable data to add
+   * @param skipStateUpdate - If true, prevents context state updates to avoid UI flickering
+   *                          Used by grid handlers to allow direct API interaction without
+   *                          triggering context re-renders, which helps prevent UI flickering
+   *                          while maintaining data consistency with React Query
+   * @returns Promise<Deliverable> - The created deliverable
+   */
+  const addNewToVariation = useCallback(async (deliverable: Partial<Deliverable>, skipStateUpdate = false): Promise<Deliverable> => {
     // No need to check for token here as our token management system
     // handles token acquisition and state management
     
@@ -294,7 +289,10 @@ export function VariationDeliverablesProvider({
     }
     
     try {
-      dispatch({ type: 'ADD_DELIVERABLE_START', payload: deliverable });
+      // Only update state if we're not skipping state updates
+      if (!skipStateUpdate) {
+        dispatch({ type: 'ADD_DELIVERABLE_START', payload: deliverable });
+      }
       
       // If the deliverable doesn't have a document number, try to generate one
       let updatedDeliverable = { ...deliverable };
@@ -329,13 +327,13 @@ export function VariationDeliverablesProvider({
         uiStatus: 'Add' as VariationDeliverableUiStatus
       };
       
-      // Ensure token is available before making API call
-      if (!userToken) {
-        throw new Error('Authentication token is required for API requests');
-      }
+      // Token is now managed directly in the adapter
+      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable);
       
-      const result = await addNewDeliverableToVariation(updatedDeliverable as Deliverable, userToken);
-      dispatch({ type: 'ADD_DELIVERABLE_SUCCESS', payload: result });
+      // Only update state if we're not skipping state updates
+      if (!skipStateUpdate) {
+        dispatch({ type: 'ADD_DELIVERABLE_SUCCESS', payload: result });
+      }
       
       // Invalidate any relevant queries
       queryClient.invalidateQueries({ queryKey: ['variation-deliverables', variationId] });
@@ -404,7 +402,7 @@ export function VariationDeliverablesProvider({
       }
       throw error;
     }
-  }, [variationId, token, processError, queryClient]);
+  }, [variationId, processError, queryClient]);
   
   // Removed redundant cancelVariationDeliverable function - using cancelDeliverable directly
   
@@ -470,25 +468,22 @@ export function VariationDeliverablesProvider({
       // - Let the grid handle its own refresh cycle
       // This prevents the simultaneous context update and grid refresh
       // that causes flickering in the UI
-      if (skipStateUpdate && token) {
+      if (skipStateUpdate) {
         // Direct API call to prevent state updates but still create the entity
         const preparedDeliverable = {
           ...deliverableToAdd,
           guid: deliverableToAdd.guid || uuidv4(),
           variationGuid: variationId
         };
-        // Ensure token is available before making API call
-        if (!userToken) {
-          throw new Error('Authentication token is required for API requests');
-        }
         
-        await addNewDeliverableToVariation(preparedDeliverable as Deliverable, userToken);
+        // Add new deliverable - token accessed directly in leaf method by the adapter
+        await addNewToVariation(preparedDeliverable,  skipStateUpdate);
         
         // Still invalidate queries to maintain data consistency
         queryClient.invalidateQueries({ queryKey: ['variation-deliverables', variationId] });
       } else {
         // Use the normal method which updates state
-        await addNewToVariation(deliverableToAdd);
+        await addNewToVariation(deliverableToAdd, skipStateUpdate);
       }
       
       return true;
@@ -622,13 +617,8 @@ export function VariationDeliverablesProvider({
   
   // Create context value with all functions and state
   const contextValue = useMemo(() => ({
-    // State with token from the hook
-    state: {
-      ...stableState,
-      token: userToken,
-      loading: tokenLoading || stableState.loading,
-      error: tokenError || stableState.error
-    },
+    // State - no token needed as it will be accessed directly at leaf methods
+    state: stableState,
     
     // State management functions
     setLoading,
@@ -666,9 +656,6 @@ export function VariationDeliverablesProvider({
   }), [
     // State and state setters
     stableState,
-    userToken,
-    tokenLoading,
-    tokenError,
     setLoading,
     setError,
     setLookupDataLoaded,

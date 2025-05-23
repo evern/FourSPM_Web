@@ -4,7 +4,7 @@ import { DISCIPLINES_ENDPOINT } from '../../config/api-endpoints';
 import { Discipline } from '../../types/odata-types';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 /**
  * Fetch disciplines data from the API
@@ -40,24 +40,23 @@ export interface DisciplineDataProviderResult {
  * @returns Object containing the disciplines store, data array, and loading state
  */
 export const useDisciplineDataProvider = (shouldLoad: boolean | undefined = true): DisciplineDataProviderResult => {
-  // Get token from TokenContext
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
   
-  // Create a global store for direct OData operations with token
+  // Create a global store for direct OData operations - token access is direct
   const disciplinesStore = useODataStore(DISCIPLINES_ENDPOINT, 'guid', {
-    token // Pass token to ODataStore
+    // No token needed here as the store will get it directly when needed
   });
 
-  // Use React Query to fetch and cache disciplines
+  // Use React Query to fetch and cache disciplines - token access is optimized
   const { 
     data: disciplines = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['disciplines', token], // Include token in query key to refetch when token changes
-    queryFn: () => fetchDisciplines(token), // Pass token to fetch function
-    enabled: !!token && shouldLoad // Only fetch if token is available and shouldLoad is true
+    queryKey: ['disciplines'], // No token dependency in query key - using Optimized Direct Access Pattern
+    queryFn: () => fetchDisciplines(getToken()), // Get token directly at the point of use
+    enabled: shouldLoad // Always enabled if shouldLoad is true - token check is done inside fetchDisciplines
   });
   
   const error = queryError as Error | null;

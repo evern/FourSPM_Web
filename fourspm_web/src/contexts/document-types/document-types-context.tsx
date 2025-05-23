@@ -6,7 +6,6 @@ import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interface
 import { v4 as uuidv4 } from 'uuid';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { DOCUMENT_TYPES_ENDPOINT } from '../../config/api-endpoints';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 import { getToken } from '../../utils/token-store';
 
@@ -63,29 +62,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   // Get user from auth context
   const { user } = useAuth();
   
-  // Get token directly from token-store
-  const [token, setTokenState] = React.useState<string | null>(getToken());
-  const [tokenLoading, setTokenLoading] = React.useState<boolean>(false);
-  const [tokenError, setTokenError] = React.useState<string | null>(null);
-  
-  // Get the current token for API calls
-  const userToken = token;
-  
-  // Token management function for updating state
-  const setToken = useCallback((newToken: string | null) => {
-    if (isMountedRef.current) {
-      dispatch({ type: 'SET_TOKEN', payload: newToken });
-      setTokenState(newToken);
-    }
-  }, []);
-  
-  // Initialize token directly from token-store
-  useEffect(() => {
-    if (isMountedRef.current) {
-      const storedToken = getToken();
-      setToken(storedToken);
-    }
-  }, [setToken]);
+  // Token management removed - using direct access pattern with getToken()
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -100,21 +77,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
     };
   }, []);
   
-  // Token loading is now handled directly in the effect above
-  
-  // Sync loading state to the context
-  useEffect(() => {
-    if (isMountedRef.current) {
-      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
-    }
-  }, [tokenLoading]);
-  
-  // Sync error state to the context
-  useEffect(() => {
-    if (isMountedRef.current && tokenError) {
-      dispatch({ type: 'SET_ERROR', payload: tokenError });
-    }
-  }, [tokenError]);
+  // Token management effects removed - using direct access pattern with getToken()
   
   // Get React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -131,7 +94,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
     error: projectError
   } = useProjectInfo(projectId, { expandClient: false });
   
-  // Combine loading states for lookup data - used to prevent flickering
+  // Loading state for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading;
   
   // Function to invalidate all lookup data caches when document types data changes
@@ -153,7 +116,6 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
   const contextValue = useMemo(
     () => ({
       state,
-      // Token management is done via token-store directly
       // Other functions
       invalidateAllLookups,
       documentTypesLoading,

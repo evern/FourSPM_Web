@@ -3,7 +3,7 @@ import { Project } from '../../types/odata-types';
 import { fetchProject } from '../../adapters/project.adapter';
 import { calculateCurrentPeriod } from '../../utils/period-utils';
 import { createDataFetchingHook, DataFetchingResult } from '../factories/createDataFetchingHook';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 /**
  * Interface for project info hook result
@@ -29,8 +29,7 @@ export const useProjectInfo = (
 ): ProjectInfoResult => {
   // Set default options
   const { expandClient = true } = options;
-  // Get token from the token acquisition hook
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods only
   
   // State for project data
   const [project, setProject] = useState<Project | null>(null);
@@ -50,6 +49,8 @@ export const useProjectInfo = (
         return;
       }
       
+      // Get token directly at the point of use (Optimized Direct Access Pattern)
+      const token = getToken();
       if (!token) {
         if (isMounted) {
           setError(new Error('Authentication token is required for API requests'));
@@ -88,7 +89,7 @@ export const useProjectInfo = (
     return () => {
       isMounted = false;
     };
-  }, [projectId, token]);
+  }, [projectId]); // Direct token access - no token dependency needed
   
   return {
     project,

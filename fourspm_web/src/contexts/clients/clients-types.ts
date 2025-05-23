@@ -11,14 +11,12 @@ export interface Client {
 export interface ClientsState {
   loading: boolean;
   error: string | null;
-  token: string | null;
 }
 
 export interface ClientsContextProps {
   state: ClientsState;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  // Token management now handled by useToken() directly
   invalidateAllLookups: () => void;
   validationRules: ValidationRule[];
   getDefaultValues: () => Partial<Client>;

@@ -2,6 +2,7 @@ import { NavigationItem } from '../app-navigation';
 import { Project, projectStatuses, ProjectNavigationItem } from '../types/index';
 import { apiService } from '../api/api.service';
 import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
+import { getToken } from '../utils/token-store';
 
 /**
  * Project data adapter - provides methods for fetching and manipulating project data
@@ -10,15 +11,22 @@ import { PROJECTS_ENDPOINT } from '../config/api-endpoints';
 /**
  * Fetch project information from the API
  * @param projectId The project GUID to fetch information for
- * @param token The user's authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @param expandClient Whether to expand client data (default: true)
  * @returns A promise resolving to the project information
  */
-export const fetchProject = async (projectId: string, token: string, expandClient: boolean = true): Promise<Project> => {
+export const fetchProject = async (projectId: string, token?: string, expandClient: boolean = true): Promise<Project> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
     // Fetch project with expanded client information if requested
     const expand = expandClient ? 'Client' : undefined;
-    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, token, expand);
+    
+    if (!authToken) {
+      throw new Error('Authentication token is required for API requests');
+    }
+    
+    const project = await apiService.getById<Project>(PROJECTS_ENDPOINT, projectId, authToken, expand);
     
     // Only transform date fields if needed
     if (project.progressStart) {
@@ -34,17 +42,19 @@ export const fetchProject = async (projectId: string, token: string, expandClien
 
 /**
  * Gets project navigation items for the application menu
- * @param token Authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns Array of navigation items for projects
  */
-export const getProjectNavigation = async (token: string): Promise<NavigationItem[]> => {
+export const getProjectNavigation = async (token?: string): Promise<NavigationItem[]> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
     // Validate token
-    if (!token) {
+    if (!authToken) {
       throw new Error('Authentication token is required for API requests');
     }
     
-    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, token);
+    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, authToken);
     const projects: ProjectNavigationItem[] = response.value || [];
     
     // Create status-based navigation structure
@@ -105,14 +115,20 @@ export const getProjectNavigation = async (token: string): Promise<NavigationIte
  * Updates a project's details
  * @param projectId Project GUID
  * @param data Partial project data to update
- * @param token Authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns Updated project details
  */
 export const updateProject = async (
   projectId: string, 
   data: Partial<Project>,
-  token: string
+  token?: string
 ): Promise<Project> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication token is required for API requests');
+  }
   try {
     // Format data for API
     const apiData = {
@@ -126,12 +142,12 @@ export const updateProject = async (
       PROJECTS_ENDPOINT,
       projectId,
       apiData,
-      token,  // Pass token to apiService
+      authToken,  // Pass token to apiService (Optimized Direct Access Pattern)
       false   // Do not return representation
     );
     
-    // Fetch updated project details
-    return fetchProject(projectId, token);
+    // Fetch updated project details - pass the same token through
+    return fetchProject(projectId, authToken);
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;

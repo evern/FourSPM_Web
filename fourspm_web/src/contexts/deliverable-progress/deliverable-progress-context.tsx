@@ -6,8 +6,7 @@ import { deliverableProgressReducer } from './deliverable-progress-reducer';
 import { handleProgressUpdate } from '../../adapters/progress.adapter';
 import { updateDeliverableGate } from '../../adapters/deliverable.adapter';
 import { compareGuids } from '../../utils/guid-utils';
-import { useToken } from '../../contexts/token-context';
-import { useQuery } from '@tanstack/react-query';
+import { getToken } from '../../utils/token-store';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
 
 // Project details are now fetched using useProjectInfo hook
@@ -32,22 +31,8 @@ export function DeliverableProgressProvider({
   // Initialize state with reducer - without period management which is now handled by usePeriodManager
   const [state, dispatch] = useReducer(deliverableProgressReducer, {
     loading: false,
-    error: null,
-    token: null
+    error: null
   });
-  
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading, 
-    error: tokenError, 
-    acquireToken 
-  } = useToken();
-  
-  // Token management is now handled directly through useToken()
-  
-  // Get the current token for API calls
-  const userToken = token;
   
   // Track component mounted state to prevent updates after unmounting
   const isMountedRef = useRef(true);
@@ -192,21 +177,20 @@ export function DeliverableProgressProvider({
     newData: any,
     oldData: any
   ): Promise<void> => {
-    // First, check if gate update is needed
+    // If the deliverable gate is changed in the row update
     if (newData.deliverableGateGuid !== undefined && 
         oldData.deliverableGateGuid !== newData.deliverableGateGuid) {
-      // Update the deliverable gate in the backend with explicit token passing
-      if (!userToken) {
+      const token = getToken();
+      if (!token) {
         throw new Error('Authentication token is required for API requests');
       }
-      await updateDeliverableGate(key, newData.deliverableGateGuid, userToken);
+      await updateDeliverableGate(key, newData.deliverableGateGuid, token);
     }
     
     // Next, check if progress update is needed
     if (newData.cumulativeEarntPercentage !== undefined) {
-      // Call the progress service to update the backend
-      // Check for token validity
-      if (!userToken) {
+      const token = getToken();
+      if (!token) {
         throw new Error('Authentication token is required for API requests');
       }
       
@@ -216,12 +200,12 @@ export function DeliverableProgressProvider({
           cumulativeEarntPercentage: newData.cumulativeEarntPercentage,
           totalHours: newData.totalHours || 0
         },
-        selectedPeriod || 0, // Use the current period from context
-        userToken, // Pass token before oldData (required parameter first)
-        oldData    // Optional parameter last
+        selectedPeriod || 0,
+        token,
+        oldData
       );
     }
-  }, [selectedPeriod, userToken]);
+  }, [selectedPeriod]);
 
   // Use the useProjectInfo hook to fetch project details - no need for client expansion
   const {
@@ -238,11 +222,10 @@ export function DeliverableProgressProvider({
   const contextValue = useMemo<DeliverableProgressContextType>(() => ({
     state: {
       ...state,
-      loading: state.loading || isLookupDataLoading || tokenLoading,
-      error: state.error || tokenError || null,
-      token: token || state.token, // Prefer token from hook if available
+      loading: state.loading || isLookupDataLoading,
+      error: state.error || null
     },
-    // Token is available through useToken() directly
+
     setSelectedPeriod: periodManager.setSelectedPeriod,
     incrementPeriod: periodManager.incrementPeriod,
     decrementPeriod: periodManager.decrementPeriod,
@@ -250,16 +233,15 @@ export function DeliverableProgressProvider({
     progressDate: periodManager.progressDate,
     projectId,
     project: project || undefined, // Convert null to undefined to match interface
-    isLookupDataLoading: isLookupDataLoading || tokenLoading,
+    isLookupDataLoading,
     deliverableGates,
     isGatesLoading,
-    gatesError: gatesError || tokenError || null,
+    gatesError: gatesError || null,
     validateGatePercentage,
     validateProgress,
     processProgressUpdate, // Using the processProgressUpdate function defined above
   }), [
     state,
-    // Token now handled by useToken() directly
     periodManager.setSelectedPeriod,
     periodManager.incrementPeriod,
     periodManager.decrementPeriod,
@@ -273,10 +255,7 @@ export function DeliverableProgressProvider({
     gatesError,
     validateGatePercentage,
     validateProgress,
-    processProgressUpdate,
-    token,
-    tokenLoading,
-    tokenError,
+    processProgressUpdate
   ]);
 
   return (

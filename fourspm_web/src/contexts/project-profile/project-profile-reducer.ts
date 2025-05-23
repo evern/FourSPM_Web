@@ -7,8 +7,7 @@ export const initialProjectProfileState: ProjectProfileState = {
   isSaving: false,
   isEditing: false,
   error: null,
-  validationErrors: {},
-  token: null
+  validationErrors: {}
 };
 
 export function projectProfileReducer(
@@ -33,8 +32,7 @@ export function projectProfileReducer(
       return { ...state, validationErrors: action.payload };
     case 'CLEAR_VALIDATION_ERRORS':
       return { ...state, validationErrors: {} };
-    case 'SET_TOKEN':
-      return { ...state, token: action.payload };
+    // Token management removed for Optimized Direct Access pattern
     default:
       return state;
   }

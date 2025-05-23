@@ -9,7 +9,6 @@ import { getVariationDeliverablesWithParamUrl } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '@/utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { VariationDeliverablesProvider, useVariationDeliverables } from '@/contexts/variation-deliverables/variation-deliverables-context';
-import { useToken } from '@/contexts/token-context';
 import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
 // Use the DeliverableEditor context from deliverables context
 import { useVariationDeliverableGridHandlers } from '@/hooks/grid-handlers/useVariationDeliverableGridHandlers';
@@ -28,7 +27,6 @@ interface VariationDeliverableParams {
 export function VariationDeliverables(): React.ReactElement {
   // Get route parameters - ALWAYS call hooks at the top level
   const { variationId } = useParams<VariationDeliverableParams>();
-  const { user } = useAuth();
   
   // Get the variation info to retrieve the correct project ID
   // Always call hooks before any conditional returns
@@ -68,8 +66,8 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   
   // Use the variation deliverables context
   const {
-    // State with token from the hook
-    state: { token, loading, error },
+    // State (no token - it will be accessed directly at leaf methods)
+    state: { loading, error },
     
     // Reference data
     areasDataSource,
@@ -80,16 +78,11 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     // Project and variation data
     project,
     variation,
-    projectGuid,
-    
-    // Token management now handled by useToken directly
+    projectGuid
   } = useVariationDeliverables();
   
   // We'll use the variation deliverables context for validation
   // In a future step, this would use a dedicated deliverable editor context
-  
-  // Get token and acquireToken directly from useToken
-  const { token: tokenFromHook, acquireToken } = useToken();
   
   // Get grid handlers with both context dependencies
   const {
@@ -111,8 +104,9 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   // Determine if we're still loading any data
   const isLoading = loading || isLookupDataLoading;
   
-  // Combine all error sources
-  const hasError = error !== null || !token;
+  // Combine all error sources, but ignore the 'Missing project ID parameter' error
+  // which happens during normal loading sequence
+  const hasError = error !== null && error !== 'Missing project ID parameter';
   
   // Set the grid to read-only if the variation has been submitted
   const isReadOnly = variation?.submitted !== null && variation?.submitted !== undefined;
@@ -172,7 +166,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             : 'Variation Deliverables'}
         </div>
         
-        {!isLoading && !hasError && variation && variationId && token && (
+        {!isLoading && !hasError && variation && variationId && (
           <ODataGrid
             title=" "
             endpoint={getVariationDeliverablesWithParamUrl(variationId)}
@@ -191,8 +185,6 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={!isReadOnly}
             allowDeleting={false}
             customGridHeight={900}
-            token={tokenFromHook || token} // Use token from useToken, fall back to context token if needed
-            onTokenExpired={acquireToken} // Use acquireToken from useToken
             // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
               fieldTypes: {
@@ -205,12 +197,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             // The ODataGrid component needs to be updated to support these advanced features
           />
         )}
-        {!isLoading && !hasError && variation && variationId && !token && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
-          />
-        )}
+
       </div>
       <ScrollToTop />
     </div>

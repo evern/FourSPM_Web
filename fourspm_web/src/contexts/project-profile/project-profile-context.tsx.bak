@@ -4,6 +4,7 @@ import { projectProfileReducer, initialProjectProfileState } from './project-pro
 import { Project } from '../../types/index';
 import { getToken } from '../../utils/token-store';
 import { useNavigation } from '../navigation';
+// We don't directly import useProjects as it requires ProjectsProvider
 import { fetchProject, updateProject } from '../../adapters/project.adapter';
 import { getClientDetails } from '../../adapters/client.adapter';
 import { useQueryClient } from '@tanstack/react-query';
@@ -113,48 +114,53 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
       const projectData = await fetchProject(projectId, fetchToken);
         
-      // After loading the project, also load the client details if a client is selected
-      if (projectData && projectData.clientGuid && isMountedRef.current) {
-        try {
-          // Get token directly at the leaf level when needed (Optimized Direct Access pattern)
-          const clientToken = getToken();
-          if (!clientToken) {
-            throw new Error('Authentication token is required');
-          }
-          const clientData = await getClientDetails(projectData.clientGuid, clientToken);
-          
-          // Check if we have the data we need
-          if (clientData) {
-            // Use nested structure for client data to match the form structure
-            // This mirrors the pattern in useProjectEntityController
-            projectData.client = {
-              ...clientData
-            };
+        // After loading the project, also load the client details if a client is selected
+        if (projectData && projectData.clientGuid && isMountedRef.current) {
+          try {
+            // Get token directly at the leaf level when needed (Optimized Direct Access pattern)
+            const clientToken = getToken();
+            if (!clientToken) {
+              throw new Error('Authentication token is required');
+            }
+            const clientData = await getClientDetails(projectData.clientGuid, clientToken);
             
-            // Also keep the flat fields for backward compatibility
-            projectData.clientName = clientData.description || '';
+            // Check if we have the data we need
+            if (clientData) {
+              // Use nested structure for client data to match the form structure
+              // This mirrors the pattern in useProjectEntityController
+              projectData.client = {
+                ...clientData
+              };
+              
+              // Also keep the flat fields for backward compatibility
+              projectData.clientName = clientData.description || '';
+              
+            } else {
             
+            }
+          } catch (clientError) {
+            
+            // Continue with project load even if client details fail
           }
-        } catch (clientError) {
-          // Continue with project load even if client details fail
+        } else {
+        
+        }
+        
+        // Give client data a chance to be fully loaded before updating state
+        // This helps ensure all data is available when the form renders
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_PROJECT', payload: { ...projectData } });  // Clone to ensure new reference
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          dispatch({ type: 'SET_ERROR', payload: error });
+          dispatch({ type: 'SET_LOADING', payload: false });
+          notify('Error loading project', 'error', 3000);
         }
       }
-      
-      // Give client data a chance to be fully loaded before updating state
-      // This helps ensure all data is available when the form renders
-      if (isMountedRef.current) {
-        dispatch({ type: 'SET_PROJECT', payload: { ...projectData } });  // Clone to ensure new reference
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        dispatch({ type: 'SET_ERROR', payload: error });
-        dispatch({ type: 'SET_LOADING', payload: false });
-        notify('Error loading project', 'error', 3000);
-      }
-    }
-  }, [projectId]);
-  
+    };
+    
   // Reset editing state and load project when projectId changes
   useEffect(() => {
     // Reset editing state when projectId changes
@@ -193,11 +199,15 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
   const saveProject = useCallback(async (projectData: Project) => {
     if (!projectData) return null;
     
-    // Get token directly using Optimized Direct Access pattern
+    // Ensure we have a token before proceeding - Optimized Direct Access pattern
     const token = getToken();
     if (!token) {
-      notify('Authentication token is required', 'error', 3000);
-      return null;
+      try {
+        await acquireToken();
+      } catch (error) {
+        notify('Unable to authenticate. Please try again.', 'error', 3000);
+        return null;
+      }
     }
     
     // Basic validation - we're implementing this directly instead of using ProjectsContext
@@ -239,13 +249,11 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         purchaseOrderNumber: projectData.purchaseOrderNumber
       };
 
-      const saveToken = getToken();
+      const saveToken = await getToken();
       if (!saveToken) {
         throw new Error('Authentication token is required for API requests');
       }
       const updatedProject = await updateProject(projectData.guid, projectToSave, saveToken);
-      
-      if (isMountedRef.current) {
         dispatch({ type: 'SET_PROJECT', payload: updatedProject });
         dispatch({ type: 'SET_SAVING', payload: false });
         dispatch({ type: 'SET_EDITING', payload: false });
@@ -270,12 +278,14 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     }
   }, [refreshNavigation, queryClient, validateProject]);
 
+
+
   // Client operations
   const handleClientSelectionChange = useCallback(async (e: any) => {
     const clientId = e.value;
     if (!clientId || !formRef.current?.instance) return;
     
-    // Get token directly using Optimized Direct Access pattern
+    // Ensure we have a token before proceeding - Optimized Direct Access pattern
     const token = getToken();
     if (!token) {
       notify('Authentication token is required', 'error', 3000);
@@ -317,16 +327,20 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     } catch (error) {
       notify('Error loading client details', 'error', 3000);
     }
-  }, [project]);
+  }, [project, useToken().acquireToken]);
   
   const updateProjectClient = useCallback(async (clientId: string) => {
     if (!clientId || !formRef.current?.instance) return null;
     
-    // Get token directly using Optimized Direct Access pattern
+    // Ensure we have a token before proceeding - Optimized Direct Access pattern
     const token = getToken();
     if (!token) {
-      notify('Authentication token is required', 'error', 3000);
-      return null;
+      try {
+        await acquireToken();
+      } catch (error) {
+        notify('Unable to authenticate. Please try again.', 'error', 3000);
+        return null;
+      }
     }
     
     try {
@@ -364,14 +378,14 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       notify('Error updating client details', 'error', 3000);
       return null;
     }
-  }, [project]);
+  }, [project, useToken().acquireToken]);
 
   // Create the context value with proper memoization
   const contextValue = useMemo(() => ({
     // State - token handled via Optimized Direct Access pattern
     state,
     
-    // Token management now handled by direct getToken() access
+    // Token management now handled by useToken() directly
     
     // Client data from useClientDataProvider - matching original implementation
     clients,
@@ -385,9 +399,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     saveProject,
     handleClientSelectionChange,
     updateProjectClient,
-    validateProject,
-    // Add loadProject to allow manual refresh
-    loadProject
+    validateProject
   }), [
     state,
     // Token removed from dependencies - Optimized Direct Access pattern
@@ -400,8 +412,7 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
     saveProject,
     handleClientSelectionChange,
     updateProjectClient,
-    validateProject,
-    loadProject
+    validateProject
   ]);
   
   return (

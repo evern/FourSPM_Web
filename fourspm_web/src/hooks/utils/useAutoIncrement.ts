@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useToken } from '../../contexts/token-context';
+
+import { getToken } from '../../utils/token-store'; // Import getToken for direct token access
 
 interface UseAutoIncrementProps {
   endpoint: string;
@@ -7,6 +8,7 @@ interface UseAutoIncrementProps {
   padLength?: number;
   startFrom?: string;
   filter?: string | Array<any>;
+  // token parameter removed - using direct access pattern instead
 }
 
 export const useAutoIncrement = ({
@@ -17,7 +19,6 @@ export const useAutoIncrement = ({
   filter
 }: UseAutoIncrementProps) => {
   const [nextNumber, setNextNumber] = useState<string>(startFrom);
-  const { token } = useToken();
   
   // Use refs to track hook initialization and request count
   const initCountRef = useRef(0);
@@ -104,7 +105,8 @@ export const useAutoIncrement = ({
 
       
       try {
-        // Use token from useToken
+        // Get token directly from token-store
+        const token = getToken();
         if (!token) {
           console.error('useAutoIncrement: No token available');
           return startFrom;
@@ -162,7 +164,7 @@ export const useAutoIncrement = ({
 
       return startFrom;
     }
-  }, [endpoint, field, filter, padLength, startFrom, token]);
+  }, [endpoint, field, filter, padLength, startFrom]);
 
   useEffect(() => {
     // Always try to fetch on mount - token is handled by useToken()

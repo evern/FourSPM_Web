@@ -135,6 +135,15 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       const userAccount = accountToUser(authResult.account, authResult.accessToken);
       setUser(userAccount);
       
+      // Also store token in our token store for direct access pattern
+      try {
+        const { setToken } = require('../utils/token-store');
+        setToken(authResult.accessToken);
+        console.log('MSAL: Token stored in token-store for direct access');
+      } catch (error) {
+        console.error('MSAL: Failed to store token in token-store', error);
+      }
+      
       // Save the account in MSAL
       msalInstance?.setActiveAccount(authResult.account);
     }
@@ -362,6 +371,15 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
               ...prev,
               token: response.accessToken
             } : undefined);
+            
+            // Also update token in our token store for direct access pattern
+            try {
+              const { setToken } = require('../utils/token-store');
+              setToken(response.accessToken);
+              console.log('MSAL: Refreshed token stored in token-store for direct access');
+            } catch (error) {
+              console.error('MSAL: Failed to store refreshed token in token-store', error);
+            }
           }
         } catch (error) {
           console.warn('Token refresh failed:', error);

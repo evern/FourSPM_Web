@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DeliverableProgressDto } from '../types/index';
 import { apiService } from '../api/api.service';
 import { PROGRESS_ENDPOINT } from '../config/api-endpoints';
+import { getToken } from '../utils/token-store';
 
 /**
  * Custom function to handle progress updates
@@ -10,16 +11,18 @@ import { PROGRESS_ENDPOINT } from '../config/api-endpoints';
  * @param values The updated values
  * @param periodId The period to update
  * @param oldData Previous data from the row
- * @param token Authentication token for API access
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns A promise that resolves when the update is complete
  */
 export const handleProgressUpdate = async (
   key: string, 
   values: Partial<DeliverableProgressDto>, 
   periodId: number, 
-  token: string,
+  token?: string,
   oldData?: Partial<DeliverableProgressDto>
 ) => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
     // Make sure we have the required data
     if (!key) {
@@ -32,13 +35,11 @@ export const handleProgressUpdate = async (
       return Promise.reject('No cumulativeEarntPercentage provided for progress update');
     }
 
-    // Return early if no token is provided
-    if (!token) {
-      console.error('No token provided for progress update');
-      return Promise.reject('No token provided for progress update');
+    // Return early if no token is available
+    if (!authToken) {
+      console.error('No token available for progress update');
+      return Promise.reject('Authentication token is required for API requests');
     }
-    
-    const authToken = token;
     
     // Calculate period-specific percentage (the change since the previous period)
     const previousPeriodPercentage = oldData?.previousPeriodEarntPercentage || 0;
@@ -63,7 +64,7 @@ export const handleProgressUpdate = async (
     const result = await apiService.post<any>(
       `${PROGRESS_ENDPOINT}/AddOrUpdateExisting`,
       progressData,
-      token
+      authToken // Use authToken from Optimized Direct Access Pattern
     );
 
     // Return both the server response and the original key for row identification

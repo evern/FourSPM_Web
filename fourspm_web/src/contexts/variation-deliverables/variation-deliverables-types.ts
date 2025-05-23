@@ -15,7 +15,6 @@ export interface VariationDeliverablesState {
   error: string | null;
   isReadOnly: boolean;
   lookupDataLoaded: boolean;
-  token: string | null;
 }
 
 /**
@@ -57,7 +56,6 @@ export interface VariationDeliverablesContextProps {
     loading: boolean;
     error: string | null;
     isReadOnly: boolean;
-    token: string | null;
   };
   
   // State management
@@ -103,7 +101,6 @@ export interface VariationDeliverablesContextProps {
  */
 export type VariationDeliverablesAction =
   // Basic state management
-  | { type: 'SET_TOKEN'; payload: string | null }
   | { type: 'SET_DELIVERABLES'; payload: Deliverable[] }
   | { type: 'UPDATE_DELIVERABLE'; payload: Deliverable }
   | { type: 'ADD_DELIVERABLE'; payload: Deliverable }

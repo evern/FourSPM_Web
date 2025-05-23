@@ -1,6 +1,6 @@
 import ODataStore from 'devextreme/data/odata/store';
 import { useMemo } from 'react';
-import { useToken } from '../contexts/token-context';
+import { getToken } from '../utils/token-store'; // Import getToken for direct token access
 
 /**
  * Custom hook to create a configured ODataStore with authentication
@@ -14,8 +14,7 @@ export const useODataStore = (
   keyField: string = 'guid', 
   storeOptions: Record<string, any> = {}
 ) => {
-  // Use the token context - token acquisition is now handled by the TokenProvider
-  const { token } = useToken();
+  // No need to store token or create wrapper functions - will access directly when needed
   
   // Use useMemo to prevent creating a new store on every render
   return useMemo(() => {
@@ -36,14 +35,15 @@ export const useODataStore = (
         console.log('ODataStore: beforeSend called');
         
         try {
-          // Use the token from context - token acquisition is now handled by the TokenProvider
+          // Get token directly from token-store
+          const token = getToken();
           if (!token) {
             console.error('ODataStore: No valid token available!');
             // Let the request proceed without a token - it will likely 401 but this helps debugging
             // Alternatively, uncomment the next line to prevent the request entirely
             // return false;
           } else {
-            console.log('ODataStore: Using token from context');
+            console.log('ODataStore: Using token from token-store');
             // Initialize headers if they don't exist
             if (!options.headers) {
               options.headers = {};
@@ -51,14 +51,17 @@ export const useODataStore = (
 
             // Add the token to the Authorization header
             options.headers['Authorization'] = `Bearer ${token}`;
+
+            // Set content-type headers for CRUD operations
+            const method = options.method ? options.method.toLowerCase() : 'get';
+            if (['post', 'put', 'patch'].includes(method)) {
+              options.headers['Content-Type'] = 'application/json;odata.metadata=minimal';
+              options.headers['Prefer'] = 'return=representation';
+            }
+            options.headers['Accept'] = 'application/json';
+
+            console.log(`ODataStore: Added Authorization header to ${options.method} ${options.url}`);
           } 
-          console.log(`ODataStore: Added Authorization header to ${options.method} ${options.url}`);
-          options.headers['Accept'] = 'application/json';
-
-          if (options.method === 'PATCH') {
-            options.headers['Content-Type'] = 'application/json';
-          }
-
           return true;
         } catch (error) {
           console.error('ODataStore: Error in beforeSend:', error);
@@ -83,5 +86,5 @@ export const useODataStore = (
     });
     
     return store;
-  }, [endpointPath, keyField, token, storeOptions]); // Only recreate the store when these dependencies change
+  }, [endpointPath, keyField, storeOptions]); // Only recreate the store when these dependencies change
 };

@@ -3,14 +3,14 @@ import { useODataStore } from '../../stores/odataStores';
 import { DOCUMENT_TYPES_ENDPOINT } from '../../config/api-endpoints';
 import { DocumentType } from '../../types/odata-types';
 import { baseApiService } from '../../api/base-api.service';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 /**
  * Fetch document types data from the API
- * @param token Authentication token
+ * @param token Optional token - can be string, null, or undefined
  * @returns Promise with array of document types
  */
-const fetchDocumentTypes = async (token?: string): Promise<DocumentType[]> => {
+const fetchDocumentTypes = async (token?: string | null): Promise<DocumentType[]> => {
   // Ensure we have a valid API request configuration
   const requestOptions = {
     method: 'GET'
@@ -46,24 +46,23 @@ export interface DocumentTypeDataProviderResult {
  * @returns Object containing the document types store, data array, loading state, and helper methods
  */
 export const useDocumentTypeDataProvider = (shouldLoad: boolean | undefined = true): DocumentTypeDataProviderResult => {
-  // Get token from the TokenContext
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
   
-  // Create a store for OData operations with token
+  // Create a store for OData operations - token access is direct
   const documentTypesStore = useODataStore(DOCUMENT_TYPES_ENDPOINT, 'guid', {
-    token // Pass token to ODataStore
+    // No token needed here as the store will get it directly when needed
   });
   
-  // Use React Query to fetch and cache document types
+  // Use React Query to fetch and cache document types - token access is optimized
   const { 
     data: documentTypes = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['documentTypes', token], // Include token in query key to refetch when token changes
-    queryFn: () => fetchDocumentTypes(token || undefined), // Pass token to fetch function
-    enabled: !!token && shouldLoad // Only fetch if we have a token and shouldLoad is true
+    queryKey: ['documentTypes'], // No token dependency in query key - using Optimized Direct Access Pattern
+    queryFn: () => fetchDocumentTypes(getToken()), // Get token directly at the point of use
+    enabled: shouldLoad // Always enabled if shouldLoad is true - token check is done inside fetchDocumentTypes
   });
   
   const error = queryError as Error | null;

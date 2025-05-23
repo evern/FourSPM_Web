@@ -5,9 +5,9 @@ import { DeliverablesContextProps, DeliverablesProviderProps, ValidationResult }
 import { useProjectData } from '../../hooks/queries/useProjectData';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 import { Deliverable } from '../../types/odata-types';
-import { getDeliverables, getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
+import { getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -66,16 +66,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   const params = useParams<{ projectId: string }>();
   const projectId = projectIdProp || params.projectId;
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading = false, 
-    error: tokenError, 
-    acquireToken 
-  } = useToken();
-  
-  // Get the current token for API calls
-  const userToken = token;
+  // Token loading and error states are no longer needed - tokens are accessed directly when needed
   
   // Get query client for cache invalidation
   const queryClient = useQueryClient();
@@ -107,31 +98,17 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
   
-  // Token management functions - kept for backward compatibility
-  const setToken = useCallback((token: string | null) => {
-    if (!isMountedRef.current) return;
-    dispatch({ type: 'SET_TOKEN', payload: token });
-  }, []);
+  // Token management removed - tokens are accessed directly when needed
   
-  // Update local state when token changes from the hook
+  // Update loading state when component mounts
   useEffect(() => {
     if (!isMountedRef.current) return;
     
-    // Update token in local state
-    setToken(userToken);
-    
-    // Update loading and error states
-    dispatch({ type: 'SET_LOADING', payload: tokenLoading });
-    
-    if (tokenError) {
-      dispatch({ type: 'SET_ERROR', payload: tokenError });
-    }
-  }, [userToken, tokenLoading, tokenError, setToken]);
+    // Update loading state
+    dispatch({ type: 'SET_LOADING', payload: false });
+  }, []);
   
-  // Alias for backward compatibility
-  const acquireTokenWithState = useCallback(async (): Promise<string | null> => {
-    return userToken || null;
-  }, [userToken]);
+
   
   // setProjectGuid function removed - project ID now passed explicitly to functions
   
@@ -298,7 +275,9 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
       const deliverableTypeIdStr = deliverableTypeId?.toString() || '';
       
       // Ensure token is available before making API call
-      if (!userToken) {
+      // Get token directly when needed
+      const token = getToken();
+      if (!token) {
         throw new Error('Authentication token is required for document number generation');
       }
 
@@ -308,7 +287,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
         areaNumber, 
         discipline, 
         documentType,
-        userToken,
+        token,
         currentDeliverableGuid 
       );
       
@@ -353,8 +332,8 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     console.log('Invalidated all lookup data after deliverable change');
   }, [queryClient]);
   
-  // Combine loading states for lookup data and token
-  const isLookupDataLoading = referenceDataLoading || projectLoading || tokenLoading;
+  // Combine loading states for lookup data - token loading removed
+  const isLookupDataLoading = referenceDataLoading || projectLoading;
   
   // Update lookup data loaded flag when all data sources are loaded
   useEffect(() => {
@@ -365,14 +344,14 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   
   // Fetch deliverables useEffect removed as ODataGrid loads data directly
   
+  // Token handling removed - using direct access pattern with getToken()
+
   // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // State
     state,
     
-    // Token management
-    setToken,
-    acquireToken: acquireTokenWithState,
+    // Token management removed - using direct access pattern with getToken()
     
     // Validation
     validateDeliverable,

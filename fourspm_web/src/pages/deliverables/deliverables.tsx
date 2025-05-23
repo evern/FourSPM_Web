@@ -8,7 +8,7 @@ import './deliverables.scss';
 import { DELIVERABLES_ENDPOINT } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
-// Token management is now handled by the DeliverablesContext
+// Import token store for direct access
 import { DeliverablesProvider, useDeliverables } from '@/contexts/deliverables/deliverables-context';
 import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
 
@@ -54,13 +54,7 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     isLookupDataLoading,
     
     // Project data
-    project,
-    
-    // Token management
-    acquireToken,
-    
-    // Token state
-    state: { token, loading: tokenLoading, error: tokenError }
+    project
   } = useDeliverables();
   
   // Get grid handlers directly from the hook
@@ -71,7 +65,6 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     handleEditorPreparing
   } = useDeliverableGridHandlers({
     projectGuid: projectId || '',
-    userToken: state.token || undefined, // Use token from context
     project
   });
   
@@ -82,10 +75,10 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
   const isMobile = screenClass === 'screen-x-small' || screenClass === 'screen-small';
   
   // Determine if we're still loading any data
-  const isLoading = isLookupDataLoading || tokenLoading;
+  const isLoading = isLookupDataLoading;
   
-  // Combine all error sources
-  const hasError = state.error !== null || tokenError !== null;
+  // Check for errors
+  const hasError = state.error !== null;
   
   // Create columns with the lookup data sources from dedicated providers
   const columns = React.useMemo(() => {
@@ -129,14 +122,12 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
           {project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}
         </div>
         
-        {!isLoading && !hasError && token && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLES_ENDPOINT}
             columns={mobileAdjustedColumns}
             keyField="guid"
-            token={token}
-            onTokenExpired={acquireToken} // Add token refresh callback directly from context
             onRowValidating={handleRowValidating}
             onInitNewRow={handleInitNewRow}
             onEditorPreparing={handleEditorPreparing}
@@ -148,12 +139,6 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={true}
             allowDeleting={true}
             customGridHeight={900}
-          />
-        )}
-        {!isLoading && !hasError && !token && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

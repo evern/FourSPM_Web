@@ -9,7 +9,7 @@ export interface ProjectProfileState {
   isEditing: boolean;
   error: any;
   validationErrors: Record<string, string[]>;
-  token: string | null; // Add token to state
+  // Token removed - using Optimized Direct Access pattern
 }
 
 // Action types
@@ -20,8 +20,8 @@ export type ProjectProfileAction =
   | { type: 'SET_EDITING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: any }
   | { type: 'SET_VALIDATION_ERRORS'; payload: Record<string, string[]> }
-  | { type: 'CLEAR_VALIDATION_ERRORS' }
-  | { type: 'SET_TOKEN'; payload: string | null };
+  | { type: 'CLEAR_VALIDATION_ERRORS' };
+  // SET_TOKEN action removed - using Optimized Direct Access pattern
 
 // Context interface
 export interface ProjectProfileContextType {

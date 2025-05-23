@@ -4,7 +4,8 @@ import { AREAS_ENDPOINT } from '@/config/api-endpoints';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import { useAreas } from '@/contexts/areas/areas-context';
-import { useToken } from '@/contexts/token-context';
+// Remove useToken import - will use getToken directly in leaf methods
+import { getToken } from '@/utils/token-store';
 
 // Empty interface for future extensions if needed
 interface UseAreaGridHandlersProps {
@@ -16,8 +17,7 @@ interface UseAreaGridHandlersProps {
  * Following the Reference Data Implementation Doctrine
  */
 export function useAreaGridHandlers({}: UseAreaGridHandlersProps = {}) {
-  // Get token and acquireToken directly from useToken
-  const { token, acquireToken } = useToken();
+  // No token state needed - token will be accessed directly in leaf methods
   // Get the areas context for error reporting and cache invalidation
   const { setError, invalidateAllLookups, projectId } = useAreas();
   
@@ -67,8 +67,8 @@ export function useAreaGridHandlers({}: UseAreaGridHandlersProps = {}) {
       projectGuid: projectId,
       number: '',  // This will be overridden by our custom handleInitNewRow
       description: '',
-    },
-    acquireToken
+    }
+    // No acquireToken - token will be obtained directly at leaf level
   });
   
   // We already have state to track the next available area number at line 48

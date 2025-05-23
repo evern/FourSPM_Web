@@ -8,7 +8,6 @@ export interface AreasState {
   loading: boolean;
   error: string | null;
   dataLoaded: boolean;
-  token: string | null;
   nextAreaNumber: string;
 }
 
@@ -19,7 +18,6 @@ export const initialAreasState: AreasState = {
   loading: false,
   error: null,
   dataLoaded: false,
-  token: null,
   nextAreaNumber: '01'
 };
 
@@ -30,7 +28,6 @@ export type AreasAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_DATA_LOADED'; payload: boolean }
-  | { type: 'SET_TOKEN'; payload: string | null }
   | { type: 'SET_NEXT_AREA_NUMBER'; payload: string };
 
 // Default validation rules for areas

@@ -1,7 +1,7 @@
 import React, { useState, createContext, useContext, useCallback, PropsWithChildren, ReactElement, useEffect, useMemo, useRef } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { useMSALAuth } from './msal-auth';
-import { useToken } from '../contexts/token-context';
+import { getToken } from '../utils/token-store';
 import { NavigationItem, getStaticNavigation, navigation as appNavigation } from '../app-navigation';
 import { getProjectNavigation } from '../adapters/project.adapter';
 
@@ -33,8 +33,8 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const msalAuth = useMSALAuth();
   
-  // Use the centralized token acquisition hook
-  const { token, acquireToken } = useToken();
+  // Use direct token access from token-store
+  // Following the Optimized Direct Access Pattern
   
   // Refresh navigation when authenticated
   const refreshNavigation = useCallback(async () => {
@@ -56,16 +56,12 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
       
       console.log('NavigationProvider: Refreshing navigation after token sync delay');
       
-      // Ensure we have a token before proceeding
-      let currentToken = token;
+      // Get token directly from token-store (Optimized Direct Access Pattern)
+      const currentToken = getToken();
       if (!currentToken) {
-        console.log('NavigationProvider: Acquiring token for navigation');
-        currentToken = await acquireToken();
-        if (!currentToken) {
-          console.warn('NavigationProvider: Failed to acquire token for navigation');
-          setIsLoading(false);
-          return;
-        }
+        console.warn('NavigationProvider: No token available for navigation');
+        setIsLoading(false);
+        return;
       }
       
       const staticNav = getStaticNavigation();
@@ -105,7 +101,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
       console.error('NavigationProvider: Error refreshing navigation:', error);
       setIsLoading(false);
     }
-  }, [msalAuth.user, token, acquireToken]);
+  }, [msalAuth.user]); // Direct token access - no token dependencies needed
 
   useEffect(() => {
     refreshNavigation();

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { DELIVERABLE_GATES_ENDPOINT } from '../../config/api-endpoints';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 import { useODataStore } from '../../stores/odataStores';
 import { DeliverableGate } from '../../types/odata-types';
 import { baseApiService } from '../../api/base-api.service';
@@ -42,24 +42,23 @@ export interface DeliverableGateDataProviderResult {
  * @returns Object containing the deliverable gates store, data array, loading state, and helper methods
  */
 export const useDeliverableGateDataProvider = (shouldLoad: boolean | undefined = true): DeliverableGateDataProviderResult => {
-  // Get token from the TokenContext
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
 
-  // Create a store for OData operations with token
+  // Create a store for OData operations - token access is direct
   const deliverableGatesStore = useODataStore(DELIVERABLE_GATES_ENDPOINT, 'guid', {
-    token // Pass token to ODataStore
+    // No token needed here as the store will get it directly when needed
   });
 
-  // Use React Query to fetch and cache deliverable gates
+  // Use React Query to fetch and cache deliverable gates - token access is optimized
   const { 
     data: deliverableGates = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['deliverableGates', token], // Include token in query key to refetch when token changes
-    queryFn: () => fetchDeliverableGates(token), // Pass token to fetchDeliverableGates
-    enabled: !!token && shouldLoad // Only fetch if we have a token and shouldLoad is true
+    queryKey: ['deliverableGates'], // No token dependency in query key - using Optimized Direct Access Pattern
+    queryFn: () => fetchDeliverableGates(getToken()), // Get token directly at the point of use
+    enabled: shouldLoad // Always enabled if shouldLoad is true - token check is done inside fetchDeliverableGates
   });
   
   const error = queryError as Error | null;

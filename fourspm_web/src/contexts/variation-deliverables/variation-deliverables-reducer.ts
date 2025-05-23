@@ -9,8 +9,7 @@ export const initialVariationDeliverablesState: VariationDeliverablesState = {
   loading: false,
   error: null,
   isReadOnly: false,
-  lookupDataLoaded: false,
-  token: null
+  lookupDataLoaded: false
 };
 
 /**
@@ -22,9 +21,7 @@ export const variationDeliverablesReducer = (
   action: VariationDeliverablesAction
 ): VariationDeliverablesState => {
   switch (action.type) {
-    // Token management
-    case 'SET_TOKEN':
-      return { ...state, token: action.payload };
+    // Token management - removed for Optimized Direct Access pattern
     // Basic state management actions
     case 'SET_DELIVERABLES':
       return { ...state, deliverables: action.payload };

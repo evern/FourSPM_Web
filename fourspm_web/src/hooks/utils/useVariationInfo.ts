@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getVariationById } from '../../adapters/variation.adapter';
 import { Variation } from '../../types/odata-types';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 /**
  * Hook to load variation data and provide access to its properties
@@ -19,8 +19,7 @@ export const useVariationInfo = (variationGuid: string) => {
     return Boolean(variationGuid);
   }, [variationGuid]);
 
-  // Get token from the token acquisition hook
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods only
 
   // Load variation data when inputs change
   const loadVariation = useCallback(async () => {
@@ -28,6 +27,8 @@ export const useVariationInfo = (variationGuid: string) => {
       return;
     }
 
+    // Get token directly at the point of use (Optimized Direct Access Pattern)
+    const token = getToken();
     if (!token) {
       setError(new Error('Authentication token is required for API requests'));
       return;
@@ -37,7 +38,7 @@ export const useVariationInfo = (variationGuid: string) => {
     setError(null);
 
     try {
-      // Use explicit token passing instead of relying on MSAL internally
+      // Use explicit token passing with token retrieved at the leaf method
       const data = await getVariationById(variationGuid, token);
       setVariation(data);
     } catch (err) {
@@ -46,7 +47,7 @@ export const useVariationInfo = (variationGuid: string) => {
     } finally {
       setLoading(false);
     }
-  }, [variationGuid, hasValidParams, token]);
+  }, [variationGuid, hasValidParams]); // Direct token access - no token dependency needed
 
   // Load variation on mount and when dependencies change
   useEffect(() => {

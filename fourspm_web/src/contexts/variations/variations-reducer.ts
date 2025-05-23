@@ -5,7 +5,6 @@ export const initialVariationsState: VariationsState = {
   variations: [],
   loading: false,
   error: null,
-  token: null,
   validationErrors: {},
   
   // Editor state
@@ -26,9 +25,7 @@ export function variationsReducer(state: VariationsState, action: VariationsActi
     case 'SET_DATA_LOADED':
       return { ...state, loading: !action.payload };
       
-    // Token management
-    case 'SET_TOKEN':
-      return { ...state, token: action.payload };
+    // Token management - removed for Optimized Direct Access pattern
       
     case 'UPDATE_VARIATION_START':
       return { ...state, loading: true, error: null };

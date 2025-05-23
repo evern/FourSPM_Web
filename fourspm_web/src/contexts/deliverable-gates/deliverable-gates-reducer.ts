@@ -12,11 +12,7 @@ export function deliverableGatesReducer(state: DeliverableGatesState, action: De
         ...state,
         error: action.payload
       };
-    case 'SET_TOKEN':
-      return {
-        ...state,
-        token: action.payload
-      };
+
     default:
       return state;
   }

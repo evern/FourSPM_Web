@@ -1,6 +1,6 @@
 /**
- * Simplified Token Store
- * Provides basic token retrieval from localStorage
+ * Simplified Token Store for Optimized Direct Access Pattern
+ * Provides basic token storage and retrieval from localStorage
  */
 
 // Storage key for token in localStorage
@@ -24,15 +24,15 @@ export const getToken = (): string | null => {
 
 /**
  * Set the token value in localStorage
- * @param token New token value or null to clear
+ * @param token - Token value to store, or null to clear
  */
 export const setToken = (token: string | null): void => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      if (token) {
-        localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      } else {
+      if (token === null) {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
+      } else {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
       }
     }
   } catch (error) {

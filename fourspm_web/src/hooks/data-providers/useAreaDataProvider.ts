@@ -4,7 +4,7 @@ import { AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { Area } from '../../types/odata-types';
 import ODataStore from 'devextreme/data/odata/store';
 import { baseApiService } from '../../api/base-api.service';
-import { useToken } from '../../contexts/token-context';
+import { getToken } from '../../utils/token-store';
 
 // This helps us normalize field names between Area and Deliverable entities
 type AreaWithAliases = Area & {
@@ -13,11 +13,11 @@ type AreaWithAliases = Area & {
 
 /**
  * Fetch areas data from the API
- * @param token Authentication token
+ * @param token Optional token - can be string, null, or undefined
  * @param projectId Optional project ID to filter areas by
  * @returns Promise with array of areas
  */
-const fetchAreas = async (token?: string, projectId?: string): Promise<Area[]> => {
+const fetchAreas = async (token?: string | null, projectId?: string): Promise<Area[]> => {
   // Ensure we have a valid API request configuration
   const requestOptions = {
     method: 'GET'
@@ -59,28 +59,27 @@ export interface AreaDataProviderResult {
  * @returns Object containing the areas store, data array, loading state, and helper methods
  */
 export const useAreaDataProvider = (projectId?: string): AreaDataProviderResult => {
-  // Get token from the TokenContext
-  const { token } = useToken();
+  // Using Optimized Direct Access Pattern - token retrieved at leaf methods
   
   // Create a store for OData operations - this is used when we need direct grid operations
   const areasStore = useODataStore(AREAS_ENDPOINT, 'guid', {
     fieldTypes: {
       number: 'string', // The primary key is also a GUID and needs proper handling
       projectGuid: 'Guid'  // This ensures proper serialization of GUID values in filters
-    },
-    token // Pass token to ODataStore
+    }
+    // No token needed here as the store will get it directly when needed
   });
   
-  // Use React Query to fetch and cache areas
+  // Use React Query to fetch and cache areas - token access is optimized
   const { 
     data: areasData = [], 
     isLoading, 
     error: queryError,
     refetch
   } = useQuery({
-    queryKey: ['areas', projectId, token],
-    queryFn: () => fetchAreas(token || undefined, projectId),
-    enabled: !!token && !!projectId, // Only fetch if we have both token and projectId
+    queryKey: ['areas', projectId], // No token dependency in query key - using Optimized Direct Access Pattern
+    queryFn: () => fetchAreas(getToken(), projectId), // Get token directly at the point of use
+    enabled: !!projectId, // Only fetch if we have projectId - token check is done inside fetchAreas
     select: (data: Area[]) => data,
     refetchOnWindowFocus: true, // Refetch data when the window regains focus
     staleTime: 5 * 60 * 1000 // Consider data stale after 5 minutes

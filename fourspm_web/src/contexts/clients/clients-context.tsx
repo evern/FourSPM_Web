@@ -1,5 +1,4 @@
 import React, { createContext, useReducer, useCallback, useMemo, useContext, useEffect, useRef } from 'react';
-import { useToken } from '../../contexts/token-context';
 import { v4 as uuidv4 } from 'uuid';
 import { ClientsState, ClientsContextProps } from './clients-types';
 import { clientsReducer } from './clients-reducer';
@@ -9,8 +8,7 @@ import { CLIENTS_ENDPOINT } from '@/config/api-endpoints';
 
 const initialState: ClientsState = {
   loading: false,
-  error: null,
-  token: null,
+  error: null
 };
 
 // Default validation rules for clients
@@ -52,14 +50,6 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Track component mount state to prevent updates after unmounting
   const isMountedRef = useRef(true);
   
-  // Use the improved token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-  
   useEffect(() => {
     // Cleanup on unmount
     return () => {
@@ -82,17 +72,6 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setError = useCallback((error: string | null) => {
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
-  
-  const setToken = useCallback((token: string | null) => {
-    if (isMountedRef.current) {
-      dispatch({ type: 'SET_TOKEN', payload: token });
-    }
-  }, []);
-  
-  // Method to acquire a token - now just a pass-through to the hook
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
@@ -106,33 +85,18 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [nextNumber]);
 
-  // Sync token state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current && token !== undefined) {
-      setToken(token);
-    }
-  }, [token, setToken]);
-  
-  // Sync loading state from the hook to the context
+  // Set initial loading state
   useEffect(() => {
     if (isMountedRef.current) {
-      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [tokenLoading]);
-  
-  // Sync error state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current && tokenError) {
-      dispatch({ type: 'SET_ERROR', payload: tokenError });
-    }
-  }, [tokenError]);
+  }, []);
 
   const contextValue = useMemo(
     () => ({ 
       state, 
       setLoading, 
       setError,
-      // Token management now handled by useToken() directly,
 
       invalidateAllLookups,
       validationRules: CLIENT_VALIDATION_RULES,

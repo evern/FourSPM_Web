@@ -1,6 +1,7 @@
 import { baseApiService } from '../api/base-api.service';
 import { createProjectFilter } from '../utils/odata-filters';
 import { DELIVERABLES_ENDPOINT } from '../config/api-endpoints';
+import { getToken } from '../utils/token-store';
 
 /**
  * Represents a Deliverable entity with backend-calculated fields
@@ -37,11 +38,13 @@ export interface Deliverable {
 
 /**
  * Gets all deliverables with optional project filtering
- * @param token Authentication token
  * @param projectId Optional project GUID to filter deliverables
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns Array of deliverables
  */
-export const getDeliverables = async (token: string, projectId?: string): Promise<Deliverable[]> => {
+export const getDeliverables = async (projectId?: string, token?: string): Promise<Deliverable[]> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
     let query = '';
     if (projectId) {
@@ -57,13 +60,13 @@ export const getDeliverables = async (token: string, projectId?: string): Promis
     const url = `${DELIVERABLES_ENDPOINT}${queryParams}`;
     
     // Use baseApiService directly with explicit token passing
-    if (!token) {
+    if (!authToken) {
       throw new Error('Authentication token is required for fetching deliverables');
     }
     
     const response = await baseApiService.request(url, {
       method: 'GET',
-      token
+      token: authToken // Use authToken from Optimized Direct Access Pattern
     });
     
     const data = await response.json();
@@ -81,7 +84,7 @@ export const getDeliverables = async (token: string, projectId?: string): Promis
  * @param areaNumber Area number
  * @param discipline Discipline code
  * @param documentType Document type
- * @param token User authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @param excludeDeliverableGuid Optional GUID of deliverable to exclude from suggestion
  * @returns Suggested document number
  */
@@ -91,9 +94,11 @@ export const getSuggestedDocumentNumber = async (
   areaNumber: string, 
   discipline: string, 
   documentType: string,
-  token: string,
+  token?: string,
   excludeDeliverableGuid?: string
 ): Promise<string> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
     const url = `${DELIVERABLES_ENDPOINT}/SuggestInternalDocumentNumber` +
                `?projectGuid=${encodeURIComponent(projectId)}` +
@@ -104,14 +109,14 @@ export const getSuggestedDocumentNumber = async (
                `${excludeDeliverableGuid ? `&excludeDeliverableGuid=${encodeURIComponent(excludeDeliverableGuid)}` : ''}`;
     
     // Ensure token is available
-    if (!token) {
+    if (!authToken) {
       throw new Error('Authentication token is required for generating document numbers');
     }
     
     // Use the baseApiService with explicit token passing
     const response = await baseApiService.request(url, {
       method: 'GET',
-      token
+      token: authToken // Use authToken from Optimized Direct Access Pattern
     });
     
     const data = await response.json();
@@ -126,16 +131,18 @@ export const getSuggestedDocumentNumber = async (
  * Update a deliverable's gate
  * @param deliverableKey The GUID of the deliverable to update
  * @param gateGuid The GUID of the new gate
- * @param token Authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns A promise that resolves when the update is complete
  */
 export const updateDeliverableGate = async (
   deliverableKey: string, 
   gateGuid: string,
-  token: string
+  token?: string
 ): Promise<void> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
   try {
-    if (!token) {
+    if (!authToken) {
       throw new Error('Authentication token is required');
     }
     
@@ -160,7 +167,7 @@ export const updateDeliverableGate = async (
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(patchBody),
-      token
+      token: authToken // Use authToken from Optimized Direct Access Pattern
     });
   } catch (error) {
     console.error('Error updating deliverable gate:', error);

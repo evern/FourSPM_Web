@@ -2,7 +2,6 @@ import React from 'react';
 import { ODataGrid } from '../../components';
 import { createProjectColumns } from './project-columns';
 import { ProjectsProvider, useProjects } from '../../contexts/projects/projects-context';
-import { useToken } from '../../contexts/token-context';
 import { useProjectGridHandlers } from '../../hooks/grid-handlers/useProjectGridHandlers';
 import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
@@ -28,23 +27,20 @@ function Projects(): React.ReactElement {
  * Focuses purely on rendering and delegating events to the context
  */
 const ProjectsContent = (): React.ReactElement => {
-  // Get everything we need from the projects context, including token
+  // Get everything we need from the projects context
   const { 
     state, 
     clientDataSource,
     clientDataLoaded,
     nextProjectNumber,
-    refreshNextNumber // Token management now handled by useToken directly
+    refreshNextNumber
   } = useProjects();
   
   // Destructure state for easier access
   const { loading, error } = state;
   
-  // Get token and acquireToken directly from useToken
-  const { token, acquireToken } = useToken();
-  
   // Determine if there's an error to display
-  const hasError = Boolean(error) || !token;
+  const hasError = Boolean(error);
   
   // Get the grid event handlers from our custom hook
   const { 
@@ -58,7 +54,6 @@ const ProjectsContent = (): React.ReactElement => {
   } = useProjectGridHandlers({
     nextProjectNumber,
     refreshNextNumber
-    // acquireToken is now obtained directly from useToken()
   });
 
   // Client data loading is now handled by the context
@@ -99,8 +94,8 @@ const ProjectsContent = (): React.ReactElement => {
       <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
         
-        {/* Only render the grid once client data is loaded and we have token */}
-        {clientDataLoaded && token && (
+        {/* Only render the grid once client data is loaded */}
+        {clientDataLoaded && (
           <ODataGrid
             endpoint={PROJECTS_ENDPOINT}
             columns={createProjectColumns(clientDataSource, nextProjectNumber)}
@@ -116,8 +111,6 @@ const ProjectsContent = (): React.ReactElement => {
             allowDeleting={true}
             title=" "
             expand={['Client']}
-            token={token}
-            onTokenExpired={acquireToken}
             // Add default sort to ensure consistent query parameters
             defaultSort={[{ selector: 'created', desc: true }]}
             // Set countColumn for proper record counting - memory #96c469d2

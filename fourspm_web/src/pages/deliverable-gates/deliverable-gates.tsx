@@ -4,7 +4,6 @@ import { deliverableGateColumns } from './deliverable-gate-columns';
 import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
 import './deliverable-gates.scss';
 import { DeliverableGatesProvider, useDeliverableGates } from '../../contexts/deliverable-gates/deliverable-gates-context';
-import { useToken } from '../../contexts/token-context';
 import { useDeliverableGateGridHandlers } from '@/hooks/grid-handlers/useDeliverableGateGridHandlers';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { ErrorMessage } from '@/components';
@@ -19,9 +18,8 @@ const DeliverableGates: React.FC = () => {
 };
 
 const DeliverableGatesContent = React.memo((): React.ReactElement => {
-  // Get state from context and token from useToken
+  // Get state from context
   const { state } = useDeliverableGates();
-  const { token, acquireToken } = useToken();
 
   const {
     handleRowValidating,
@@ -30,12 +28,11 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
     handleRowRemoving,
     handleInitNewRow,
     handleGridInitialized
-  } = useDeliverableGateGridHandlers({ acquireToken });
+  } = useDeliverableGateGridHandlers(); // Using Optimized Direct Access Pattern - no parameters needed
 
-  // Get loading, error, and token state from context
+  // Get loading and error state from context
   const isLoading = state.loading;
   const hasError = !!state.error;
-  const hasToken = !!state.token;
 
   return (
     <div className="deliverable-gates-container">
@@ -55,14 +52,12 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
       )}
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">Deliverable Gates</div>
-        {!isLoading && !hasError && hasToken && (
+        {!isLoading && !hasError && (
           <ODataGrid
             title=" "
             endpoint={DELIVERABLE_GATES_ENDPOINT}
             columns={deliverableGateColumns}
             keyField="guid"
-            token={token} // Use token from useToken instead of state.token
-            onTokenExpired={acquireToken} // Pass the acquireToken function for token refresh
             onRowUpdating={handleRowUpdating}
             onInitNewRow={handleInitNewRow}
             onRowValidating={handleRowValidating}
@@ -71,12 +66,6 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'maxPercentage', desc: false }]}
             customGridHeight={900}
-          />
-        )}
-        {!isLoading && !hasError && !hasToken && (
-          <ErrorMessage
-            title="Authentication Error"
-            message="Unable to acquire authentication token. Please try refreshing the page."
           />
         )}
       </div>

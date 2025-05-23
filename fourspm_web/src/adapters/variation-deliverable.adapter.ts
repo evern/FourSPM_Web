@@ -11,7 +11,7 @@ import {
 } from '../config/api-endpoints';
 import { VariationDeliverableUiStatus } from '../types/app-types';
 import { Deliverable } from '../types/odata-types';
-import { getAuthHeaders } from '../utils/auth-headers';
+import { getToken } from '../utils/token-store';
 
 
 /**
@@ -23,9 +23,18 @@ export async function getVariationDeliverables(variationGuid: string): Promise<D
   // Use the dedicated OData endpoint with filter for variationGuid
   const endpoint = getVariationDeliverablesEndpoint(variationGuid);
   
+  // Get token directly at the point of use
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token is required for API requests');
+  }
+
   const response = await fetch(endpoint, {
     method: 'GET',
-    headers: getAuthHeaders() // MSAL authentication is used internally
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
   });
   
   if (!response.ok) {
@@ -65,10 +74,16 @@ export async function addExistingDeliverableToVariation(
   // If not, we'll be creating a new variation copy based on the original
   const targetGuid = deliverable.guid;
 
+  // Get token directly at the point of use
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token is required for API requests');
+  }
+
   const response = await fetch(`${VARIATION_DELIVERABLES_ENDPOINT}(${targetGuid})`, {
     method: 'PATCH',
     headers: {
-      ...getAuthHeaders(), // MSAL authentication is used internally
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'  // Request that the server return the updated entity
     },
@@ -101,10 +116,16 @@ export async function cancelDeliverableVariation(
   // Use our new dedicated cancellation endpoint
   const url = getCancelDeliverableUrl(originalDeliverableGuid, variationGuid);
   
+  // Get token directly at the point of use
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token is required for API requests');
+  }
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(), // MSAL authentication is used internally
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   });
@@ -122,13 +143,17 @@ export async function cancelDeliverableVariation(
 /**
  * Add a new deliverable to a variation
  * @param data The deliverable data
- * @param token Authentication token
  * @returns Promise containing the created deliverable entity with server-calculated fields
  */
 export async function addNewDeliverableToVariation(
-  data: Deliverable,
-  token: string
+  data: Deliverable
 ): Promise<Deliverable> {
+  // Get token directly at the point of use
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token is required for API requests');
+  }
+
   // Use POST to the VariationDeliverables endpoint for creating new entities
   const response = await fetch(`${VARIATION_DELIVERABLES_ENDPOINT}`, {
     method: 'POST',

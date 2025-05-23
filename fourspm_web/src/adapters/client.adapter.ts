@@ -1,6 +1,7 @@
 import { apiService } from '../api/api.service';
 import { Client } from '../types/index';
 import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
+import { getToken } from '../utils/token-store';
 
 /**
  * Client data adapter - provides methods for fetching and manipulating client data
@@ -8,12 +9,18 @@ import { CLIENTS_ENDPOINT } from '../config/api-endpoints';
 
 /**
  * Gets all clients
- * @param token Authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns Array of clients
  */
-export const getClients = async (token: string): Promise<Client[]> => {
+export const getClients = async (token?: string): Promise<Client[]> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication token is required for API requests');
+  }
   try {
-    const response = await apiService.getAll<Client>(CLIENTS_ENDPOINT, token);
+    const response = await apiService.getAll<Client>(CLIENTS_ENDPOINT, authToken);
     return response.value || [];
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -24,12 +31,18 @@ export const getClients = async (token: string): Promise<Client[]> => {
 /**
  * Gets client details by ID
  * @param clientId Client GUID
- * @param token Authentication token
+ * @param token Optional token override - using Optimized Direct Access Pattern by default
  * @returns Client details
  */
-export const getClientDetails = async (clientId: string, token: string): Promise<Client> => {
+export const getClientDetails = async (clientId: string, token?: string): Promise<Client> => {
+  // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
+  const authToken = token || getToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication token is required for API requests');
+  }
   try {
-    return await apiService.getById<Client>(CLIENTS_ENDPOINT, clientId, token);
+    return await apiService.getById<Client>(CLIENTS_ENDPOINT, clientId, authToken);
   } catch (error) {
     console.error(`Error fetching client details for ID ${clientId}:`, error);
     throw error;

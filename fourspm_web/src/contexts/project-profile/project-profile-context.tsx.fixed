@@ -4,6 +4,7 @@ import { projectProfileReducer, initialProjectProfileState } from './project-pro
 import { Project } from '../../types/index';
 import { getToken } from '../../utils/token-store';
 import { useNavigation } from '../navigation';
+// We don't directly import useProjects as it requires ProjectsProvider
 import { fetchProject, updateProject } from '../../adapters/project.adapter';
 import { getClientDetails } from '../../adapters/client.adapter';
 import { useQueryClient } from '@tanstack/react-query';

@@ -3,12 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { DeliverableGatesState, DeliverableGatesContextProps } from './deliverable-gates-types';
 import { deliverableGatesReducer } from './deliverable-gates-reducer';
 import { ValidationRule } from '@/hooks/interfaces/grid-operation-hook.interfaces';
-import { useToken } from '@/contexts/token-context';
-
 const initialState: DeliverableGatesState = {
   loading: false,
-  error: null,
-  token: null,
+  error: null
 };
 
 // Default validation rules for deliverable gates
@@ -31,7 +28,16 @@ export const DELIVERABLE_GATE_VALIDATION_RULES: ValidationRule[] = [
     min: 0,
     max: 100,
     errorText: 'Maximum percentage must be between 0 and 100.'
+  },
+  {
+    field: 'autoPercentage',
+    required: false,
+    min: 0,
+    max: 100,
+    errorText: 'Auto percentage must be between 0 and 100.'
   }
+  // Note: The validation to ensure autoPercentage <= maxPercentage is implemented
+  // directly in the grid handler via handleRowValidating to provide better UI feedback
 ];
 
 // Default values for new deliverable gate
@@ -57,14 +63,6 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
   // Track component mount state to prevent updates after unmounting
   const isMountedRef = useRef(true);
   
-  // Use the centralized token acquisition hook
-  const { 
-    token, 
-    loading: tokenLoading, 
-    error: tokenError, 
-    acquireToken: acquireTokenFromHook 
-  } = useToken();
-  
   useEffect(() => {
     // Cleanup on unmount
     return () => {
@@ -80,37 +78,12 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
   
-  const setToken = useCallback((token: string | null) => {
+  // Set initial loading state
+  useEffect(() => {
     if (isMountedRef.current) {
-      dispatch({ type: 'SET_TOKEN', payload: token });
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
-  
-  // Method to acquire a token - now just a pass-through to the hook
-  const acquireToken = useCallback(async (): Promise<string | null> => {
-    return acquireTokenFromHook();
-  }, [acquireTokenFromHook]);
-  
-  // Sync token state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current && token !== undefined) {
-      setToken(token);
-    }
-  }, [token, setToken]);
-  
-  // Sync loading state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current) {
-      dispatch({ type: 'SET_LOADING', payload: tokenLoading });
-    }
-  }, [tokenLoading]);
-  
-  // Sync error state from the hook to the context
-  useEffect(() => {
-    if (isMountedRef.current && tokenError) {
-      dispatch({ type: 'SET_ERROR', payload: tokenError });
-    }
-  }, [tokenError]);
 
   // Invalidate all lookups (for cache invalidation after mutations)
   const invalidateAllLookups = useCallback(() => {
@@ -123,15 +96,11 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
     return getDefaultDeliverableGateValues();
   }, []);
 
-  // Token acquisition is now handled by the token context
-  // No need for manual token acquisition in useEffect
-
   const contextValue = useMemo(
     () => ({ 
       state, 
       setLoading, 
       setError,
-      // Token management now handled by useToken() directly,
 
       invalidateAllLookups,
       validationRules: DELIVERABLE_GATE_VALIDATION_RULES,

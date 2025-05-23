@@ -12,19 +12,16 @@ export interface DeliverableGate {
 export interface DeliverableGatesState {
   loading: boolean;
   error: string | null;
-  token: string | null;
 }
 
 export type DeliverableGatesAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_TOKEN'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null };
 
 export interface DeliverableGatesContextProps {
   state: DeliverableGatesState;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  // Token management now handled by useToken() directly
   invalidateAllLookups: () => void;
   validationRules: ValidationRule[];
   getDefaultValues: () => Partial<DeliverableGate>;

@@ -4,14 +4,12 @@ export const initialProjectsState: ProjectsState = {
   projects: [],
   loading: false,
   error: null,
-  validationErrors: {},
-  token: null
+  validationErrors: {}
 };
 
 export function projectsReducer(state: ProjectsState, action: ProjectsAction): ProjectsState {
   switch (action.type) {
-    case 'SET_TOKEN':
-      return { ...state, token: action.payload };
+    // Token management removed for Optimized Direct Access pattern
 
     case 'FETCH_PROJECTS_START':
       return { ...state, loading: true, error: null };

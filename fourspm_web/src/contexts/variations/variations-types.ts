@@ -29,7 +29,6 @@ export interface VariationsState {
   variations: Variation[];
   loading: boolean;
   error: string | null;
-  token: string | null;
   validationErrors: Record<string, string[]>;
   
   // Editor state
@@ -44,8 +43,7 @@ export type VariationsAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_DATA_LOADED'; payload: boolean }
-  // Auth-related actions
-  | { type: 'SET_TOKEN'; payload: string | null }
+  // Auth-related actions - removed for Optimized Direct Access pattern
   // Data operations actions
   | { type: 'UPDATE_VARIATION_START'; payload: Variation }
   | { type: 'UPDATE_VARIATION_SUCCESS'; payload: Variation }
