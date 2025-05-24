@@ -38,10 +38,8 @@ export const roleColumns = (config: RoleColumnsConfig): ODataGridColumn[] => {
           text: 'View',
           visible: (e) => !e.row.isNewRow && e.row.data.guid,
           onClick: (e: any) => {
-            // This is a dummy implementation that will be replaced later
-            config.showSuccess('Role permissions functionality will be implemented in a future update');
-            // Will navigate to permissions page in the future
-            // window.location.href = `#/roles/${e.row.data.guid}/permissions`;
+            // Navigate to the role permissions component
+            window.location.href = `#/roles/${e.row.data.guid}/permissions`;
           }
         }
       ]

@@ -1,0 +1,124 @@
+@use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/shared-styles.scss";
+
+.role-permissions-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  
+  .custom-grid-wrapper {
+    width: 100%;
+    
+    .dx-datagrid {
+      margin-top: 50px; /* Reduced margin to match other grids */
+    }
+  }
+  
+  .permission-level-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .permission-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+    
+    input[type="radio"] {
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+  
+  /* Additional styling for the grid buttons container */
+  .dx-datagrid-content .dx-command-edit {
+    .dx-link {
+      &.permission-button.toggle-button {
+        padding: 0 8px !important;
+      }
+    }
+  }
+  
+  /* Toggle Switch Styles */
+  .permission-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+  
+  .permission-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    
+    /* Hide default HTML checkbox */
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    /* The slider */
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+      
+      &:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: vars.$base-accent;
+      
+      &:before {
+        transform: translateX(24px);
+      }
+    }
+    
+    input:focus + .toggle-slider {
+      box-shadow: 0 0 1px vars.$base-accent;
+    }
+    
+    input:disabled + .toggle-slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  
+  .permission-toggle-label {
+    font-size: 14px;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    
+    &.enabled {
+      color: vars.$base-accent;
+      font-weight: 500;
+    }
+    
+    &.disabled {
+      color: vars.$base-text-color;
+    }
+  }
+}

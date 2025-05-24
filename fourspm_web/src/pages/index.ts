@@ -17,3 +17,4 @@ export { default as RolesPage } from './roles/roles';
 export { default as ProjectProfilePage } from './project/project-profile';
 export { default as DeliverableProgressPage } from './deliverable-progress/deliverable-progress';
 export { default as VariationDeliverablesPage } from './variation-deliverables/variation-deliverables';
+export { default as RolePermissionsPage } from './permissions/role-permissions';

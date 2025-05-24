@@ -23,6 +23,8 @@ export const PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Progress`;
 export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
 export const ROLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Roles`;
 export const VARIATION_DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/VariationDeliverables`;
+export const STATIC_PERMISSIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/StaticPermissions`;
+export const ROLE_PERMISSIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/RolePermissions`;
 
 /**
  * Note on OData Custom Function Endpoints:

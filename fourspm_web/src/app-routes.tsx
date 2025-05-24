@@ -20,7 +20,8 @@ import {
   // Profile & detail pages
   ProjectProfilePage as ProjectProfile,
   DeliverableProgressPage as DeliverableProgress,
-  VariationDeliverablesPage as VariationDeliverables
+  VariationDeliverablesPage as VariationDeliverables,
+  RolePermissionsPage as RolePermissions
 } from './pages';
 
 interface RouteConfig {
@@ -76,6 +77,10 @@ const routes: RouteConfig[] = [
   {
     path: '/roles',
     component: Roles
+  },
+  {
+    path: '/roles/:roleId/permissions',
+    component: RolePermissions
   },
   {
     path: '/profile',

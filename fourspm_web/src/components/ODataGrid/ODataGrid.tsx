@@ -8,7 +8,9 @@ import DataGrid, {
   Lookup,
   Sorting,
   Summary,
-  TotalItem
+  TotalItem,
+  Grouping,
+  GroupPanel
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -27,6 +29,7 @@ export interface ODataGridColumn extends Partial<Column> {
   dataType?: string;
   sortOrder?: 'asc' | 'desc';
   sortIndex?: number;
+  groupIndex?: number;
   fixed?: boolean;
   fixedPosition?: 'left' | 'right';
   name?: string; // Used to uniquely identify columns especially for button columns
@@ -92,6 +95,10 @@ interface ODataGridProps {
   customGridHeight?: string | number;
   loading?: boolean; // Loading state prop
   storeOptions?: any; // Options passed to the ODataStore
+  // Grouping options
+  allowGrouping?: boolean;
+  showGroupPanel?: boolean;
+  autoExpandAll?: boolean;
   // token and onTokenExpired props removed - using direct token access instead
 }
 
@@ -121,6 +128,10 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   customGridHeight,
   loading = false, // Default to false if not provided
   storeOptions = {},
+  // Grouping options with defaults
+  allowGrouping = false,
+  showGroupPanel = false,
+  autoExpandAll = true,
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
@@ -272,7 +283,30 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       store,
       sort: defaultSort || [{ selector: 'created', desc: true }]
     };
-  
+    
+    // Apply grouping if enabled
+    if (allowGrouping) {
+      // First check if storeOptions has explicit grouping
+      if (storeOptions.grouping && Array.isArray(storeOptions.grouping)) {
+        dataSourceOptions.group = storeOptions.grouping;
+      } 
+      // Then check columns for groupIndex
+      else {
+        const groupColumns = columns
+          .filter(col => col.groupIndex !== undefined && col.dataField)
+          .sort((a, b) => (a.groupIndex || 0) - (b.groupIndex || 0))
+          .map(col => ({
+            selector: col.dataField || '',
+            desc: false
+          }));
+        
+        if (groupColumns.length > 0) {
+          dataSourceOptions.group = groupColumns;
+          console.log('Setting group by columns:', groupColumns);
+        }
+      }
+    }
+    
     if (defaultFilter.length > 0) {
       dataSourceOptions.filter = defaultFilter;
     }
@@ -385,10 +419,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             filtering: true,
             paging: true,
             sorting: true,
-            grouping: false,
+            grouping: true,
             summary: false,
             groupPaging: false
           }}
+          groupPanel={{ visible: showGroupPanel }}
+          grouping={{ autoExpandAll: autoExpandAll }}
           onCellPrepared={onCellPrepared}
           editing={{
             mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',
@@ -432,6 +468,10 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             <Paging enabled={false} />
           )}
           <FilterRow visible={true} />
+          
+          {/* Always render GroupPanel and Grouping components when allowGrouping is true */}
+          {allowGrouping && <GroupPanel visible={showGroupPanel} />}
+          {allowGrouping && <Grouping autoExpandAll={autoExpandAll} />}
           {columns.map((column) => {
             // Create a unique key for each column
             const columnKey = column.dataField || `${column.type}-${column.name || column.caption}`; // Use name if available for better uniqueness
@@ -447,6 +487,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               cssClass: column.cellClass,
               sortOrder: column.sortOrder,
               sortIndex: column.sortIndex,
+              groupIndex: column.groupIndex,
               fixed: column.fixed,
               fixedPosition: column.fixedPosition
             };
