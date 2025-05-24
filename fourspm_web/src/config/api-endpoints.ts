@@ -21,6 +21,7 @@ export const DOCUMENT_TYPES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DocumentT
 export const DELIVERABLE_GATES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/DeliverableGates`;
 export const PROGRESS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Progress`;
 export const VARIATIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Variations`;
+export const ROLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Roles`;
 export const VARIATION_DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/VariationDeliverables`;
 
 /**

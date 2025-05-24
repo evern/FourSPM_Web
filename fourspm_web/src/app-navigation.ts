@@ -52,6 +52,11 @@ export const navigation: NavigationItem[] = [
         path: '/deliverable-gates',
         icon: 'check'
       },
+      {
+        text: 'Roles',
+        path: '/roles',
+        icon: 'group'
+      },
     ],
   },
 ];

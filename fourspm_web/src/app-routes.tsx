@@ -15,6 +15,7 @@ import {
   DocumentTypesPage as DocumentTypes,
   DeliverableGatesPage as DeliverableGates,
   VariationsPage as Variations,
+  RolesPage as Roles,
   
   // Profile & detail pages
   ProjectProfilePage as ProjectProfile,
@@ -71,6 +72,10 @@ const routes: RouteConfig[] = [
   {
     path: '/deliverable-gates',
     component: DeliverableGates
+  },
+  {
+    path: '/roles',
+    component: Roles
   },
   {
     path: '/profile',
