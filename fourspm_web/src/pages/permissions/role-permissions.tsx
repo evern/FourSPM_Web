@@ -4,6 +4,7 @@ import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
 import { ErrorMessage, ODataGrid } from '@/components';
 import { Column } from 'devextreme/ui/data_grid';
+import ODataStore from 'devextreme/data/odata/store';
 import { PermissionsProvider, usePermissions } from '@/contexts/permissions/permissions-context';
 import { permissionColumns } from './permission-columns';
 import { useRolePermissionGridHandlers } from '@/hooks/grid-handlers/useRolePermissionGridHandlers';
@@ -47,44 +48,32 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
     state: { loading, error, staticPermissions, permissionAssignments, role },
   } = usePermissions();
   
-  // Use role permission grid handlers
+  // Use the permissions context hooks for grid handlers and notifications
   const {
-    handlePermissionLevelChange,
     handleEditorPreparing,
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
-    handleToggleChange,
-    getPermissionLevel,
     showSuccess,
     showError
   } = useRolePermissionGridHandlers();
   
-  // Create an adapter for the toggle change that converts boolean to number
-  const handleToggleChangeAdapter = useCallback(
-    (featureKey: string, isEnabled: boolean, displayName: string): Promise<void> => {
-      // Convert boolean to numeric level (0 for false, 1 for true)
-      const newLevel = isEnabled ? 1 : 0;
-      return handleToggleChange(featureKey, newLevel, displayName);
-    },
-    [handleToggleChange]
-  );
+  // Access the functions from permissions context
+  const permissions = usePermissions();
   
-  // Create columns with the permission level change handler
+  // Create columns with the permission action handlers
   const columns = useMemo(() => {
     return permissionColumns({
-      onPermissionLevelChange: handlePermissionLevelChange,
-      getPermissionLevel,
+      setAccessLevel: permissions.setAccessLevel,
+      setToggleState: permissions.setToggleState,
       showSuccess,
-      showError,
-      onToggleChange: handleToggleChangeAdapter
+      showError
     });
   }, [
-    handlePermissionLevelChange, 
-    getPermissionLevel, 
+    permissions.setAccessLevel, 
+    permissions.setToggleState, 
     showSuccess, 
-    showError, 
-    handleToggleChangeAdapter
+    showError
   ]);
   
   return (
@@ -111,10 +100,12 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
         <div className="grid-custom-title">
           {role ? `Permissions for ${role.displayName}` : 'Role Permissions'}
         </div>
-        {!loading && !error && (
+        {!loading && !error ? (
+          role?.guid ? (
             <ODataGrid
+              key={`permissions-grid-${new Date().getTime()}`} // Force complete re-render on each render
               title=" "
-              endpoint={`${ROLE_PERMISSIONS_ENDPOINT}/GetPermissionSummary(roleId=${role?.guid})`}
+              endpoint={`${ROLE_PERMISSIONS_ENDPOINT}/GetPermissionSummary(roleId=${role.guid})`}
               columns={columns}
               keyField="featureKey"
               customGridHeight={900}
@@ -137,8 +128,16 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
               onRowUpdating={handleRowUpdating}
               onRowInserting={handleRowInserting}
               onRowRemoving={handleRowRemoving}
-          />
-        )}
+            />
+          ) : (
+            <div className="dx-card empty-message">
+              <div className="message-content">
+                <i className="dx-icon dx-icon-info" />
+                <span>Please select a role to manage permissions</span>
+              </div>
+            </div>
+          )
+        ) : null}
       </div>
       
       <ScrollToTop />

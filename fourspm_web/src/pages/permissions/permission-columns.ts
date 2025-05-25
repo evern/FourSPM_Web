@@ -1,13 +1,12 @@
 import type { ODataGridColumn } from '../../components';
-import { PermissionLevel, PermissionType } from '../../contexts/permissions/permissions-types';
+import { PermissionType } from '../../contexts/permissions/permissions-types';
 
 /**
  * Interface for the permission columns configuration
  */
 export interface PermissionColumnsConfig {
-  onPermissionLevelChange: (featureKey: string, level: PermissionLevel) => Promise<void>;
-  onToggleChange: (featureKey: string, isEnabled: boolean, displayName: string) => Promise<void>;
-  getPermissionLevel: (featureKey: string) => PermissionLevel;
+  setAccessLevel: (featureKey: string, action: string, skipStateUpdate?: boolean) => Promise<boolean>; // 'NoAccess', 'ReadOnly', 'FullAccess'
+  setToggleState: (featureKey: string, enabled: boolean, skipStateUpdate?: boolean) => Promise<boolean>; // true/false
   showSuccess: (message: string) => void;
   showError: (message: string) => void;
 }
@@ -68,16 +67,18 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             const permissionType = e.row.data?.permissionType || PermissionType.AccessLevel;
             return permissionType === PermissionType.AccessLevel;
           },
-          onClick: (e: any) => {
+          onClick: async (e: any) => {
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
-              config.onPermissionLevelChange(featureKey, PermissionLevel.NONE)
-                .then(() => {
+              try {
+                const success = await config.setAccessLevel(featureKey, 'NoAccess', true); // Skip state update since grid will refresh
+                if (success) {
                   config.showSuccess(`Permission for ${displayName} set to No Access`);
-                })
-                .catch((error: Error) => {
-                  config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
-                });
+                  e.component.refresh(); // Refresh the grid to show updated permission levels
+                }
+              } catch (error: any) {
+                config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
+              }
             }
           }
         },
@@ -92,16 +93,18 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             const permissionType = e.row.data?.permissionType || PermissionType.AccessLevel;
             return permissionType === PermissionType.AccessLevel;
           },
-          onClick: (e: any) => {
+          onClick: async (e: any) => {
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
-              config.onPermissionLevelChange(featureKey, PermissionLevel.READ_ONLY)
-                .then(() => {
+              try {
+                const success = await config.setAccessLevel(featureKey, 'ReadOnly', true); // Skip state update since grid will refresh
+                if (success) {
                   config.showSuccess(`Permission for ${displayName} set to Read-Only`);
-                })
-                .catch((error: Error) => {
-                  config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
-                });
+                  e.component.refresh(); // Refresh the grid to show updated permission levels
+                }
+              } catch (error: any) {
+                config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
+              }
             }
           }
         },
@@ -116,16 +119,18 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             const permissionType = e.row.data?.permissionType || PermissionType.AccessLevel;
             return permissionType === PermissionType.AccessLevel;
           },
-          onClick: (e: any) => {
+          onClick: async (e: any) => {
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
-              config.onPermissionLevelChange(featureKey, PermissionLevel.FULL_ACCESS)
-                .then(() => {
+              try {
+                const success = await config.setAccessLevel(featureKey, 'FullAccess', true); // Skip state update since grid will refresh
+                if (success) {
                   config.showSuccess(`Permission for ${displayName} set to Full Access`);
-                })
-                .catch((error: Error) => {
-                  config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
-                });
+                  e.component.refresh(); // Refresh the grid to show updated permission levels
+                }
+              } catch (error: any) {
+                config.showError(`Failed to update permission: ${error.message || 'Unknown error'}`);
+              }
             }
           }
         },
@@ -143,16 +148,18 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             const permissionType = e.row.data?.permissionType || PermissionType.AccessLevel;
             return permissionType === PermissionType.Toggle;
           },
-          onClick: (e: any) => {
+          onClick: async (e: any) => {
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
-              config.onToggleChange(featureKey, false, displayName)
-                .then(() => {
+              try {
+                const success = await config.setToggleState(featureKey, false, true); // Skip state update since grid will refresh
+                if (success) {
                   config.showSuccess(`${displayName} disabled`);
-                })
-                .catch((error: Error) => {
-                  config.showError(`Failed to disable ${displayName}: ${error.message || 'Unknown error'}`);
-                });
+                  e.component.refresh(); // Refresh the grid to show updated permission levels
+                }
+              } catch (error: any) {
+                config.showError(`Failed to disable ${displayName}: ${error.message || 'Unknown error'}`);
+              }
             }
           }
         },
@@ -167,16 +174,18 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             const permissionType = e.row.data?.permissionType || PermissionType.AccessLevel;
             return permissionType === PermissionType.Toggle;
           },
-          onClick: (e: any) => {
+          onClick: async (e: any) => {
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
-              config.onToggleChange(featureKey, true, displayName)
-                .then(() => {
+              try {
+                const success = await config.setToggleState(featureKey, true, true); // Skip state update since grid will refresh
+                if (success) {
                   config.showSuccess(`${displayName} enabled`);
-                })
-                .catch((error: Error) => {
-                  config.showError(`Failed to enable ${displayName}: ${error.message || 'Unknown error'}`);
-                });
+                  e.component.refresh(); // Refresh the grid to show updated permission levels
+                }
+              } catch (error: any) {
+                config.showError(`Failed to enable ${displayName}: ${error.message || 'Unknown error'}`);
+              }
             }
           }
         }

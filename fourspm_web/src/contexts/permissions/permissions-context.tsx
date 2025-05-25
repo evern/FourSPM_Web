@@ -1,5 +1,8 @@
-import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import notify from 'devextreme/ui/notify';
+import { getToken } from '../../utils/token-store';
+import { setPermissionLevel as adapterSetPermissionLevel } from '../../adapters/permission-actions.adapter';
 
 import {
   PermissionsContextProps,
@@ -293,46 +296,225 @@ export function PermissionsProvider({
           type: 'TOGGLE_PERMISSION',
           payload: { featureKey, level, permissionGuid: newPermissionGuid }
         });
-        
-        // Refresh role permissions to ensure the state is in sync with the backend
-        await fetchRolePermissions(roleId);
       } catch (error) {
-        console.error(`Error setting permission level for feature ${featureKey}:`, error);
-        setError(`Failed to set permission level for ${featureKey}`);
-        throw error;
+        if (isMountedRef.current) {
+          setError(`Failed to set permission level: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        console.error('Error setting permission level:', error);
+        return Promise.reject(error);
       } finally {
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [roleId, state.permissionAssignments, setLoading, setError, fetchRolePermissions]
+    [roleId, state.permissionAssignments, setLoading, setError]
   );
   
-  // Create the context value
-  const contextValue = useMemo<PermissionsContextProps>(
+  // Set the access level using action strings (NoAccess, ReadOnly, FullAccess)
+  const setAccessLevel = useCallback(
+    async (featureKey: string, action: string, skipStateUpdate = false): Promise<boolean> => {
+      try {
+        // Only update loading state if not skipping state updates
+        if (!skipStateUpdate) {
+          setLoading(true);
+        }
+        
+        if (!roleId) {
+          if (!skipStateUpdate) {
+            setError('Role ID is required');
+          }
+          return false;
+        }
+        
+        // Map action strings to permission levels for state updates
+        let permissionLevel: PermissionLevel;
+        switch (action) {
+          case 'NoAccess':
+            permissionLevel = PermissionLevel.NONE;
+            break;
+          case 'ReadOnly':
+            permissionLevel = PermissionLevel.READ_ONLY;
+            break;
+          case 'FullAccess':
+            permissionLevel = PermissionLevel.FULL_ACCESS;
+            break;
+          default:
+            throw new Error(`Invalid action: ${action}`);
+        }
+        
+        // Call the adapter to set the permission level
+        try {
+          // The adapter handles the token internally if not provided
+          await adapterSetPermissionLevel(roleId, featureKey, action);
+          
+          // Update local state only if not skipping state updates
+          if (!skipStateUpdate) {
+            dispatch({
+              type: 'TOGGLE_PERMISSION',
+              payload: { featureKey, level: permissionLevel }
+            });
+          }
+          
+          return true; // Return success
+        } catch (error) {
+          console.error('Error setting access level:', error);
+          
+          // Only update error state if not skipping state updates and component is still mounted
+          if (isMountedRef.current && !skipStateUpdate) {
+            setError(`Failed to set permission level: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+          return false; // Return failure
+        }
+      } finally {
+        // Only update loading state if not skipping state updates and component is still mounted
+        if (isMountedRef.current && !skipStateUpdate) {
+          setLoading(false);
+        }
+      }
+    },
+    [roleId, dispatch, setLoading, setError]
+  );
+  
+  // Toggle permission state (enable/disable)
+  const setToggleState = useCallback(
+    async (featureKey: string, isEnabled: boolean, skipStateUpdate = false): Promise<boolean> => {
+      try {
+        // Only update loading state if not skipping state updates
+        if (!skipStateUpdate) {
+          setLoading(true);
+        }
+        
+        if (!roleId) {
+          if (!skipStateUpdate) {
+            setError('Role ID is required');
+          }
+          return false;
+        }
+        
+        // Call the adapter to set the permission level
+        try {
+          // Create the toggle action string based on isEnabled flag
+          const action = isEnabled ? 'Enable' : 'Disable';
+          
+          // The adapter handles the token internally if not provided
+          await adapterSetPermissionLevel(roleId, featureKey, action);
+          
+          // Update local state only if not skipping state updates
+          if (!skipStateUpdate) {
+            dispatch({
+              type: 'TOGGLE_PERMISSION',
+              payload: { featureKey, level: isEnabled ? PermissionLevel.FULL_ACCESS : PermissionLevel.NONE }
+            });
+          }
+          
+          return true; // Return success
+        } catch (error) {
+          console.error('Error toggling permission:', error);
+          
+          // Only update error state if not skipping state updates and component is still mounted
+          if (isMountedRef.current && !skipStateUpdate) {
+            setError(`Failed to toggle permission: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+          return false; // Return failure
+        }
+      } finally {
+        // Only update loading state if not skipping state updates and component is still mounted
+        if (isMountedRef.current && !skipStateUpdate) {
+          setLoading(false);
+        }
+      }
+    },
+    [roleId, dispatch, setLoading, setError]
+  );
+
+  // Success notification function
+  const showSuccess = useCallback((message: string) => {
+    notify({
+      message,
+      type: 'success',
+      displayTime: 3000,
+      position: { at: 'bottom center', my: 'bottom center' }
+    });
+  }, []);
+
+  // Error notification function
+  const showError = useCallback((message: string) => {
+    notify({
+      message,
+      type: 'error',
+      displayTime: 5000,
+      position: { at: 'bottom center', my: 'bottom center' }
+    });
+  }, []);
+
+  // Wrapper for the setPermissionLevel adapter to match the interface
+  const setPermissionLevelWrapper = useCallback(
+    async (featureKey: string, level: PermissionLevel): Promise<void> => {
+      if (!roleId) {
+        throw new Error('Role ID is required');
+      }
+      
+      // Map permission level enum to action string
+      let action: string;
+      switch (level) {
+        case PermissionLevel.NONE:
+          action = 'NoAccess';
+          break;
+        case PermissionLevel.READ_ONLY:
+          action = 'ReadOnly';
+          break;
+        case PermissionLevel.FULL_ACCESS:
+          action = 'FullAccess';
+          break;
+        default:
+          throw new Error(`Invalid permission level: ${level}`);
+      }
+      
+      try {
+        await adapterSetPermissionLevel(roleId, featureKey, action);
+      } catch (error) {
+        console.error('Error setting permission level:', error);
+        throw error;
+      }
+    },
+    [roleId]
+  );
+
+  // Create the context value with memoization to prevent unnecessary renders
+  const contextValue = useMemo(
     () => ({
       state,
       setLoading,
       setError,
       fetchStaticPermissions,
       fetchRolePermissions,
-      setPermissionLevel,
-      getPermissionLevel,
+      getRole,
       buildPermissionAssignments,
-      getRole
+      getPermissionLevel,
+      setPermissionLevel: setPermissionLevelWrapper,
+      setAccessLevel,
+      setToggleState,
+      showSuccess,
+      showError
     }),
     [
-      state,
-      setLoading,
-      setError,
-      fetchStaticPermissions,
-      fetchRolePermissions,
-      setPermissionLevel,
-      getPermissionLevel,
-      buildPermissionAssignments,
-      getRole
+      state, 
+      setLoading, 
+      setError, 
+      fetchStaticPermissions, 
+      fetchRolePermissions, 
+      getRole, 
+      buildPermissionAssignments, 
+      getPermissionLevel, 
+      setPermissionLevelWrapper, 
+      setAccessLevel, 
+      setToggleState,
+      showSuccess,
+      showError
     ]
   );
-  
+
   return (
     <PermissionsContext.Provider value={contextValue}>
       {children}

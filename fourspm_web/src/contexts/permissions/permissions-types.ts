@@ -136,4 +136,10 @@ export interface PermissionsContextProps {
   getPermissionLevel: (featureKey: string) => PermissionLevel;
   buildPermissionAssignments: (staticPermissions: StaticPermission[], rolePermissions: RolePermission[]) => PermissionAssignment[];
   getRole: (roleId: string) => Promise<Role | null>;
+  
+  // Permission button action handlers
+  setAccessLevel: (featureKey: string, action: string) => Promise<boolean>; // 'NoAccess', 'ReadOnly', 'FullAccess'
+  setToggleState: (featureKey: string, enabled: boolean) => Promise<boolean>; // true/false
+  showSuccess: (message: string) => void;
+  showError: (message: string) => void;
 }
