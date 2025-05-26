@@ -33,8 +33,11 @@ export const useRoutePersistence = () => {
   
   // Restore route on refresh/authentication
   useEffect(() => {
-    // Only try to restore if authenticated and on home page (likely due to refresh redirect)
-    if (user && !loading && (location.pathname === '/home' || location.pathname === '/')) {
+    // Only try to restore if authenticated and coming from login (not direct navigation to home)
+    // We can detect this by checking if we've just logged in or reloaded after a login
+    const comingFromLogin = sessionStorage.getItem('fourspm_login_redirect') === 'true';
+    
+    if (user && !loading && comingFromLogin) {
       try {
         // Get the saved route (with a small delay to avoid race conditions)
         setTimeout(() => {
@@ -42,13 +45,15 @@ export const useRoutePersistence = () => {
           if (savedRoute) {
             console.log(`Route persistence: Restoring route to ${savedRoute}`);
             history.replace(savedRoute);
+            // Clear the login redirect flag
+            sessionStorage.removeItem('fourspm_login_redirect');
           }
         }, 100); // Small delay following established pattern
       } catch (error) {
         console.error('Route persistence: Error restoring route', error);
       }
     }
-  }, [user, loading, location.pathname, history]);
+  }, [user, loading, history]);
   
   // Clear saved route (used when explicitly navigating to home)
   const clearSavedRoute = useCallback(() => {

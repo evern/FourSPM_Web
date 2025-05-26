@@ -6,6 +6,12 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Import and run our DevExtreme configuration
+import { configureDevExtreme } from './components/devextreme-config';
+
+// Configure DevExtreme global settings
+configureDevExtreme();
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );

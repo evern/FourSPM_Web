@@ -135,6 +135,9 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       const userAccount = accountToUser(authResult.account, authResult.accessToken);
       setUser(userAccount);
       
+      // Set flag for route persistence to indicate we're coming from login
+      sessionStorage.setItem('fourspm_login_redirect', 'true');
+      
       // Also store token in our token store for direct access pattern
       try {
         const { setToken } = require('../utils/token-store');

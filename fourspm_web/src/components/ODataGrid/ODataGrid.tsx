@@ -17,6 +17,9 @@ import DataSource, { Options } from 'devextreme/data/data_source';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { getToken } from '../../utils/token-store'; // Import getToken for direct token access
+import { useApiErrorHandler } from '../../hooks/utils/useApiErrorHandler';
+import config from 'devextreme/core/config';
+import ajax from 'devextreme/core/utils/ajax';
 
 export interface ODataGridColumn extends Partial<Column> {
   // Standard column properties
@@ -135,6 +138,53 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
+  const { handleApiError } = useApiErrorHandler();
+  
+  // Configure DevExtreme global error handling - disable default error display
+  useEffect(() => {
+    // Set up global AJAX error handler
+    const originalOnAjaxError = ajax.onAjaxError;
+    ajax.onAjaxError = (xhr) => {
+      try {
+        // Extract error details from the response
+        let errorDetails = 'Unknown error';
+        let errorMessage = '';
+        
+        if (xhr.responseText) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            errorDetails = response;
+            errorMessage = response.message || response.error || response.Message || '';
+          } catch (e) {
+            errorDetails = xhr.responseText;
+          }
+        }
+        
+        // Create an error object with the extracted details
+        const error = {
+          httpStatus: xhr.status,
+          errorDetails: errorDetails,
+          message: errorMessage
+        };
+        
+        // Use our custom error handler
+        handleApiError(error, {
+          403: 'You do not have permission to perform this operation.'
+        });
+        
+        // Return true to prevent default error handling
+        return true;
+      } catch (e) {
+        console.error('Error in onAjaxError handler:', e);
+        return false; // Let DevExtreme handle it if our handler fails
+      }
+    };
+    
+    // Cleanup when component unmounts
+    return () => {
+      ajax.onAjaxError = originalOnAjaxError;
+    };
+  }, [handleApiError]);
   
   // Get token directly from token-store when needed
   const getCurrentToken = () => getToken();
@@ -151,13 +201,19 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     // Merge default options with the provided storeOptions
     const store = new ODataStore({
       url: endpoint,
-      version: 4,
       key: keyField,
+      version: 4,
       keyType: 'Guid',
-      // Merge default fieldTypes with those provided in storeOptions.fieldTypes
       fieldTypes: {
         projectGuid: 'Guid',
         ...(storeOptions.fieldTypes || {})
+      },
+      errorHandler: (error) => {
+        // Use our API error handler to show notifications for errors
+        const { errorHandler } = require('../error-handler');
+        return errorHandler(error, {
+          403: 'You do not have permission to perform this operation.'
+        });
       },
       beforeSend: (options: any) => {
         console.log('ODataGrid: beforeSend called for URL:', options.url);
@@ -227,58 +283,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         
         return true;
       },
-      errorHandler: (error) => {
-        // Extract error message from the error object
-        // DevExtreme OData errors can have the message in different places
-        let errorMessage = '';
-        if (error.errorDetails && error.errorDetails.message) {
-          errorMessage = error.errorDetails.message;
-        } else if (error.errorDetails && typeof error.errorDetails === 'string') {
-          errorMessage = error.errorDetails;
-        } else if (error.requestOptions && error.requestOptions.data) {
-          errorMessage = 'Operation failed';
-        }
-        
-        // Handle validation errors (HTTP 400) using toast notifications
-        if (error.httpStatus === 400) {
-          notify({
-            message: errorMessage || 'Cannot complete operation due to validation errors',
-            type: 'error',
-            displayTime: 3500,
-            position: {
-              at: 'top center',
-              my: 'top center',
-              offset: '0 10'
-            },
-            width: 'auto',
-            animation: {
-              show: { type: 'fade', duration: 300, from: 0, to: 1 },
-              hide: { type: 'fade', duration: 300, from: 1, to: 0 }
-            }
-          });
-          return true;
-        }
-        
-        // Handle server errors (HTTP 500) using toast notifications
-        if (error.httpStatus >= 500) {
-          notify({
-            message: errorMessage || 'A server error occurred. Please try again later.',
-            type: 'error',
-            displayTime: 3500,
-            position: {
-              at: 'top center',
-              my: 'top center',
-              offset: '0 10'
-            }
-          });
-          return true;
-        }
-        
-        // Let 401 errors pass through - they'll be handled by the onAjaxError handler
-        return false;
-      }
+      // Error events are handled globally via ajax.defaultSettings in devextreme-config.ts
     });
-  
+
     const dataSourceOptions: Options = {
       store,
       sort: defaultSort || [{ selector: 'created', desc: true }]
@@ -402,7 +409,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
       >
         <DataGrid
           ref={dataGridRef}
-          className={'dx-card wide-card'}
+          id={`${title.replace(/\s+/g, '-').toLowerCase()}-grid`}
           dataSource={dataSourceInstance}
           showBorders={true}
           columnAutoWidth={true}
@@ -415,6 +422,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             showScrollbar: 'onHover', 
             scrollByThumb: true       
           }}
+          errorRowEnabled={false}
           remoteOperations={{
             filtering: true,
             paging: true,
