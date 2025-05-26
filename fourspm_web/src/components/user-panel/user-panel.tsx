@@ -99,33 +99,12 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
   const menuItems = useMemo(() => {
     return [
       {
-        text: 'Account Info',
-        icon: 'user',
-        onClick: () => {
-          // Display account info in a notification instead of navigating
-          if (user) {
-            notify({
-              message: `
-                <b>Name:</b> ${user.name || 'Not available'}<br/>
-                <b>Email:</b> ${user.email || 'Not available'}<br/>
-                <b>ID:</b> ${user.id || 'Not available'}
-              `,
-              width: 300,
-              height: 150,
-              type: 'info',
-              displayTime: 5000,
-              position: { at: 'top center', my: 'top center' }
-            }, 'info', 5000);
-          }
-        }
-      },
-      {
         text: 'Logout',
         icon: 'runner',
         onClick: handleLogoutClick
       }
     ];
-  }, [user, handleLogoutClick]);
+  }, [handleLogoutClick]);
 
   if (!user) {
     return (
@@ -182,7 +161,7 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
           items={menuItems}
           target={'.user-button'}
           showEvent={'dxclick'}
-          width={210}
+          width={120}
           cssClass={'user-menu'}
         >
           <Position my={'top center'} at={'bottom center'} />

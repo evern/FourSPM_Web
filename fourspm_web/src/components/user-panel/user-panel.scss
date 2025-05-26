@@ -4,6 +4,7 @@
   .user-info {
     display: flex;
     align-items: center;
+    justify-content: center;
   
     .dx-toolbar-menu-section & {
       padding: 10px 6px;
@@ -20,9 +21,10 @@
       border-radius: 50%;
       height: 30px;
       width: 30px;
-      margin: 0 4px;
+      margin: 0 1px;
       border: 1px solid rgba(0, 0, 0, 0.1);
       box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      flex-shrink: 0;
   
       // In dark theme, adjust border and shadow
       .dx-theme-generic-dark & {
@@ -37,10 +39,10 @@
     }
   
     .user-name {
-      font-size: 14px;
+      font-size: 13px;
       color: white;
-      margin: 0 9px;
-      max-width: 150px;
+      margin: 0 2px;
+      max-width: 50px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;

@@ -53,7 +53,7 @@ export default function Header({
         >
           <Button
             className={'user-button authorization'}
-            width={210}
+            width={50}
             height={'100%'}
             stylingMode={'text'}
           >
