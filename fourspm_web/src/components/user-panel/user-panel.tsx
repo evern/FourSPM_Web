@@ -66,10 +66,30 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
   const handleConfirmedLogout = async () => {
     try {
       setLoggingOut(true);
+
+      // Clear local state first
+      const msalInstance = (window as any).msalInstance;
+      
+      // First, call the signOut function to clear state
       await signOut();
-      // The page will redirect automatically after logout
+
+      // Use notification style from memory to show a success message
+      notify({
+        message: 'Successfully signed out',
+        width: 300,
+        type: 'success',
+        displayTime: 2000,
+        position: { at: 'top center', my: 'top center' }
+      });
     } catch (error) {
-      notify('Logout failed. Please try again.', 'error', 3000);
+      // Use notification style from memory for error message
+      notify({
+        message: 'Logout failed. Please try again.',
+        width: 300,
+        type: 'error',
+        displayTime: 3500,
+        position: { at: 'top center', my: 'top center' }
+      });
       console.error('Logout error:', error);
       setLoggingOut(false);
       setConfirmLogout(false);
