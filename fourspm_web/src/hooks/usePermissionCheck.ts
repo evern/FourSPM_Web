@@ -12,6 +12,14 @@ let cachedPermissions: string[] = [];
 // Track if permissions have been loaded to avoid redundant API calls
 let permissionsLoaded = false;
 
+// Expose a reset function to the window object to allow clearing permissions from anywhere
+// This avoids circular dependencies when importing from msal-auth.tsx
+(window as any).resetPermissionCache = () => {
+  console.log('Resetting permission cache');
+  cachedPermissions = [];
+  permissionsLoaded = false;
+};
+
 /**
  * Hook for checking user permissions
  * @returns Functions to check various permission types and loading state

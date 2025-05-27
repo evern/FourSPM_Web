@@ -68,10 +68,10 @@ const ProjectProfileContent: React.FC = () => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditProjects() && !isLoading) {
+    if (!canEditProjects() && !isLoading && !permissionsLoading) {
       showReadOnlyNotification('projects');
     }
-  }, [canEditProjects, isLoading]);
+  }, [canEditProjects, isLoading, permissionsLoading]);
   
   const { isXSmall, isSmall } = useScreenSize();
   const isMobile = isXSmall || isSmall;

@@ -76,10 +76,11 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditDeliverables() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditDeliverables() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('deliverables');
     }
-  }, [canEditDeliverables, state.loading]);
+  }, [canEditDeliverables, state.loading, permissionsLoading]);
   
   // Get grid handlers directly from the hook
   const {

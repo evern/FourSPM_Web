@@ -66,10 +66,11 @@ const VariationsContent = (): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditVariations() && !loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditVariations() && !loading && !permissionsLoading) {
       showReadOnlyNotification('variations');
     }
-  }, [canEditVariations, loading]);
+  }, [canEditVariations, loading, permissionsLoading]);
 
   // Use our custom grid handlers
   const {

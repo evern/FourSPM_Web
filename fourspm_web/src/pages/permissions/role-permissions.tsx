@@ -67,10 +67,11 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditRoles() && !loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditRoles() && !loading && !permissionsLoading) {
       showReadOnlyNotification('role permissions');
     }
-  }, [canEditRoles, loading]);
+  }, [canEditRoles, loading, permissionsLoading]);
   
   // Use the permissions context hooks for grid handlers and notifications
   const {

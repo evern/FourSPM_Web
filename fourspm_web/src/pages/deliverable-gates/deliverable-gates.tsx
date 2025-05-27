@@ -40,10 +40,11 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditDeliverableGates() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditDeliverableGates() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('deliverable gates');
     }
-  }, [canEditDeliverableGates, state.loading]);
+  }, [canEditDeliverableGates, state.loading, permissionsLoading]);
 
   const {
     handleRowValidating,

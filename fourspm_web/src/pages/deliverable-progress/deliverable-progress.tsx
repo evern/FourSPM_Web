@@ -99,10 +99,11 @@ const DeliverableProgressContent = (): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditDeliverableProgress() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditDeliverableProgress() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('deliverable progress');
     }
-  }, [canEditDeliverableProgress, state.loading]);
+  }, [canEditDeliverableProgress, state.loading, permissionsLoading]);
   
   // Grid configuration
   

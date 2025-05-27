@@ -40,10 +40,11 @@ const ClientsContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditClients() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditClients() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('clients');
     }
-  }, [canEditClients, state.loading]);
+  }, [canEditClients, state.loading, permissionsLoading]);
   
   const {
     handleRowValidating,

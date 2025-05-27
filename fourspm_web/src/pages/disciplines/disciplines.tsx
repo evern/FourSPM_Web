@@ -53,10 +53,11 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditDisciplines() && !contextLoading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditDisciplines() && !contextLoading && !permissionsLoading) {
       showReadOnlyNotification('disciplines');
     }
-  }, [canEditDisciplines, contextLoading]);
+  }, [canEditDisciplines, contextLoading, permissionsLoading]);
 
   // Use the dedicated grid handlers hook - token access happens directly in handlers
   const { 

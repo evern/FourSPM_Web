@@ -52,10 +52,11 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditDocumentTypes() && !loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditDocumentTypes() && !loading && !permissionsLoading) {
       showReadOnlyNotification('document types');
     }
-  }, [canEditDocumentTypes, loading]);
+  }, [canEditDocumentTypes, loading, permissionsLoading]);
 
   // Token now comes from the document types context which gets it from token-store
 

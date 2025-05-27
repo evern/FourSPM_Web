@@ -65,10 +65,11 @@ const AreasContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditAreas() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditAreas() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('areas');
     }
-  }, [canEditAreas, state.loading]);
+  }, [canEditAreas, state.loading, permissionsLoading]);
 
   // Define filter to only show areas for the current project
   const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];

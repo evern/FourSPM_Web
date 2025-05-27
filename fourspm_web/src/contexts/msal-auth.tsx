@@ -363,6 +363,11 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       setUser(undefined);
       setError(undefined);
       
+      // Clear permission cache to prevent stale permissions after sign-out
+      if ((window as any).resetPermissionCache) {
+        (window as any).resetPermissionCache();
+      }
+      
       // Get the active account before logout attempts
       const activeAccount = msalInstance.getActiveAccount();
       

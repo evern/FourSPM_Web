@@ -55,10 +55,11 @@ const ProjectsContent = (): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditProjects() && !state.loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditProjects() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('projects');
     }
-  }, [canEditProjects, state.loading]);
+  }, [canEditProjects, state.loading, permissionsLoading]);
   
   // Destructure state for easier access
   const { loading, error } = state;

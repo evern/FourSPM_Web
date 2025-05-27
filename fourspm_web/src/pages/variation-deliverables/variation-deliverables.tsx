@@ -101,10 +101,11 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
-    if (!canEditVariationDeliverables() && !loading) {
+    // Only show notification when both permissions and data are fully loaded
+    if (!canEditVariationDeliverables() && !loading && !permissionsLoading) {
       showReadOnlyNotification('variation deliverables');
     }
-  }, [canEditVariationDeliverables, loading]);
+  }, [canEditVariationDeliverables, loading, permissionsLoading]);
   
   // We'll use the variation deliverables context for validation
   // In a future step, this would use a dedicated deliverable editor context
