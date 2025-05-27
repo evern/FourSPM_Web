@@ -1,48 +1,54 @@
 @use "../../themes/generated/variables.base.scss" as vars;
+@use "../../styles/shared-styles.scss";
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.custom-grid-wrapper {
+  width: 100%;
+}
 
 .login-form {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  max-width: 400px;
-  margin: 0 auto;
-
-  .login-header {
+  padding: 20px 0;
+  width: 100%;
+  max-width: 380px;
+  margin: 30px auto 0;
+  
+  .login-description {
     text-align: center;
     margin-bottom: 30px;
-    
-    h2 {
-      font-size: 28px;
-      margin-bottom: 10px;
-      color: vars.$base-text-color;
-    }
-    
-    p {
-      font-size: 16px;
-      color: vars.$base-text-color;
-      opacity: 0.8;
-    }
+    font-size: 16px;
+    color: var(--base-text-color);
+    opacity: 0.8;
   }
   
   .microsoft-login-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 16px;
+    padding: 12px 16px;
     background-color: #ffffff;
     color: #5e5e5e;
-    border: 1px solid #8c8c8c;
+    border: 1px solid #dddddd;
     border-radius: 4px;
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
+    font-family: 'Lato', 'Segoe UI', sans-serif;
+    font-size: 18px;
+    font-weight: 400;
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    min-width: 260px;
-    height: 41px;
-    margin: 20px 0;
+    transition: box-shadow 0.2s ease;
+    width: 100%;
+    height: 48px;
+    margin: 24px 0;
+    box-shadow: none;
     
     &:hover {
       background-color: #f3f3f3;
@@ -61,7 +67,7 @@
     // In dark theme, adapt colors
     .dx-theme-generic-dark & {
       background-color: #333;
-      color: #fff;
+      color: #fff; // Keep white text in dark theme
       border-color: #666;
       
       &:hover {
@@ -83,14 +89,22 @@
     flex: 1;
   }
   
-  .login-footer {
-    margin-top: 30px;
+  .skip-login {
+    margin-top: 20px;
     text-align: center;
+    width: 100%;
     
-    p {
+    a {
       font-size: 14px;
-      color: vars.$base-text-color;
+      color: var(--base-text-color);
       opacity: 0.7;
+      text-decoration: none;
+      cursor: pointer;
+      
+      &:hover {
+        text-decoration: underline;
+        opacity: 0.9;
+      }
     }
   }
 }

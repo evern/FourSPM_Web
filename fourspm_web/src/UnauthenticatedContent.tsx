@@ -7,7 +7,7 @@ const UnauthenticatedContent: React.FC = () => {
   return (
     <Switch>
       <Route exact path='/login'>
-        <SingleCard title="Sign In">
+        <SingleCard title="Sign in to SPM" description="Continue with the Microsoft account you use to sign in.">
           <LoginForm />
         </SingleCard>
       </Route>

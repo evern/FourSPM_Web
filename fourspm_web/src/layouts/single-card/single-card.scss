@@ -22,12 +22,15 @@
   
   .single-card {
     width: 100%;
-    max-width: 330px;
+    max-width: 600px;
     margin: auto;
     
     .dx-card {
-      padding: 40px;
+      padding: 40px 20px;
       flex-grow: 0;
+      border: none;
+      box-shadow: none;
+      background: transparent;
   
       .screen-x-small & {
         width: 100%;
@@ -40,18 +43,25 @@
       }
   
       .header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
+        text-align: center;
   
         .title {
-          color: vars.$base-text-color;
-          line-height: 28px;
-          font-weight: 500;
-          font-size: 24px;
+          color: var(--base-text-color);
+          line-height: 1.2;
+          font-weight: 700;
+          font-size: 42px;
         }
   
         .description {
-          color: color.adjust(vars.$base-text-color, $alpha: -0.3);
-          line-height: 18px;
+          color: var(--base-text-color);
+          opacity: 0.8;
+          line-height: 24px;
+          font-size: 18px;
+          margin-top: 16px;
+          max-width: 500px;
+          margin-left: auto;
+          margin-right: auto;
         }
       }
     }
