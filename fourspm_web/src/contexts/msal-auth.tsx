@@ -344,50 +344,62 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
 
   // Sign out
   const signOut = useCallback(async () => {
-    if (!msalInstance) {
-      return;
-    }
-
     try {
-      // First clear the local user state
-      setUser(undefined);
-
-      // Clear MSAL cache and session directly
+      if (!msalInstance) {
+        console.warn('MSAL instance not available for logout');
+        return;
+      }
+      
+      // First, ensure token store is cleared
       try {
-        // Get all accounts and remove them
-        const accounts = msalInstance.getAllAccounts();
-        for (const account of accounts) {
-          // This removes the account from the cache properly
-          msalInstance.setActiveAccount(null);
-        }
-      } catch (e) {
-        console.warn('Could not clear MSAL accounts:', e);
-      }
-      
-      // Clear storage tokens without using Microsoft's logout page
-      sessionStorage.clear();
-      
-      // Remove any specific MSAL items from localStorage
-      // Note: we don't clear all localStorage to preserve user preferences
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes('msal')) {
-          localStorage.removeItem(key);
-        }
+        const { clearToken } = require('../utils/token-store');
+        clearToken();
+        console.log('Token cleared from token-store');
+      } catch (error) {
+        console.error('Failed to clear token from token-store', error);
       }
 
-      // Clear any authentication cookies
-      document.cookie.split(';').forEach(c => {
-        const trimmedCookie = c.trim();
-        const cookieName = trimmedCookie.split('=')[0];
-        if (cookieName && (cookieName.includes('msal') || cookieName.includes('MSAL'))) {
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      // Clear user state
+      setUser(undefined);
+      setError(undefined);
+      
+      // Get the active account before logout attempts
+      const activeAccount = msalInstance.getActiveAccount();
+      
+      // First, perform local cleanup
+      if (activeAccount) {
+        // Remove the account from MSAL
+        msalInstance.setActiveAccount(null);
+        
+        // Clear browser storage associated with MSAL
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('msal') || key.includes('MSAL'))) {
+            localStorage.removeItem(key);
+          }
         }
-      });
 
-      // We need to completely sign out from Microsoft to clear SSO session
-      // This will ensure the user is prompted for credentials on next login
-      // We'll use the official Microsoft logout endpoint with our origin as the redirect URI
+        // Clear any authentication cookies
+        document.cookie.split(';').forEach(c => {
+          const trimmedCookie = c.trim();
+          const cookieName = trimmedCookie.split('=')[0];
+          if (cookieName && (cookieName.includes('msal') || cookieName.includes('MSAL'))) {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+        
+        // Force clear sessionStorage as well
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.includes('msal') || key.includes('MSAL'))) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      }
+      
+      // Now fully terminate the SSO session by redirecting to Microsoft logout endpoint
+      // This will terminate the user's Azure AD session, requiring a full re-authentication next login
+      // The post_logout_redirect_uri will bring the user back to the app's root
       setTimeout(() => {
         window.location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
       }, 100);
@@ -395,7 +407,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       return;
     } catch (error) {
       console.error('Logout error:', error);
-      // Even on error, try to use the complete Microsoft logout flow
+      // Even on error, try to use the Microsoft logout endpoint
       window.location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
     }
   }, [msalInstance]);
