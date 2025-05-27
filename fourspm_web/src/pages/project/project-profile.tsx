@@ -11,6 +11,7 @@ import Button from 'devextreme-react/button';
 import { createPortal } from 'react-dom';
 import { ProjectProfileProvider, useProjectProfile } from '../../contexts/project-profile/project-profile-context';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
+import notify from 'devextreme/ui/notify';
 
 // Define URL parameters interface
 export interface ProjectProfileParams {
@@ -139,6 +140,35 @@ const ProjectProfileContent: React.FC = () => {
     return 'An unknown error occurred';
   }, [error]);
   
+  // Show toast notification for errors, with special handling for 403 Forbidden
+  useEffect(() => {
+    if (hasError && errorMessage) {
+      // Check if it's a 403 Forbidden error
+      const isForbiddenError = 
+        errorMessage.includes('403') || 
+        errorMessage.includes('Forbidden') ||
+        errorMessage.includes('not have permission');
+
+      if (isForbiddenError) {
+        notify({
+          message: 'You do not have permission to view this project',
+          type: 'error',
+          displayTime: 3500,
+          position: { at: 'top center', my: 'top center', offset: '0 10' },
+          width: 'auto'
+        });
+      } else {
+        notify({
+          message: `Error: ${errorMessage}`,
+          type: 'error',
+          displayTime: 3500,
+          position: { at: 'top center', my: 'top center', offset: '0 10' },
+          width: 'auto'
+        });
+      }
+    }
+  }, [hasError, errorMessage]);
+  
   // Use a stable key for the form to prevent unnecessary re-renders
   // Only force re-render when editing state changes
   const formKey = useMemo(() => {
@@ -166,14 +196,6 @@ const ProjectProfileContent: React.FC = () => {
         shading={true}
         shadingColor="rgba(0,0,0,0.1)"
       />
-      
-      {/* Error message shown when there's an error */}
-      {hasError && (
-        <div className="error-message">
-          <h3>Error Loading Project</h3>
-          <p>{errorMessage}</p>
-        </div>
-      )}
       
       {/* Conditionally render floating action buttons only on mobile */}
       {isMobile && createPortal(

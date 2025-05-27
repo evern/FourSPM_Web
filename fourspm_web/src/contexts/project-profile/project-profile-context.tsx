@@ -9,6 +9,7 @@ import { getClientDetails } from '../../adapters/client.adapter';
 import { useQueryClient } from '@tanstack/react-query';
 import notify from 'devextreme/ui/notify';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
+import { errorHandler } from '../../components/error-handler';
 
 // Create the context
 const ProjectProfileContext = createContext<ProjectProfileContextType | undefined>(undefined);
@@ -148,9 +149,39 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       }
     } catch (error) {
       if (isMountedRef.current) {
-        dispatch({ type: 'SET_ERROR', payload: error });
+        // Check if it's a 403/Forbidden error
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isForbiddenError = 
+          errorMessage.includes('403') || 
+          errorMessage.includes('Forbidden') ||
+          errorMessage.includes('not have permission');
+        
+        // Set loading to false immediately
         dispatch({ type: 'SET_LOADING', payload: false });
-        notify('Error loading project', 'error', 3000);
+        
+        if (isForbiddenError) {
+          // For 403 errors, show a clear toast notification
+          notify({
+            message: 'You do not have permission to view this project',
+            type: 'error',
+            displayTime: 3500,
+            position: { at: 'bottom center', my: 'bottom center', offset: '0 -20' },
+            width: 'auto',
+            // Use the standardized error styling from the error handler
+            color: '#ffffff',
+            backgroundColor: '#d9534f',
+            borderColor: '#d43f3a'
+          });
+          
+          // Don't set the error state for permission errors - just show the toast notification
+          // This prevents the persistent global error banner
+          dispatch({ type: 'SET_ERROR', payload: null })
+        } else {
+          // For other errors, set the error state (which might show the bottom bar)
+          // and also show a toast notification
+          dispatch({ type: 'SET_ERROR', payload: error });
+          notify('Error loading project', 'error', 3000);
+        }
       }
     }
   }, [projectId]);
@@ -264,7 +295,44 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       if (isMountedRef.current) {
         dispatch({ type: 'SET_ERROR', payload: error });
         dispatch({ type: 'SET_SAVING', payload: false });
-        notify('Error saving project', 'error', 3000);
+        
+        // Parse the error to provide more specific feedback
+        let errorMessage = 'Error saving project';
+        
+        // Check if it's a permission error (HTTP 403)
+        if (error instanceof Error) {
+          console.error('Project save error details:', error);
+          
+          // For permission errors
+          if (error.message.includes('403') || 
+              error.message.toLowerCase().includes('forbidden') || 
+              error.message.toLowerCase().includes('permission')) {
+            errorMessage = 'You do not have permission to edit this project.';
+          } 
+          // For validation errors
+          else if (error.message.includes('400') || error.message.toLowerCase().includes('validation')) {
+            errorMessage = 'Project could not be saved due to validation errors. Please check your inputs.';
+          }
+          // For not found errors
+          else if (error.message.includes('404') || error.message.toLowerCase().includes('not found')) {
+            errorMessage = 'Project not found or may have been deleted.';
+          }
+          // For network errors
+          else if (error.message.toLowerCase().includes('network') || error.message.toLowerCase().includes('connection')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
+          }
+        }
+        
+        // Show the error notification with the specific message
+        notify({
+          message: errorMessage,
+          type: 'error',
+          displayTime: 5000,
+          position: { at: 'top center', my: 'top center' },
+          width: 'auto',
+          closeOnClick: true,
+          closeOnOutsideClick: true
+        });
       }
       return null;
     }
