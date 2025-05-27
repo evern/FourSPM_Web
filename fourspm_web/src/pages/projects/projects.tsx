@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { createProjectColumns } from './project-columns';
 import { ProjectsProvider, useProjects } from '../../contexts/projects/projects-context';
@@ -7,6 +7,9 @@ import { PROJECTS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { ErrorMessage } from '../../components/error-message/error-message';
 import './projects.scss';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 /**
  * Projects component
@@ -35,6 +38,27 @@ const ProjectsContent = (): React.ReactElement => {
     nextProjectNumber,
     refreshNextNumber
   } = useProjects();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check project edit permissions
+  const canEditProjects = useCallback(() => {
+    return canEdit(PERMISSIONS.PROJECTS.EDIT.split('.')[0]); // Extract 'projects' from 'projects.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditProjects() && !state.loading) {
+      showReadOnlyNotification('projects');
+    }
+  }, [canEditProjects, state.loading]);
   
   // Destructure state for easier access
   const { loading, error } = state;
@@ -106,9 +130,9 @@ const ProjectsContent = (): React.ReactElement => {
             onInitNewRow={handleInitNewRow}
             onInitialized={handleGridInitialized}
             keyField="guid"
-            allowAdding={true}
-            allowUpdating={true}
-            allowDeleting={true}
+            allowAdding={canEditProjects()}
+            allowUpdating={canEditProjects()}
+            allowDeleting={canEditProjects()}
             title=" "
             expand={['Client']}
             // Add default sort to ensure consistent query parameters

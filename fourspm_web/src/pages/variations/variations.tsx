@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components';
 import { variationColumns } from './variation-columns';
@@ -11,6 +11,9 @@ import { VariationsProvider, useVariations } from '@/contexts/variations/variati
 import { useVariationGridHandlers } from '../../hooks/grid-handlers/useVariationGridHandlers';
 import ScrollToTop from '../../components/scroll-to-top';
 import './variations.scss';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 /**
  * Variation params interface
@@ -46,6 +49,27 @@ const VariationsContent = (): React.ReactElement => {
     project, 
     isLookupDataLoading
   } = useVariations();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check variations edit permissions
+  const canEditVariations = useCallback(() => {
+    return canEdit(PERMISSIONS.VARIATIONS.EDIT.split('.')[0]); // Extract 'variations' from 'variations.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditVariations() && !loading) {
+      showReadOnlyNotification('variations');
+    }
+  }, [canEditVariations, loading]);
 
   // Use our custom grid handlers
   const {
@@ -135,9 +159,9 @@ const VariationsContent = (): React.ReactElement => {
           onRowRemoving={handleRowRemoving}
           onEditorPreparing={handleEditorPreparing}
           onInitNewRow={handleInitNewRow}
-          allowAdding={true}
-          allowUpdating={true}
-          allowDeleting={true}
+          allowAdding={canEditVariations()}
+          allowUpdating={canEditVariations()}
+          allowDeleting={canEditVariations()}
           defaultFilter={projectFilter}
           // Add default sort to ensure consistent query parameters
           defaultSort={[{ selector: 'created', desc: true }]}

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
@@ -12,6 +12,9 @@ import { PermissionLevel } from '@/contexts/permissions/permissions-types';
 import { ScrollToTop } from '@/components';
 import { ROLE_PERMISSIONS_ENDPOINT } from '@/config/api-endpoints';
 import './role-permissions.scss';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 // Type definition for route parameters
 interface RolePermissionParams {
@@ -47,6 +50,27 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
   const {
     state: { loading, error, staticPermissions, permissionAssignments, role },
   } = usePermissions();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check role edit permissions - note we use 'roles' not 'role-permissions'
+  const canEditRoles = useCallback(() => {
+    return canEdit(PERMISSIONS.ROLES.EDIT.split('.')[0]); // Extract 'roles' from 'roles.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditRoles() && !loading) {
+      showReadOnlyNotification('role permissions');
+    }
+  }, [canEditRoles, loading]);
   
   // Use the permissions context hooks for grid handlers and notifications
   const {
@@ -67,13 +91,16 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
       setAccessLevel: permissions.setAccessLevel,
       setToggleState: permissions.setToggleState,
       showSuccess,
-      showError
+      showError,
+      // Pass the permission check function to the columns
+      canEditRoles
     });
   }, [
     permissions.setAccessLevel, 
     permissions.setToggleState, 
     showSuccess, 
-    showError
+    showError,
+    canEditRoles
   ]);
   
   return (
@@ -110,10 +137,11 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
               keyField="featureKey"
               customGridHeight={900}
               
-              // Disable standard editing operations since we use custom buttons
-              allowAdding={false}
-              allowDeleting={false}
-              allowUpdating={false}
+              // Disable standard editing operations based on permissions
+              // This component uses custom buttons but we still respect permissions
+              allowAdding={canEditRoles() && false}
+              allowDeleting={canEditRoles() && false}
+              allowUpdating={canEditRoles() && false}
               
               // Sorting and filtering
               defaultSort={[{ selector: 'featureGroup', desc: false }]}

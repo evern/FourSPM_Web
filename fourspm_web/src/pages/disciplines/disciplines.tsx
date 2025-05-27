@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ODataGrid } from '../../components';
 import { disciplineColumns } from './discipline-columns';
 import { DISCIPLINES_ENDPOINT } from '@/config/api-endpoints';
@@ -9,6 +9,9 @@ import { useDisciplineGridHandlers } from '@/hooks/grid-handlers/useDisciplineGr
 import { ErrorMessage } from '@/components';
 // Import getToken for direct access to token
 import { getToken } from '@/utils/token-store';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 /**
  * Main Disciplines component following the Collection View Doctrine
@@ -33,6 +36,27 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
     disciplinesLoading,
     disciplinesError
   } = useDisciplines();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check discipline edit permissions
+  const canEditDisciplines = useCallback(() => {
+    return canEdit(PERMISSIONS.DISCIPLINES.EDIT.split('.')[0]); // Extract 'disciplines' from 'disciplines.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditDisciplines() && !contextLoading) {
+      showReadOnlyNotification('disciplines');
+    }
+  }, [canEditDisciplines, contextLoading]);
 
   // Use the dedicated grid handlers hook - token access happens directly in handlers
   const { 
@@ -86,6 +110,9 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
             customGridHeight={900}
+            allowAdding={canEditDisciplines()}
+            allowUpdating={canEditDisciplines()}
+            allowDeleting={canEditDisciplines()}
           />
         )}
       </div>

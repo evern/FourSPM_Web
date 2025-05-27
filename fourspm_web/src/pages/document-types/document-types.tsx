@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
 // Token management is now handled by the DocumentTypesContext
@@ -9,6 +9,9 @@ import { DocumentTypesProvider, useDocumentTypes } from '@/contexts/document-typ
 // Token is now obtained directly from token-store via the context
 import { useDocumentTypeGridHandlers } from '@/hooks/grid-handlers/useDocumentTypeGridHandlers';
 import { ErrorMessage } from '@/components';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 /**
  * Main DocumentTypes component following the Collection View Doctrine
@@ -32,6 +35,27 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     documentTypesError,
     isLookupDataLoading
   } = useDocumentTypes();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check document type edit permissions
+  const canEditDocumentTypes = useCallback(() => {
+    return canEdit(PERMISSIONS.DOCUMENT_TYPES.EDIT.split('.')[0]); // Extract 'document-types' from 'document-types.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditDocumentTypes() && !loading) {
+      showReadOnlyNotification('document types');
+    }
+  }, [canEditDocumentTypes, loading]);
 
   // Token now comes from the document types context which gets it from token-store
 
@@ -89,6 +113,9 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'code', desc: false }]}
             customGridHeight={900}
+            allowAdding={canEditDocumentTypes()}
+            allowUpdating={canEditDocumentTypes()}
+            allowDeleting={canEditDocumentTypes()}
           />
         )}
       </div>

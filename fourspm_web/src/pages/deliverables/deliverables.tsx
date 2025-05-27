@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components';
@@ -11,6 +11,9 @@ import { LoadPanel } from 'devextreme-react/load-panel';
 // Import token store for direct access
 import { DeliverablesProvider, useDeliverables } from '@/contexts/deliverables/deliverables-context';
 import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverableGridHandlers';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 interface DeliverableParams {
   projectId: string;
@@ -56,6 +59,27 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     // Project data
     project
   } = useDeliverables();
+  
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check deliverable edit permissions
+  const canEditDeliverables = useCallback(() => {
+    return canEdit(PERMISSIONS.DELIVERABLES.EDIT.split('.')[0]); // Extract 'deliverables' from 'deliverables.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditDeliverables() && !state.loading) {
+      showReadOnlyNotification('deliverables');
+    }
+  }, [canEditDeliverables, state.loading]);
   
   // Get grid handlers directly from the hook
   const {
@@ -135,9 +159,9 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             defaultFilter={[["projectGuid", "=", projectId]]}
             countColumn="guid"
             defaultSort={[{ selector: 'internalDocumentNumber', desc: false }]}
-            allowAdding={true}
-            allowUpdating={true}
-            allowDeleting={true}
+            allowAdding={canEditDeliverables()}
+            allowUpdating={canEditDeliverables()}
+            allowDeleting={canEditDeliverables()}
             customGridHeight={900}
           />
         )}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { roleColumns } from './role-columns';
 import { ROLES_ENDPOINT } from '../../config/api-endpoints';
@@ -8,6 +8,9 @@ import { RolesProvider, useRoles } from '../../contexts/roles/roles-context';
 import { useRoleGridHandlers } from '../../hooks/grid-handlers/useRoleGridHandlers';
 import ScrollToTop from '../../components/scroll-to-top';
 import './roles.scss';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 /**
  * Roles component
@@ -32,6 +35,27 @@ const RolesContent = (): React.ReactElement => {
   const { 
     state: { loading, error, editorError },
   } = useRoles();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check role edit permissions
+  const canEditRoles = useCallback(() => {
+    return canEdit(PERMISSIONS.ROLES.EDIT.split('.')[0]); // Extract 'roles' from 'roles.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditRoles() && !loading) {
+      showReadOnlyNotification('roles');
+    }
+  }, [canEditRoles, loading]);
 
   // Use our custom grid handlers
   const {
@@ -111,9 +135,9 @@ const RolesContent = (): React.ReactElement => {
           onRowRemoving={handleRowRemoving}
           onEditorPreparing={handleEditorPreparing}
           onInitNewRow={handleInitNewRow}
-          allowAdding={true}
-          allowUpdating={true}
-          allowDeleting={true}
+          allowAdding={canEditRoles()}
+          allowUpdating={canEditRoles()}
+          allowDeleting={canEditRoles()}
           defaultSort={[{ selector: 'displayName', desc: false }]}
           customGridHeight={900}
           countColumn="guid"

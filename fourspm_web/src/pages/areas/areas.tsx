@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { areaColumns } from './area-columns';
@@ -10,6 +10,9 @@ import './areas.scss';
 import { AreasProvider, useAreas } from '@/contexts/areas/areas-context';
 import { useAreaGridHandlers } from '@/hooks/grid-handlers/useAreaGridHandlers';
 import { ErrorMessage } from '@/components';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { withPermissionCheck, showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 interface AreaParams {
   projectId: string;
@@ -46,6 +49,27 @@ const AreasContent = React.memo((): React.ReactElement => {
     isLookupDataLoading
   } = useAreas();
 
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check area edit permissions
+  const canEditAreas = useCallback(() => {
+    return canEdit(PERMISSIONS.AREAS.EDIT.split('.')[0]); // Extract 'areas' from 'areas.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditAreas() && !state.loading) {
+      showReadOnlyNotification('areas');
+    }
+  }, [canEditAreas, state.loading]);
+
   // Define filter to only show areas for the current project
   const projectFilter: [string, string, any][] = [["projectGuid", "=", projectId]];
 
@@ -58,7 +82,7 @@ const AreasContent = React.memo((): React.ReactElement => {
     handleInitNewRow,
     handleGridInitialized
   } = useAreaGridHandlers();
-
+  
   // Use the combined loading state from context - prevents flickering
   const isLoading = state.loading;
   
@@ -106,6 +130,9 @@ const AreasContent = React.memo((): React.ReactElement => {
             defaultSort={[{ selector: 'areaNumber', desc: false }]}
             customGridHeight={900}
             countColumn="guid"
+            allowAdding={canEditAreas()}
+            allowUpdating={canEditAreas()}
+            allowDeleting={canEditAreas()}
           />
         )}
       </div>

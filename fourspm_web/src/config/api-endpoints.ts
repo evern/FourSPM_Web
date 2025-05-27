@@ -26,6 +26,10 @@ export const VARIATION_DELIVERABLES_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/V
 export const STATIC_PERMISSIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/StaticPermissions`;
 export const ROLE_PERMISSIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/RolePermissions`;
 
+// User permissions endpoints
+export const CURRENT_USER_PERMISSIONS_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Roles/GetCurrentUserPermissions`;
+export const ROLE_PERMISSIONS_BY_NAME_ENDPOINT = `${API_CONFIG.baseUrl}/odata/v1/Roles/GetPermissionsByRoleName`;
+
 /**
  * Note on OData Custom Function Endpoints:
  * 

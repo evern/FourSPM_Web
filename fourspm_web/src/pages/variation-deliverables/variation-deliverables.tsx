@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '@/components';
@@ -8,12 +8,16 @@ import './variation-deliverables.scss';
 import { getVariationDeliverablesWithParamUrl } from '@/config/api-endpoints';
 import { useScreenSizeClass } from '@/utils/media-query';
 import { LoadPanel } from 'devextreme-react/load-panel';
+import notify from 'devextreme/ui/notify';
 import { VariationDeliverablesProvider, useVariationDeliverables } from '@/contexts/variation-deliverables/variation-deliverables-context';
 import { DeliverablesProvider } from '@/contexts/deliverables/deliverables-context';
 // Use the DeliverableEditor context from deliverables context
 import { useVariationDeliverableGridHandlers } from '@/hooks/grid-handlers/useVariationDeliverableGridHandlers';
 import { useVariationInfo } from '@/hooks/utils/useVariationInfo';
 import { useAuth } from '@/contexts/auth';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 // Type definition for route parameters
 interface VariationDeliverableParams {
@@ -80,6 +84,27 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
     variation,
     projectGuid
   } = useVariationDeliverables();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check variation deliverables edit permissions
+  const canEditVariationDeliverables = useCallback(() => {
+    return canEdit(PERMISSIONS.VARIATIONS.EDIT.split('.')[0]); // Extract 'variations' from 'variations.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditVariationDeliverables() && !loading) {
+      showReadOnlyNotification('variation deliverables');
+    }
+  }, [canEditVariationDeliverables, loading]);
   
   // We'll use the variation deliverables context for validation
   // In a future step, this would use a dedicated deliverable editor context
@@ -118,13 +143,31 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
       return [];
     }
     
+    // Wrap handleCancellationClick to handle permission check first
+    const wrappedCancellationClick = (e: any) => {
+      // Check for permission-based read-only
+      if (!canEditVariationDeliverables()) {
+        // Show notification directly here
+        notify({
+          message: 'You do not have permission to modify variation deliverables.',
+          type: 'warning',
+          displayTime: 3000,
+          position: { at: 'top center', my: 'top center' }
+        });
+        return;
+      }
+      
+      // Only pass the variation status to the original handler
+      return handleCancellationClick(e, isReadOnly);
+    };
+    
     const baseColumns = createVariationDeliverableColumns(
       areasDataSource,
       disciplinesDataSource,
       documentTypesDataSource,
       isMobile,
-      handleCancellationClick,
-      isReadOnly
+      wrappedCancellationClick,
+      isReadOnly || !canEditVariationDeliverables() // Combined readonly flag for column configuration
     );
     
     // Process columns to ensure all have a dataField property for ODataGrid compatibility
@@ -181,8 +224,8 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             countColumn="guid"
             defaultSort={[{ selector: 'internalDocumentNumber', desc: false }]}
-            allowAdding={!isReadOnly}
-            allowUpdating={!isReadOnly}
+            allowAdding={!isReadOnly && canEditVariationDeliverables()}
+            allowUpdating={!isReadOnly && canEditVariationDeliverables()}
             allowDeleting={false}
             customGridHeight={900}
             // The ref is passed to the grid via onInitialized instead of directly

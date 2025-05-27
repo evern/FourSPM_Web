@@ -9,6 +9,7 @@ export interface PermissionColumnsConfig {
   setToggleState: (featureKey: string, enabled: boolean, skipStateUpdate?: boolean) => Promise<boolean>; // true/false
   showSuccess: (message: string) => void;
   showError: (message: string) => void;
+  canEditRoles?: () => boolean; // Optional function to check if user has permission to edit roles
 }
 
 /**
@@ -68,6 +69,12 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             return permissionType === PermissionType.AccessLevel;
           },
           onClick: async (e: any) => {
+            // Check if user has edit permissions
+            if (config.canEditRoles && !config.canEditRoles()) {
+              config.showError('You do not have permission to edit role permissions');
+              return;
+            }
+            
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
               try {
@@ -94,6 +101,12 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             return permissionType === PermissionType.AccessLevel;
           },
           onClick: async (e: any) => {
+            // Check if user has edit permissions
+            if (config.canEditRoles && !config.canEditRoles()) {
+              config.showError('You do not have permission to edit role permissions');
+              return;
+            }
+            
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
               try {
@@ -120,6 +133,12 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             return permissionType === PermissionType.AccessLevel;
           },
           onClick: async (e: any) => {
+            // Check if user has edit permissions
+            if (config.canEditRoles && !config.canEditRoles()) {
+              config.showError('You do not have permission to edit role permissions');
+              return;
+            }
+
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
               try {
@@ -149,6 +168,12 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             return permissionType === PermissionType.Toggle;
           },
           onClick: async (e: any) => {
+            // Check if user has edit permissions
+            if (config.canEditRoles && !config.canEditRoles()) {
+              config.showError('You do not have permission to edit role permissions');
+              return;
+            }
+
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
               try {
@@ -175,6 +200,12 @@ export const permissionColumns = (config: PermissionColumnsConfig): ODataGridCol
             return permissionType === PermissionType.Toggle;
           },
           onClick: async (e: any) => {
+            // Check if user has edit permissions
+            if (config.canEditRoles && !config.canEditRoles()) {
+              config.showError('You do not have permission to edit role permissions');
+              return;
+            }
+
             if (e.row?.data) {
               const { featureKey, displayName } = e.row.data;
               try {

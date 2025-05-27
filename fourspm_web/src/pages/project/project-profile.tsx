@@ -12,6 +12,9 @@ import { createPortal } from 'react-dom';
 import { ProjectProfileProvider, useProjectProfile } from '../../contexts/project-profile/project-profile-context';
 import { useClientDataProvider } from '../../hooks/data-providers/useClientDataProvider';
 import notify from 'devextreme/ui/notify';
+import { withPermissionCheck, showReadOnlyNotification } from '../../utils/permission-utils';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { PERMISSIONS } from '../../constants/permissions';
 
 // Define URL parameters interface
 export interface ProjectProfileParams {
@@ -41,6 +44,34 @@ const ProjectProfileContent: React.FC = () => {
     saveProject,
     handleClientSelectionChange
   } = useProjectProfile();
+  
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check project edit permissions
+  const canEditProjects = useCallback(() => {
+    return canEdit(PERMISSIONS.PROJECTS.EDIT.split('.')[0]); // Extract 'projects' from 'projects.edit'
+  }, [canEdit]);
+  
+  // Wrap the startEditing function with permission check
+  const handleStartEditing = withPermissionCheck(
+    startEditing,
+    canEditProjects,
+    'You do not have permission to edit projects'
+  );
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditProjects() && !isLoading) {
+      showReadOnlyNotification('projects');
+    }
+  }, [canEditProjects, isLoading]);
   
   const { isXSmall, isSmall } = useScreenSize();
   const isMobile = isXSmall || isSmall;
@@ -206,7 +237,7 @@ const ProjectProfileContent: React.FC = () => {
               icon="edit"
               type="default"
               stylingMode="contained"
-              onClick={startEditing}
+              onClick={handleStartEditing}
               disabled={isLoading}
             />
           ) : (
@@ -250,7 +281,7 @@ const ProjectProfileContent: React.FC = () => {
                 text="Edit"
                 type="default"
                 stylingMode="contained"
-                onClick={startEditing}
+                onClick={handleStartEditing}
                 icon="edit"
                 disabled={isLoading}
               />

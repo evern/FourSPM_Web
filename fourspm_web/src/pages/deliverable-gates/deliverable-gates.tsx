@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { deliverableGateColumns } from './deliverable-gate-columns';
 import { DELIVERABLE_GATES_ENDPOINT } from '@/config/api-endpoints';
@@ -7,6 +7,9 @@ import { DeliverableGatesProvider, useDeliverableGates } from '../../contexts/de
 import { useDeliverableGateGridHandlers } from '@/hooks/grid-handlers/useDeliverableGateGridHandlers';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { ErrorMessage } from '@/components';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 // Main DeliverableGates component following the Collection View Doctrine pattern
 const DeliverableGates: React.FC = () => {
@@ -20,6 +23,27 @@ const DeliverableGates: React.FC = () => {
 const DeliverableGatesContent = React.memo((): React.ReactElement => {
   // Get state from context
   const { state } = useDeliverableGates();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check deliverable gate edit permissions
+  const canEditDeliverableGates = useCallback(() => {
+    return canEdit(PERMISSIONS.DELIVERABLES.EDIT.split('.')[0]); // Extract 'deliverables' from 'deliverables.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditDeliverableGates() && !state.loading) {
+      showReadOnlyNotification('deliverable gates');
+    }
+  }, [canEditDeliverableGates, state.loading]);
 
   const {
     handleRowValidating,
@@ -66,6 +90,9 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             onInitialized={handleGridInitialized}
             defaultSort={[{ selector: 'maxPercentage', desc: false }]}
             customGridHeight={900}
+            allowAdding={canEditDeliverableGates()}
+            allowUpdating={canEditDeliverableGates()}
+            allowDeleting={canEditDeliverableGates()}
           />
         )}
       </div>

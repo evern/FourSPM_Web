@@ -2,6 +2,9 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth';
 import './deliverable-progress.scss';
+import { usePermissionCheck } from '../../hooks/usePermissionCheck';
+import { showReadOnlyNotification } from '../../utils/permission-utils';
+import { PERMISSIONS } from '../../constants/permissions';
 
 // Import custom hooks
 import { useScreenSizeClass } from '../../utils/media-query';
@@ -79,6 +82,27 @@ const DeliverableProgressContent = (): React.ReactElement => {
     // Token management is now handled by useToken directly
     // acquireToken removed from context
   } = useDeliverableProgress();
+
+  // Use the permission check hook for proper permission checking
+  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  
+  // Load permissions when component mounts
+  useEffect(() => {
+    // Ensure permissions are loaded
+    loadPermissions();
+  }, [loadPermissions]);
+  
+  // Function to check deliverable progress edit permissions
+  const canEditDeliverableProgress = useCallback(() => {
+    return canEdit(PERMISSIONS.DELIVERABLES.EDIT.split('.')[0]); // Extract 'deliverables' from 'deliverables.edit'
+  }, [canEdit]);
+  
+  // Show read-only notification on component mount if needed
+  useEffect(() => {
+    if (!canEditDeliverableProgress() && !state.loading) {
+      showReadOnlyNotification('deliverable progress');
+    }
+  }, [canEditDeliverableProgress, state.loading]);
   
   // Grid configuration
   
@@ -254,6 +278,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
             onEditorPreparing={handleEditorPreparing}
             allowAdding={false}
             allowDeleting={false}
+            allowUpdating={canEditDeliverableProgress()}
             showRecordCount={true}
             countColumn="guid"
             customGridHeight={isMobile ? 500 : 800}

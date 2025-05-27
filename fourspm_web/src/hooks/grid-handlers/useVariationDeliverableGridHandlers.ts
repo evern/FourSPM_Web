@@ -303,13 +303,19 @@ export const useVariationDeliverableGridHandlers = (props?: {
   
   // Removed cancelVariationDeliverable function - now using the context's function directly
 
-  const handleCancellationClick = useCallback(async (e: any, isReadOnly?: boolean): Promise<void> => {
-    // Check if variation is in read-only mode
-    if (isReadOnly) {
+  const handleCancellationClick = useCallback(async (e: any, isVariationReadOnly?: boolean, hasEditPermission?: boolean): Promise<void> => {
+    // Check if variation is in read-only mode due to being submitted/approved
+    if (isVariationReadOnly) {
       // Determine if the variation is approved or just submitted
       const status = variationDeliverables.variation?.clientApproved ? 'approved' : 'submitted';
       const title = `Variation ${status.charAt(0).toUpperCase() + status.slice(1)}`;
       await alert(`This variation has been ${status} and cannot be modified.`, title);
+      return;
+    }
+    
+    // Check if user lacks permission to edit
+    if (hasEditPermission === false) {
+      await alert('You do not have permission to modify variation deliverables.', 'Permission Denied');
       return;
     }
     
