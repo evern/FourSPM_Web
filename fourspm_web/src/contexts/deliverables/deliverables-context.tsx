@@ -329,7 +329,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
     
-    console.log('Invalidated all lookup data after deliverable change');
+
   }, [queryClient]);
   
   // Combine loading states for lookup data - token loading removed

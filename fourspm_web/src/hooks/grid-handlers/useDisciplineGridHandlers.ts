@@ -60,7 +60,7 @@ export function useDisciplineGridHandlers({
   
   // Handle grid initialization
   const handleGridInitialized = useCallback((e: any) => {
-    console.log('Discipline grid initialized');
+
   }, []);
   
   // Return all handlers for use in the component

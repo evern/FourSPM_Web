@@ -104,7 +104,7 @@ export function DocumentTypesProvider({ children }: { children: React.ReactNode 
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
     
-    console.log('Invalidated all lookup data after document types change');
+
   }, [queryClient]);
   
   // Function to get fresh default values each time

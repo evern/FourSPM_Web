@@ -27,7 +27,7 @@ export const useRoutePersistence = () => {
         location.pathname !== '/') {
       // Store the current path for later restoration
       sessionStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
-      console.log(`Route persistence: Saved route ${location.pathname}`);
+
     }
   }, [location.pathname, location.search, user, loading]);
   
@@ -43,7 +43,7 @@ export const useRoutePersistence = () => {
         setTimeout(() => {
           const savedRoute = sessionStorage.getItem(LAST_ROUTE_KEY);
           if (savedRoute) {
-            console.log(`Route persistence: Restoring route to ${savedRoute}`);
+
             history.replace(savedRoute);
             // Clear the login redirect flag
             sessionStorage.removeItem('fourspm_login_redirect');
@@ -58,7 +58,7 @@ export const useRoutePersistence = () => {
   // Clear saved route (used when explicitly navigating to home)
   const clearSavedRoute = useCallback(() => {
     sessionStorage.removeItem(LAST_ROUTE_KEY);
-    console.log('Route persistence: Cleared saved route');
+
   }, []);
   
   return { clearSavedRoute };

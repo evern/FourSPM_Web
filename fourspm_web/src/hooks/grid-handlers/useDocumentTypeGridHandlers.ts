@@ -34,7 +34,7 @@ export function useDocumentTypeGridHandlers() {
   const handleGridInitialized = useCallback((e: any) => {
     // You can add any grid initialization logic here
     // For example, setting up grid events, toolbar customization, etc.
-    console.log('Document types grid initialized');
+
   }, []);
   
   return {

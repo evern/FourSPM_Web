@@ -90,7 +90,7 @@ export function useDeliverableGateGridHandlers() { // Using Optimized Direct Acc
   }, [baseHandleRowValidating]);
 
   const handleGridInitialized = useCallback((e: any) => {
-    console.log('Deliverable Gate grid initialized');
+
   }, []);
 
   return {

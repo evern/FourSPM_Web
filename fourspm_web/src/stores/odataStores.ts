@@ -32,7 +32,7 @@ export const useODataStore = (
       ...storeOptions,
       withCredentials: false,
       beforeSend: async (options: any) => {
-        console.log('ODataStore: beforeSend called');
+
         
         try {
           // Get token directly from token-store
@@ -43,7 +43,7 @@ export const useODataStore = (
             // Alternatively, uncomment the next line to prevent the request entirely
             // return false;
           } else {
-            console.log('ODataStore: Using token from token-store');
+
             // Initialize headers if they don't exist
             if (!options.headers) {
               options.headers = {};
@@ -60,7 +60,7 @@ export const useODataStore = (
             }
             options.headers['Accept'] = 'application/json';
 
-            console.log(`ODataStore: Added Authorization header to ${options.method} ${options.url}`);
+
           } 
           return true;
         } catch (error) {
@@ -72,7 +72,7 @@ export const useODataStore = (
       },
       errorHandler: (error) => {
         if (error.httpStatus === 401) {
-          console.log('ODataStore: 401 Unauthorized error detected in errorHandler');
+
           
           // Don't redirect here - the ODataGrid will handle token refresh
           // The 401 will trigger ODataGrid's error handler which will refresh the token

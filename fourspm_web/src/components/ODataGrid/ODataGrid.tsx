@@ -215,7 +215,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         });
       },
       beforeSend: (options: any) => {
-        console.log('ODataGrid: beforeSend called for URL:', options.url);
+
         
         // Ensure headers object exists
         if (!options.headers) {
@@ -226,7 +226,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         const token = getCurrentToken();
         if (token) {
           options.headers['Authorization'] = `Bearer ${token}`;
-          console.log('ODataGrid: Using token from token-store');
+
         }
         
         // Add method-specific headers for write operations
@@ -236,9 +236,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           options.headers['Prefer'] = 'return=representation';
         }
         
-        console.log('ODataGrid: Headers set, options:', JSON.stringify(options, (key, value) => 
-          key === 'httpRequest' ? 'XHR_OBJECT' : value
-        ));
+
 
         // Handle expand parameter based on the request method
         const url = new URL(options.url);
@@ -308,7 +306,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         
         if (groupColumns.length > 0) {
           dataSourceOptions.group = groupColumns;
-          console.log('Setting group by columns:', groupColumns);
+
         }
       }
     }

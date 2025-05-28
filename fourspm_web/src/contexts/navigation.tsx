@@ -41,7 +41,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
     try {
       // Only proceed if user is authenticated
       if (!msalAuth.user) {
-        console.log('NavigationProvider: Waiting for authentication');
+
         return;
       }
       
@@ -54,7 +54,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
       // This prevents 401 errors that can occur when navigation refresh happens too quickly after auth
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log('NavigationProvider: Refreshing navigation after token sync delay');
+
       
       // Get token directly from token-store (Optimized Direct Access Pattern)
       const currentToken = getToken();

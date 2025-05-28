@@ -237,7 +237,7 @@ export function useVariationGridHandlers({
   // Handle value changed events from editors
   const onValueChanged = useCallback((args: any) => {
     // This is a simplified handler that could be expanded based on field requirements
-    console.log('Value changed:', args);
+
     // No special handling needed now that business logic is in the context
   }, []);
   
@@ -326,7 +326,7 @@ export function useVariationGridHandlers({
       // Use the shared helper function to extract and format the error message
       const errorMessage = extractVariationErrorMessage(error, 'approve');
       
-      console.log('Extracted error message:', errorMessage);
+
       
       // Use alert dialog instead of toast notification for this specific error
       alert(errorMessage, 'Variation Approval Failed');

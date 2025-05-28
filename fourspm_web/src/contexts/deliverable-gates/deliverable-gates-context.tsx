@@ -89,7 +89,7 @@ export const DeliverableGatesProvider: React.FC<{ children: React.ReactNode }> =
   const invalidateAllLookups = useCallback(() => {
     // This will be handled by React Query's cache invalidation
     // The actual implementation would use queryClient.invalidateQueries
-    console.log('Invalidating deliverable gates cache');
+
   }, []);
 
   const getDefaultValues = useCallback(() => {

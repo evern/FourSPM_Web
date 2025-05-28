@@ -99,7 +99,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         
         // Initialize the instance before using it
         await instance.initialize();
-        console.log('MSAL instance initialized successfully');
+
         
         // Make instance available globally for direct access when needed
         // This helps with operations like logout that need direct control
@@ -119,7 +119,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
           }
         } catch (redirectError) {
           // Ignore redirect handling errors - they're expected in popup flow
-          console.log('Redirect handling skipped:', redirectError);
+
         }
       } catch (e: any) {
         console.error('MSAL initialization failed:', e);
@@ -160,7 +160,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       try {
         const { setToken } = require('../utils/token-store');
         setToken(authResult.accessToken);
-        console.log('MSAL: Token stored in token-store for direct access');
+
       } catch (error) {
         console.error('MSAL: Failed to store token in token-store', error);
       }
@@ -286,7 +286,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
             return response.accessToken;
           }
         } catch (silentError) {
-          console.log('Silent token acquisition failed, falling back to interactive', silentError);
+
           
           // If it's not an interaction required error, rethrow
           if (!(silentError instanceof InteractionRequiredAuthError)) {
@@ -295,7 +295,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
           
           // If we're out of retries, try interactive
           if (retryCount >= MAX_RETRIES - 1) {
-            console.log('Max silent retries reached, trying interactive...');
+
             const response = await msalInstance.acquireTokenPopup(silentRequest);
             if (response?.accessToken) {
               return response.accessToken;
@@ -308,7 +308,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         if (retryCount <= MAX_RETRIES) {
           // Exponential backoff: 1s, 2s, 4s, etc.
           const backoffTime = Math.pow(2, retryCount) * 500;
-          console.log(`Retrying token acquisition in ${backoffTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
+
           await new Promise(resolve => setTimeout(resolve, backoffTime));
         }
       } catch (error) {
@@ -318,7 +318,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         // If it's an interaction required error on the last attempt, try interactive
         if (error instanceof InteractionRequiredAuthError && retryCount >= MAX_RETRIES - 1) {
           try {
-            console.log('Falling back to interactive token acquisition');
+
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length > 0) {
               const response = await msalInstance.acquireTokenPopup({
@@ -361,7 +361,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       try {
         const { clearToken } = require('../utils/token-store');
         clearToken();
-        console.log('Token cleared from token-store');
+
       } catch (error) {
         console.error('Failed to clear token from token-store', error);
       }
@@ -452,7 +452,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
             try {
               const { setToken } = require('../utils/token-store');
               setToken(response.accessToken);
-              console.log('MSAL: Refreshed token stored in token-store for direct access');
+
             } catch (error) {
               console.error('MSAL: Failed to store refreshed token in token-store', error);
             }

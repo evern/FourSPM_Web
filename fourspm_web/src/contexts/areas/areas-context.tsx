@@ -109,7 +109,7 @@ export function AreasProvider({ children, projectId }: AreasProviderProps): Reac
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
     
-    console.log('Invalidated all lookup data after areas change');
+
   }, [queryClient]);
   
   // Use the useProjectInfo hook to fetch project details

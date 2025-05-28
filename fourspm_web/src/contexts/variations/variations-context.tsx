@@ -193,7 +193,7 @@ export function VariationsProvider({ children }: VariationsProviderProps) {
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
     
-    console.log('Invalidated all lookup data after variation change');
+
   }, [queryClient]);
   
   // Handle row validating - can be used directly by grid handlers

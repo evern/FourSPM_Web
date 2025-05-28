@@ -17,5 +17,5 @@ dxDataGrid.defaultOptions({
 // Configure data grid to use our error handling approach
 export const configureDevExtreme = () => {
   // This function can be called from the app entry point
-  console.log('DevExtreme DataGrid configured with custom error handling');
+
 };

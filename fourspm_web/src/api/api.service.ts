@@ -96,7 +96,7 @@ export class ApiService {
     const queryString = query ? `?${new URLSearchParams(query).toString()}` : '';
     const fullUrl = `${url}${queryString}`;
 
-    console.log(`ApiService: GET request to ${fullUrl.substring(0, 100)}${fullUrl.length > 100 ? '...' : ''}`);
+
     
     if (!token) {
       throw new Error('Authentication token is required for API requests');
@@ -125,7 +125,7 @@ export class ApiService {
    * @returns A promise resolving to the response data
    */
   async post<T = any>(url: string, data: any, token: string): Promise<T> {
-    console.log(`ApiService: POST request to ${url}`);
+
     
     if (!token) {
       throw new Error('Authentication token is required for API requests');
@@ -152,7 +152,7 @@ export class ApiService {
    * @returns A promise resolving to the response data
    */
   async put<T = any>(url: string, data: any, token: string): Promise<T> {
-    console.log(`ApiService: PUT request to ${url}`);
+
     
     if (!token) {
       throw new Error('Authentication token is required for API requests');
@@ -186,7 +186,7 @@ export class ApiService {
    * @returns A promise resolving to the response data
    */
   async patch<T = any>(url: string, data: any, token: string, returnRepresentation: boolean = false): Promise<T> {
-    console.log(`ApiService: PATCH request to ${url}`);
+
     
     if (!token) {
       throw new Error('Authentication token is required for API requests');
@@ -229,7 +229,7 @@ export class ApiService {
    */
   async delete(endpoint: string, token: string, id?: string): Promise<void> {
     const url = id ? `${endpoint}(${id})` : endpoint;
-    console.log(`ApiService: DELETE request to ${url}`);
+
     
     if (!token) {
       throw new Error('Authentication token is required for API requests');

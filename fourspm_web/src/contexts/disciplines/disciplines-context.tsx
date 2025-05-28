@@ -124,7 +124,7 @@ export function DisciplinesProvider({ children }: DisciplinesProviderProps): Rea
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
     
-    console.log('Invalidated all lookup data after disciplines change');
+
   }, [queryClient]);
   
   // Function to get fresh default values each time

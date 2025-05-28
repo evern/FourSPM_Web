@@ -120,7 +120,7 @@ export const useAutoIncrement = ({
         headers['Accept'] = 'application/json';
         
         // Make the request with properly formatted headers and the correctly encoded URL
-        console.log('Fetching from URL:', urlString);
+
         const response = await fetch(urlString, { headers });
         
         if (!response.ok) {
