@@ -6,7 +6,8 @@ import {
   InteractionRequiredAuthError,
   BrowserAuthErrorMessage,
   PopupRequest,
-  SilentRequest
+  SilentRequest,
+  LogLevel
 } from '@azure/msal-browser';
 import { User } from '@/types';
 
@@ -39,6 +40,18 @@ const msalConfig = {
     cacheLocation: 'localStorage',
     storeAuthStateInCookie: true
   },
+  system: {
+    loggerOptions: {
+      loggerCallback: (level, message, containsPii) => {
+        // Only log errors to reduce console noise
+        if (level <= LogLevel.Error) {
+          console.error(message);
+        }
+      },
+      logLevel: LogLevel.Error, // Set to Error to reduce logs (verbose, info, warning will be suppressed)
+      piiLoggingEnabled: false
+    }
+  }
 };
 
 // Define request scopes
@@ -359,9 +372,8 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
       
       // First, ensure token store is cleared
       try {
-        const { clearToken } = require('../utils/token-store');
-        clearToken();
-
+        const { setToken } = require('../utils/token-store');
+        setToken(null); // Pass null to clear the token
       } catch (error) {
         console.error('Failed to clear token from token-store', error);
       }
@@ -409,9 +421,12 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         }
       }
       
+      // Set a flag in sessionStorage to indicate we need to redirect to login page after Microsoft logout
+      sessionStorage.setItem('fourspm_redirect_to_login', 'true');
+      
       // Now fully terminate the SSO session by redirecting to Microsoft logout endpoint
       // This will terminate the user's Azure AD session, requiring a full re-authentication next login
-      // The post_logout_redirect_uri will bring the user back to the app's root
+      // The post_logout_redirect_uri will bring the user back to the app's root where App.tsx will check the flag and redirect to login
       setTimeout(() => {
         window.location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
       }, 100);

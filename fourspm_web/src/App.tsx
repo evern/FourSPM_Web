@@ -20,6 +20,17 @@ const AppContent: React.FC = () => {
   const { user, loading } = useMSALAuth(); // Use MSAL authentication
   const screenSizeClass = useScreenSizeClass();
   const themeContext = useThemeContext();
+  
+  // Check if we need to redirect to login page after Microsoft logout
+  React.useEffect(() => {
+    const redirectToLogin = sessionStorage.getItem('fourspm_redirect_to_login');
+    if (redirectToLogin === 'true' && !user) {
+      // Clear the flag so we don't redirect again on page refresh
+      sessionStorage.removeItem('fourspm_redirect_to_login');
+      // Force a reload to the login page
+      window.location.href = window.location.origin + '/#/login';
+    }
+  }, [user]);
 
   if (loading) {
     return (
