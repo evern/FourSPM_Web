@@ -80,12 +80,18 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
   const menuItems = useMemo(() => {
     return [
       {
+        text: user?.email || 'User',
+        disabled: true,
+        icon: 'user',
+        cssClass: 'user-email-item'
+      },
+      {
         text: 'Logout',
         icon: 'runner',
         onClick: handleLogoutClick
       }
     ];
-  }, [handleLogoutClick]);
+  }, [handleLogoutClick, user?.email]);
 
   if (!user) {
     return (
@@ -164,8 +170,9 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
         showTitle={true}
         title="Sign Out"
         onHiding={() => !loggingOut && setConfirmLogout(false)}
-        width={300}
-        height={180}
+        width={400}
+        height={250}
+        className="logout-popup"
       >
         <div className="logout-popup-content">
           {loggingOut ? (
