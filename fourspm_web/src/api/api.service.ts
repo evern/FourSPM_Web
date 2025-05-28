@@ -1,54 +1,39 @@
 import { baseApiService } from './base-api.service';
 
-/**
- * Define the OData response structure
- * This matches the standard OData response format with value array and count metadata
- */
+
 export type ODataResponse<T> = {
   value: T[];
   '@odata.count'?: number;
   '@odata.nextLink'?: string;
 };
 
-/**
- * Combined API service that provides OData protocol handling and high-level API operations.
- * Authentication is handled by the auth interceptor.
- */
+
 export class ApiService {
-  /**
-   * Get headers for API requests with proper OData formatting
-   * @param method The HTTP method (GET, POST, PATCH, DELETE)
-   * @returns Headers object with appropriate values for the request
-   */
+
   private getHeaders(method: string = 'GET'): Record<string, string> {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Content-Type': 'application/json'
     };
     
-    // Add OData-specific content type headers for data modification operations
+
     if (['POST', 'PATCH', 'PUT'].includes(method.toUpperCase())) {
       headers['Content-Type'] = 'application/json;odata.metadata=minimal;odata.streaming=true';
     }
     
-    // Add specific headers for OData operations
+
     if (method.toUpperCase() === 'PATCH') {
-      // Tell server to return minimal response for updates
+
       headers['Prefer'] = 'return=minimal';
     } else if (method.toUpperCase() === 'POST') {
-      // Tell server to return the new entity after creation
+
       headers['Prefer'] = 'return=representation';
     }
     
     return headers;
   }
 
-  /**
-   * Parse error response from API with improved OData error handling
-   * @param response The fetch response object
-   * @param endpoint The endpoint that was called (for logging)
-   * @returns A rejected promise with the error details
-   */
+
   private async parseError(response: Response, endpoint?: string): Promise<Error> {
     let errorMessage = `HTTP error! status: ${response.status}`;
     
@@ -56,7 +41,7 @@ export class ApiService {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         const errorData = await response.json();
-        // Handle standard OData error format
+
         if (errorData?.error) {
           if (errorData.error.code && errorData.error.message) {
             errorMessage = `${errorData.error.code}: ${errorData.error.message}`;
@@ -76,7 +61,7 @@ export class ApiService {
       console.warn('Failed to parse error response:', e);
     }
     
-    // Log detailed error for debugging
+
     const logMessage = endpoint ? 
       `Error from ${endpoint}: ${errorMessage}` : 
       `API error: ${errorMessage}`;
@@ -85,14 +70,9 @@ export class ApiService {
     return new Error(errorMessage);
   }
 
-  /**
-   * Make a GET request to the API with OData support
-   * @param url The URL to fetch
-   * @param query Optional query parameters
-   * @returns A promise resolving to the response data
-   */
+
   async get<T = any>(url: string, token: string, query?: Record<string, any>): Promise<T> {
-    // Handle OData-specific parameters ($select, $expand, etc)
+
     const queryString = query ? `?${new URLSearchParams(query).toString()}` : '';
     const fullUrl = `${url}${queryString}`;
 
@@ -102,7 +82,7 @@ export class ApiService {
       throw new Error('Authentication token is required for API requests');
     }
     
-    // Use baseApiService.request with explicit token passing
+
     const response = await baseApiService.request(fullUrl, {
       method: 'GET',
       headers: this.getHeaders('GET'),
@@ -312,9 +292,5 @@ export class ApiService {
   }
 }
 
-// Export a singleton instance
-/**
- * Export a singleton instance of the API service
- * This ensures consistent usage across the application and follows the singleton pattern
- */
+
 export const apiService = new ApiService();

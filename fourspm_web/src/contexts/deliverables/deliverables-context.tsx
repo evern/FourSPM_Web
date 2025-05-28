@@ -11,10 +11,7 @@ import { getSuggestedDocumentNumber } from '../../adapters/deliverable.adapter';
 import { ValidationRule } from '../../hooks/interfaces/grid-operation-hook.interfaces';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Default validation rules for deliverables
- * These rules are used both for form validation and grid validation
- */
+
 export const DEFAULT_DELIVERABLE_VALIDATION_RULES: ValidationRule[] = [
   { 
     field: 'areaNumber', 
@@ -51,43 +48,29 @@ export const DEFAULT_DELIVERABLE_VALIDATION_RULES: ValidationRule[] = [
   }
 ];
 
-// Project details are now fetched using useProjectInfo hook
 
-// Create the context
 const DeliverablesContext = createContext<DeliverablesContextProps | undefined>(undefined);
 
-/**
- * Provider component for the deliverables context
- * Follows the Context + React Query pattern for clean separation of state management and UI
- * Implements a sequential loading pattern for better performance
- */
+
 export function DeliverablesProvider({ children, projectId: projectIdProp }: DeliverablesProviderProps): React.ReactElement {
-  // Get route parameters
+
   const params = useParams<{ projectId: string }>();
   const projectId = projectIdProp || params.projectId;
-  
-  // Token loading and error states are no longer needed - tokens are accessed directly when needed
-  
-  // Get query client for cache invalidation
+
   const queryClient = useQueryClient();
-  
-  // CRITICAL: Track the component mount state to prevent state updates after unmounting
+
   const isMountedRef = React.useRef(true);
   
   useEffect(() => {
-    // Set mounted flag to true when component mounts
     isMountedRef.current = true;
     
-    // Clean up function to prevent state updates after unmounting
     return () => {
       isMountedRef.current = false;
     };
   }, []);
-  
-  // Initialize state with reducer
+
   const [state, dispatch] = useReducer(deliverablesReducer, initialDeliverablesState);
-  
-  // Action creators for legacy support
+
   const setLoading = useCallback((loading: boolean) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_LOADING', payload: loading });
@@ -97,29 +80,20 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_ERROR', payload: error });
   }, []);
-  
-  // Token management removed - tokens are accessed directly when needed
-  
-  // Update loading state when component mounts
+
   useEffect(() => {
     if (!isMountedRef.current) return;
-    
-    // Update loading state
+
     dispatch({ type: 'SET_LOADING', payload: false });
   }, []);
-  
 
-  
-  // setProjectGuid function removed - project ID now passed explicitly to functions
   
   const setLookupDataLoaded = useCallback((loaded: boolean) => {
     if (!isMountedRef.current) return;
     dispatch({ type: 'SET_LOOKUP_DATA_LOADED', payload: loaded });
   }, []);
 
-  /**
-   * Process API errors to standardize error messages
-   */
+
   const processApiError = useCallback((error: any): string => {
     if (error instanceof Error) {
       return error.message;
@@ -130,16 +104,9 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     return 'An unexpected error occurred';
   }, []);
 
-  /**
-   * Validates a deliverable against validation rules
-   * @param deliverable The deliverable object to validate
-   * @param rules Additional validation rules to apply (combined with defaults)
-   * @returns Validation result with isValid flag and errors record
-   */
+
   const validateDeliverable = useCallback((deliverable: Partial<Deliverable>, rules: ValidationRule[] = []): ValidationResult => {
-    // Use the centralized validation rules
-    
-    // First combine our standardized rules with any custom rules
+
     let allRules = [...DEFAULT_DELIVERABLE_VALIDATION_RULES, ...rules];
     
     // Handle project GUID validation differently: if the deliverable doesn't have it but we have a projectId parameter,
@@ -251,16 +218,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     return defaultValues;
   }, [projectId]); // Adding projectId to satisfy the linter
 
-  /**
-   * Generates a document number based on deliverable details
-   * @param deliverableTypeId The deliverable type ID
-   * @param areaNumber The area number
-   * @param discipline The discipline code
-   * @param documentType The document type code
-   * @param currentDeliverableGuid Optional existing deliverable GUID (for updates)
-   * @param isVariation Whether this is a variation deliverable
-   * @returns Promise resolving to the generated document number
-   */
+
   const generateDocumentNumber = useCallback(async (
     deliverableTypeId: string | number,
     areaNumber: string, 
@@ -270,12 +228,10 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     isVariation: boolean = false
   ): Promise<string> => {
     try {
-      
-      // Convert to string for consistency with API call
+
       const deliverableTypeIdStr = deliverableTypeId?.toString() || '';
       
-      // Ensure token is available before making API call
-      // Get token directly when needed
+
       const token = getToken();
       if (!token) {
         throw new Error('Authentication token is required for document number generation');
@@ -291,10 +247,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
         currentDeliverableGuid 
       );
       
-      // If this is a variation deliverable, replace the numerical suffix with XXX
-      if (isVariation && suggestedNumber) {
-        // Find the last dash followed by numbers and replace with XXX
-        return suggestedNumber.replace(/(-\d+)$/, '-XXX');
+      if (isVariation && suggestedNumber) {        return suggestedNumber.replace(/(-\d+)$/, '-XXX');
       }
       
       return suggestedNumber;
@@ -306,7 +259,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     }
   }, [projectId, processApiError, dispatch]);
 
-  // Use React Query to fetch reference data
+
   const { 
     areasDataSource, 
     disciplinesDataSource, 
@@ -315,68 +268,43 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     error: referenceDataError 
   } = useProjectData(projectId);
   
-  // Use the useProjectInfo hook to fetch project details - needs client data for document number generation
+
   const {
     project,
     isLoading: projectLoading,
     error: projectError
   } = useProjectInfo(projectId, { expandClient: true });
   
-  // Cache invalidation function
+
   const invalidateAllLookups = useCallback(() => {
-    // Invalidate any queries that might use deliverables as reference data
     queryClient.invalidateQueries({ queryKey: ['deliverables'] });
     queryClient.invalidateQueries({ queryKey: ['lookup'] });
     queryClient.invalidateQueries({ queryKey: ['project'] });
-    
-
   }, [queryClient]);
   
-  // Combine loading states for lookup data - token loading removed
   const isLookupDataLoading = referenceDataLoading || projectLoading;
   
-  // Update lookup data loaded flag when all data sources are loaded
+
   useEffect(() => {
     if (isMountedRef.current) {
       setLookupDataLoaded(!isLookupDataLoading);
     }
   }, [isLookupDataLoading, setLookupDataLoaded]);
   
-  // Fetch deliverables useEffect removed as ODataGrid loads data directly
-  
-  // Token handling removed - using direct access pattern with getToken()
-
-  // Create memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    // State
     state,
-    
-    // Token management removed - using direct access pattern with getToken()
-    
-    // Validation
     validateDeliverable,
-    
-    // Document & Field Management
     initializeDeliverable,
     generateDocumentNumber,
-    
-    // Legacy actions
     setLoading,
     setError,
-    // setProjectGuid removed
     setLookupDataLoaded,
-    
-    // Cache invalidation
     invalidateAllLookups,
-    
-    // Reference data
     areasDataSource,
     disciplinesDataSource,
     documentTypesDataSource,
     isLookupDataLoading,
-    
-    // Project data
-    project: project || undefined // Convert null to undefined to match interface
+    project: project || undefined
   }), [
     state, 
     validateDeliverable,
@@ -384,7 +312,6 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
     generateDocumentNumber,
     setLoading,
     setError,
-    // setProjectGuid removed
     setLookupDataLoaded,
     invalidateAllLookups,
     areasDataSource,
@@ -401,10 +328,7 @@ export function DeliverablesProvider({ children, projectId: projectIdProp }: Del
   );
 }
 
-/**
- * Hook to access the deliverables context
- * Provides type safety and ensures the context is being used within its provider
- */
+
 export function useDeliverables(): DeliverablesContextProps {
   const context = useContext(DeliverablesContext);
   

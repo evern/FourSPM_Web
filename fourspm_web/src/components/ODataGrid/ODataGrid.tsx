@@ -16,13 +16,13 @@ import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
 import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
-import { getToken } from '../../utils/token-store'; // Import getToken for direct token access
+import { getToken } from '../../utils/token-store';
 import { useApiErrorHandler } from '../../hooks/utils/useApiErrorHandler';
 import ajax from 'devextreme/core/utils/ajax';
 
 export interface ODataGridColumn extends Partial<Column> {
-  // Standard column properties
-  dataField?: string; // Make optional to support command columns
+
+  dataField?: string;
   caption: string;
   width?: number;
   minWidth?: number;
@@ -57,7 +57,7 @@ export interface ODataGridColumn extends Partial<Column> {
   summaryType?: 'sum' | 'avg' | 'min' | 'max' | 'count';
   summaryFormat?: string | object;
   
-  // Command column properties
+
   type?: 'buttons' | 'detailExpand' | 'selection';
   buttons?: Array<{
     name?: string;
@@ -74,7 +74,7 @@ export interface ODataGridColumn extends Partial<Column> {
 interface ODataGridProps {
   title: string;
   endpoint?: string;
-  dataSource?: any; // New prop to accept custom dataSource
+  dataSource?: any;
   columns: ODataGridColumn[];
   keyField: string;
   defaultPageSize?: number;
@@ -95,19 +95,19 @@ interface ODataGridProps {
   showRecordCount?: boolean;
   countColumn?: string;
   customGridHeight?: string | number;
-  loading?: boolean; // Loading state prop
-  storeOptions?: any; // Options passed to the ODataStore
-  // Grouping options
+  loading?: boolean;
+  storeOptions?: any;
+
   allowGrouping?: boolean;
   showGroupPanel?: boolean;
   autoExpandAll?: boolean;
-  // token and onTokenExpired props removed - using direct token access instead
+
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
   title,
   endpoint,
-  dataSource: customDataSource, // Accept custom dataSource
+  dataSource: customDataSource,
   columns,
   keyField,
   defaultPageSize = 10,
@@ -128,9 +128,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   showRecordCount = true,
   countColumn,
   customGridHeight,
-  loading = false, // Default to false if not provided
+  loading = false,
   storeOptions = {},
-  // Grouping options with defaults
+
   allowGrouping = false,
   showGroupPanel = false,
   autoExpandAll = true,
@@ -185,7 +185,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     };
   }, [handleApiError]);
   
-  // Get token directly from token-store when needed
+
   const getCurrentToken = () => getToken();
   
   // No need to track token changes - getToken() will always return the latest
@@ -368,7 +368,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     onSavingProp?.(e);
   };
   
-  // Handle validation errors by showing them as popups for all screen sizes
+
   const handleRowValidating = (e: any) => {
     // Call the original validation handler if provided
     if (onRowValidating) {

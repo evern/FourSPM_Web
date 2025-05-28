@@ -13,33 +13,23 @@ interface Props {
   menuMode: 'context' | 'list';
 }
 
-/**
- * Generate an avatar color based on the user's name
- * @param name The user's name to generate a color for
- * @returns A hex color code
- */
+
 function generateAvatarColor(name: string): string {
-  // Simple hash function for the name
+
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
-  // Convert to hex color (pastel shades for better readability)
+
   let color = '#';
   for (let i = 0; i < 3; i++) {
-    // Generate pastel colors by keeping values between 150-220
     const value = ((hash >> (i * 8)) & 0xFF) % 70 + 150;
     color += ('00' + value.toString(16)).substr(-2);
   }
   return color;
 }
 
-/**
- * Generate initials from a name
- * @param name The user's name
- * @returns Up to 2 initials from the name
- */
+
 function getInitials(name: string): string {
   if (!name) return '?';
   
@@ -56,20 +46,16 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Handle logout confirmation
   const handleLogoutClick = useCallback(() => {
     setConfirmLogout(true);
   }, []);
 
-  // Execute actual logout
   const handleConfirmedLogout = async () => {
     try {
       setLoggingOut(true);
-      
-      // First, call the signOut function to clear state
+
       await signOut();
 
-      // Use notification style from memory to show a success message
       notify({
         message: 'Successfully signed out',
         width: 300,
@@ -78,7 +64,6 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
         position: { at: 'top center', my: 'top center' }
       });
     } catch (error) {
-      // Use notification style from memory for error message
       notify({
         message: 'Logout failed. Please try again.',
         width: 300,
@@ -110,12 +95,11 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
     );
   }
 
-  // Generate avatar background color and initials from user's name
+
   const userName = user?.name || user?.email?.split('@')[0] || 'User';
   const avatarColor = generateAvatarColor(userName);
   const initials = getInitials(userName);
-  
-  // Create avatar as initials on a background, or use user's avatarUrl if available
+
   const avatar = user?.avatarUrl ? (
     <div
       style={{
@@ -171,8 +155,7 @@ export default function UserPanel({ menuMode }: Props): ReactElement {
           />
         </div>
       )}
-      
-      {/* Logout confirmation popup */}
+
       <Popup
         visible={confirmLogout}
         dragEnabled={false}

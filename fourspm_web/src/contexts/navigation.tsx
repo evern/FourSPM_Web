@@ -14,7 +14,7 @@ interface NavigationContextType {
   setNavigationData: React.Dispatch<React.SetStateAction<NavigationData>>;
   navigation: NavigationItem[];
   refreshNavigation: () => Promise<void>;
-  isLoading: boolean; // Indicate when navigation is being loaded
+  isLoading: boolean;
 }
 
 const NavigationContext = createContext<NavigationContextType>({
@@ -33,30 +33,27 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const msalAuth = useMSALAuth();
   
-  // Use direct token access from token-store
-  // Following the Optimized Direct Access Pattern
+
   
-  // Refresh navigation when authenticated
+
   const refreshNavigation = useCallback(async () => {
     try {
-      // Only proceed if user is authenticated
+
       if (!msalAuth.user) {
 
         return;
       }
       
-      // Add small delay to ensure token provider is registered with API service
-      // This follows our pattern for handling auth token race conditions mentioned in memory [ae8865c1]
+
       
       setIsLoading(true);
       
-      // Small delay to ensure token provider is fully registered with the API service
-      // This prevents 401 errors that can occur when navigation refresh happens too quickly after auth
+
       await new Promise(resolve => setTimeout(resolve, 100));
       
 
       
-      // Get token directly from token-store (Optimized Direct Access Pattern)
+
       const currentToken = getToken();
       if (!currentToken) {
         console.warn('NavigationProvider: No token available for navigation');
@@ -67,7 +64,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
       const staticNav = getStaticNavigation();
       const projectNav = await getProjectNavigation(currentToken);
       
-      // Create project status navigation structure
+
       const projectStatusNav: NavigationItem = {
         text: 'Project Status',
         icon: 'activefolder',
@@ -89,25 +86,25 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
         })
       };
 
-      // Get the configurations item from appNavigation
+
       const configurationsItem = appNavigation.find(item => item.text === 'Configurations');
 
-      // Update navigation with project status and configurations at the end
+
       setNavigation([...staticNav, projectStatusNav, configurationsItem].filter(Boolean) as NavigationItem[]);
       
-      // Reset loading state after successful navigation update
+
       setIsLoading(false);
     } catch (error) {
       console.error('NavigationProvider: Error refreshing navigation:', error);
       setIsLoading(false);
     }
-  }, [msalAuth.user]); // Direct token access - no token dependencies needed
+  }, [msalAuth.user]);
 
   useEffect(() => {
     refreshNavigation();
-  }, [msalAuth.user, refreshNavigation]); // Refresh when auth state or function reference changes
+  }, [msalAuth.user, refreshNavigation]);
 
-  // Memoize the context value to prevent unnecessary re-renders
+
   const contextValue = useMemo(() => ({
     navigationData,
     setNavigationData,
@@ -116,7 +113,7 @@ function NavigationProvider({ children }: PropsWithChildren<{}>): ReactElement {
     isLoading
   }), [navigationData, navigation, refreshNavigation, isLoading]);
 
-  // Use the memoized value when providing the context
+
   return (
     <NavigationContext.Provider value={contextValue}>
       {children}
@@ -130,17 +127,15 @@ function withNavigationWatcher<P extends RouteComponentProps>(Component: React.C
     const { setNavigationData } = useNavigation();
     const isMountedRef = useRef(true);
     
-    // Log navigation transitions
 
     
     useEffect(() => {
-      // Only update navigation data if component is still mounted
+
       if (isMountedRef.current) {
         setNavigationData({ currentPath: path });
       }
       
       return () => {
-        // Prevent state updates after unmount
 
         isMountedRef.current = false;
       };

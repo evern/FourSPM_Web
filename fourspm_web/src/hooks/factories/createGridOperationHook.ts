@@ -8,32 +8,22 @@ import {
   ValidationRule
 } from '../interfaces/grid-operation-hook.interfaces';
 
-/**
- * Creates a custom hook for managing collection data operations with integrated grid functionality
- * 
- * This function should be called within React function components or custom hooks.
- * It returns an implementation of CollectionHook<T> with grid operations.
- * 
- * @param config Configuration for the hook including optional token acquisition function
- * @returns Object with grid-enabled operations
- */
+
 export function createGridOperationHook<T>(
   config: GridOperationsConfig
 ): GridOperationsHook<T> {
-  /**
-   * Row updating event handler for grid
-   */
+
   const handleRowUpdating = useCallback((e: any) => {
     // Extract values from the event
     const { oldData, newData, component } = e;
     
-    // Skip update processing if it's a batch edit
+
     if (component?.option('editing.mode') === 'batch') {
       return;
     }
     
     try {
-      // Call component's onRowUpdating callback if available
+
       if (component?._options?.onRowUpdating) {
         component._options.onRowUpdating(e);
       }
@@ -57,9 +47,7 @@ export function createGridOperationHook<T>(
     }
   }, [config]);
   
-  /**
-   * Row removing event handler for grid
-   */
+
   const handleRowRemoving = useCallback((e: any) => {
     // Extract values from the event
     const { data, component } = e;
@@ -94,9 +82,7 @@ export function createGridOperationHook<T>(
     }
   }, [config]);
   
-  /**
-   * Row inserting event handler for grid
-   */
+
   const handleRowInserting = useCallback((e: any) => {
     // Extract values from the event
     const { data, component } = e;

@@ -11,12 +11,7 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-/**
- * Projects component
- * 
- * Uses the Context + Reducer pattern for clean separation of view and logic.
- * This component follows the same pattern as other modules like DeliverableProgress.
- */
+
 function Projects(): React.ReactElement {
   return (
     <ProjectsProvider>
@@ -25,12 +20,9 @@ function Projects(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that consumes the context
- * Focuses purely on rendering and delegating events to the context
- */
+
 const ProjectsContent = (): React.ReactElement => {
-  // Get everything we need from the projects context
+
   const { 
     state, 
     clientDataSource,
@@ -39,61 +31,61 @@ const ProjectsContent = (): React.ReactElement => {
     refreshNextNumber
   } = useProjects();
 
-  // Use the permission check hook for proper permission checking
+
   const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
   
-  // Load permissions when component mounts
+
   useEffect(() => {
-    // Ensure permissions are loaded
+
     loadPermissions();
   }, [loadPermissions]);
   
-  // Function to check project edit permissions
+
   const canEditProjects = useCallback(() => {
-    return canEdit(PERMISSIONS.PROJECTS.EDIT.split('.')[0]); // Extract 'projects' from 'projects.edit'
+    return canEdit(PERMISSIONS.PROJECTS.EDIT.split('.')[0]);
   }, [canEdit]);
   
-  // Show read-only notification on component mount if needed
+
   useEffect(() => {
-    // Only show notification when both permissions and data are fully loaded
+
     if (!canEditProjects() && !state.loading && !permissionsLoading) {
       showReadOnlyNotification('projects');
     }
   }, [canEditProjects, state.loading, permissionsLoading]);
   
-  // Destructure state for easier access
+
   const { loading, error } = state;
   
-  // Determine if there's an error to display
+
   const hasError = Boolean(error);
   
-  // Get the grid event handlers from our custom hook
+
   const { 
     handleRowValidating,
     handleRowUpdating,
     handleRowInserting,
     handleRowRemoving,
     handleInitNewRow,
-    handleGridInitialized, // Grid initialization handler
-    resetGridState       // Reset grid state for virtual scrolling
+    handleGridInitialized,
+    resetGridState
   } = useProjectGridHandlers({
     nextProjectNumber,
     refreshNextNumber
   });
 
-  // Client data loading is now handled by the context
+
   
-  // Set up window focus handler to reset grid state when switching tabs
+
   React.useEffect(() => {
     const handleFocus = () => {
-      // Reset grid state when switching back to this tab
+
       resetGridState();
     };
     
-    // Add event listener
+
     window.addEventListener('focus', handleFocus);
     
-    // Cleanup on unmount
+
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
@@ -101,14 +93,14 @@ const ProjectsContent = (): React.ReactElement => {
   
   return (
     <div className="projects-container">
-      {/* Loading indicator */}
+
       <LoadPanel 
         visible={loading || !clientDataLoaded} 
         message={loading ? 'Loading projects...' : 'Loading client data...'}
         position={{ of: '.projects-grid' }}
       />
       
-      {/* Error message */}
+
       {hasError && (
         <ErrorMessage
           title="Error Loading Projects"
@@ -119,7 +111,7 @@ const ProjectsContent = (): React.ReactElement => {
       <div className="projects-grid">
         <div className="grid-custom-title">Projects</div>
         
-        {/* Only render the grid once client data is loaded */}
+
         {clientDataLoaded && (
           <ODataGrid
             endpoint={PROJECTS_ENDPOINT}
@@ -136,9 +128,9 @@ const ProjectsContent = (): React.ReactElement => {
             allowDeleting={canEditProjects()}
             title=" "
             expand={['Client']}
-            // Add default sort to ensure consistent query parameters
+
             defaultSort={[{ selector: 'created', desc: true }]}
-            // Set countColumn for proper record counting - memory #96c469d2
+
             countColumn="guid"
             customGridHeight={900}
           />

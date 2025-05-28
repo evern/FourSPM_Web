@@ -11,25 +11,25 @@ import {
 } from '@azure/msal-browser';
 import { User } from '@/types';
 
-// Add global type declaration for MSAL instance
+
 declare global {
   interface Window {
     msalInstance: PublicClientApplication;
   }
 }
 
-// Constants
+
 const CLIENT_ID = 'c67bf91d-8b6a-494a-8b99-c7a4592e08c1';
 const TENANT_ID = '3c7fa9e9-64e7-443c-905a-d9134ca00da9';
 const API_BASE_URL = `api://${CLIENT_ID}`;
 
-// API Scopes
+
 export const API_SCOPES = {
   USER: `${API_BASE_URL}/Application.User`,
   ADMIN: `${API_BASE_URL}/Application.Admin`
 } as const;
 
-// Define MSAL configuration
+
 const msalConfig = {
   auth: {
     clientId: CLIENT_ID,
@@ -43,18 +43,18 @@ const msalConfig = {
   system: {
     loggerOptions: {
       loggerCallback: (level, message, containsPii) => {
-        // Only log errors to reduce console noise
+  
         if (level <= LogLevel.Error) {
           console.error(message);
         }
       },
-      logLevel: LogLevel.Error, // Set to Error to reduce logs (verbose, info, warning will be suppressed)
+      logLevel: LogLevel.Error,
       piiLoggingEnabled: false
     }
   }
 };
 
-// Define request scopes
+
 const loginRequest: PopupRequest = {
   scopes: [API_SCOPES.USER]
 };
@@ -63,7 +63,7 @@ const adminLoginRequest: PopupRequest = {
   scopes: [API_SCOPES.ADMIN]
 };
 
-// Define the auth context type
+
 interface MSALAuthContextType {
   user?: User;
   loading: boolean;
@@ -75,7 +75,7 @@ interface MSALAuthContextType {
   acquireToken: () => Promise<string | null>;
 }
 
-// Create the MSAL Auth Context
+
 const MSALAuthContext = createContext<MSALAuthContextType>({
   loading: false,
   signIn: async () => ({ isOk: false }),
@@ -84,7 +84,7 @@ const MSALAuthContext = createContext<MSALAuthContextType>({
   acquireToken: async () => null
 });
 
-// Convert MSAL account to User
+
 const accountToUser = (account: AccountInfo, token: string): User => {
   return {
     id: account.localAccountId,
@@ -95,14 +95,14 @@ const accountToUser = (account: AccountInfo, token: string): User => {
   };
 };
 
-// MSAL Auth Provider
+
 export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
   const [msalInstance, setMsalInstance] = useState<PublicClientApplication | undefined>();
   const [user, setUser] = useState<User | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   
-  // Initialize MSAL
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const initializeMsal = async () => {
@@ -484,7 +484,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
   // No token callback setup - this is now handled by the auth interceptor
   // which follows separation of concerns principle
 
-  // Memoize context value to prevent unnecessary re-renders
+
   const contextValue = useMemo(() => ({
     user,
     loading,
@@ -503,10 +503,10 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
   );
 }
 
-// Custom hook for accessing auth context
+
 export const useMSALAuth = (): MSALAuthContextType => useContext(MSALAuthContext);
 
-// Create an API interceptor for adding auth tokens
+
 export const createMsalApiInterceptor = (msalAuth: MSALAuthContextType) => {
   return async (config: any) => {
     if (!config.headers) {
