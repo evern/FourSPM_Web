@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAutoIncrement } from '../utils/useAutoIncrement';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';

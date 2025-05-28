@@ -68,9 +68,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     handleRowRemoving,
     handleInitNewRow,
     handleGridInitialized
-  } = useDocumentTypeGridHandlers({
-    // No need to pass acquireToken, the handlers will use token-store directly
-  });
+  } = useDocumentTypeGridHandlers();
   
   // Determine if we're still loading - combine all loading states including project loading
   const isLoading = isLookupDataLoading || documentTypesLoading || loading;

@@ -18,7 +18,6 @@ import notify from 'devextreme/ui/notify';
 import { useScreenSizeClass } from '../../utils/media-query';
 import { getToken } from '../../utils/token-store'; // Import getToken for direct token access
 import { useApiErrorHandler } from '../../hooks/utils/useApiErrorHandler';
-import config from 'devextreme/core/config';
 import ajax from 'devextreme/core/utils/ajax';
 
 export interface ODataGridColumn extends Partial<Column> {

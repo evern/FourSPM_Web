@@ -1,4 +1,3 @@
-import { API_CONFIG } from '../config/api';
 import { baseApiService } from './base-api.service';
 
 /**

@@ -1,15 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, PropsWithChildren } from 'react';
 import { 
   PublicClientApplication, 
   AuthenticationResult, 
-  AccountInfo, 
-  InteractionType,
+  AccountInfo,
   InteractionRequiredAuthError,
   BrowserAuthErrorMessage,
-  Configuration,
   PopupRequest,
-  SilentRequest,
-  EndSessionRequest
+  SilentRequest
 } from '@azure/msal-browser';
 import { User } from '@/types';
 
@@ -93,6 +90,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
   const [error, setError] = useState<string | undefined>();
   
   // Initialize MSAL
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const initializeMsal = async () => {
       try {
@@ -110,10 +108,18 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         // Now set the instance in state
         setMsalInstance(instance);
         
-        // Handle redirect promise
-        const authResult = await instance.handleRedirectPromise();
-        if (authResult) {
-          handleAuthResult(authResult);
+        try {
+          // Only try to handle redirect if we detect we're in a redirect flow
+          // This prevents the no_token_request_cache_error when using popup flow
+          if (window.location.hash && (window.location.hash.includes('code=') || window.location.hash.includes('error='))) {
+            const authResult = await instance.handleRedirectPromise();
+            if (authResult) {
+              handleAuthResult(authResult);
+            }
+          }
+        } catch (redirectError) {
+          // Ignore redirect handling errors - they're expected in popup flow
+          console.log('Redirect handling skipped:', redirectError);
         }
       } catch (e: any) {
         console.error('MSAL initialization failed:', e);
@@ -127,6 +133,7 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
   }, []);
 
   // Check for existing account on load
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (msalInstance) {
       const accounts = msalInstance.getAllAccounts();

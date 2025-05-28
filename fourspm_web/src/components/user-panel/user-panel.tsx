@@ -1,4 +1,4 @@
-import React, { useMemo, ReactElement, useState } from 'react';
+import { useMemo, ReactElement, useState, useCallback } from 'react';
 import { useHistory } from "react-router-dom";
 import ContextMenu, { Position } from 'devextreme-react/context-menu';
 import List from 'devextreme-react/list';
@@ -53,22 +53,18 @@ function getInitials(name: string): string {
 
 export default function UserPanel({ menuMode }: Props): ReactElement {
   const { user, signOut } = useMSALAuth();
-  const history = useHistory();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   // Handle logout confirmation
-  const handleLogoutClick = () => {
+  const handleLogoutClick = useCallback(() => {
     setConfirmLogout(true);
-  };
+  }, []);
 
   // Execute actual logout
   const handleConfirmedLogout = async () => {
     try {
       setLoggingOut(true);
-
-      // Clear local state first
-      const msalInstance = (window as any).msalInstance;
       
       // First, call the signOut function to clear state
       await signOut();

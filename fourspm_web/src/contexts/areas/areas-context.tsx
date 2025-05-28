@@ -2,10 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { v4 as uuidv4 } from 'uuid';
 import { AreasContextProps, AreasProviderProps, initialAreasState, AREA_VALIDATION_RULES, getDefaultAreaValues } from './areas-types';
 import { areasReducer } from './areas-reducer';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { AREAS_ENDPOINT } from '../../config/api-endpoints';
 import { useProjectInfo } from '../../hooks/utils/useProjectInfo';
-import { useAuth } from '../../contexts/auth';
 import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
 // Project details are now fetched using useProjectInfo hook

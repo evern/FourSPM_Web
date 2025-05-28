@@ -3,8 +3,7 @@
  * Follows the established pattern for hooks in the application
  */
 import { useCallback, useState, useEffect } from 'react';
-import { getToken } from '../utils/token-store';
-import { fetchCurrentUserPermissions, UserPermission } from '../adapters/user-permission.adapter';
+import { fetchCurrentUserPermissions } from '../adapters/user-permission.adapter';
 
 // Store for caching permissions to avoid repeated API calls
 let cachedPermissions: string[] = [];
