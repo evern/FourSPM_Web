@@ -1,5 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Properties } from 'devextreme/ui/data_grid';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { exportDataGrid } from 'devextreme/pdf_exporter';
 import DataGrid, {
   Column,
   Paging,
@@ -10,7 +13,9 @@ import DataGrid, {
   Summary,
   TotalItem,
   Grouping,
-  GroupPanel
+  GroupPanel,
+  Toolbar,
+  Item
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -34,7 +39,7 @@ export interface ODataGridColumn extends Partial<Column> {
   groupIndex?: number;
   fixed?: boolean;
   fixedPosition?: 'left' | 'right';
-  name?: string; // Used to uniquely identify columns especially for button columns
+  name?: string;
   editorOptions?: {
     mask?: string;
     maskRules?: Record<string, RegExp>;
@@ -73,6 +78,7 @@ export interface ODataGridColumn extends Partial<Column> {
 
 interface ODataGridProps {
   title: string;
+  exportFileName?: string;
   endpoint?: string;
   dataSource?: any;
   columns: ODataGridColumn[];
@@ -81,6 +87,16 @@ interface ODataGridProps {
   allowAdding?: boolean;
   allowUpdating?: boolean;
   allowDeleting?: boolean;
+  allowExporting?: boolean;
+  exportConfig?: {
+    allowExportSelectedData?: boolean;
+    fileName?: string;
+    texts?: {
+      exportAll?: string;
+      exportSelectedRows?: string;
+      exportTo?: string;
+    }
+  };
   onRowUpdating?: (e: any) => void;
   onRowInserting?: Properties['onRowInserting'];
   onRowRemoving?: Properties['onRowRemoving'];
@@ -106,6 +122,7 @@ interface ODataGridProps {
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
   title,
+  exportFileName,
   endpoint,
   dataSource: customDataSource,
   columns,
@@ -114,6 +131,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   allowAdding = true,
   allowUpdating = true,
   allowDeleting = true,
+  allowExporting = true,
+  exportConfig,
   onRowUpdating,
   onRowInserting,
   onRowRemoving,
@@ -393,6 +412,112 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
   };
 
+  // Export success/error handler functions
+  const handleExportSuccess = useCallback((format: string) => {
+    notify({
+      message: `Export to ${format} successful`,
+      type: 'success',
+      displayTime: 2000,
+      position: {
+        at: 'top center',
+        my: 'top center',
+        offset: '0 10'
+      }
+    });
+  }, []);
+
+  const handleExportError = useCallback((format: string, error: any) => {
+    console.error(`Export to ${format} failed:`, error);
+    notify({
+      message: `Export to ${format} failed`,
+      type: 'error',
+      displayTime: 3000,
+      position: {
+        at: 'top center',
+        my: 'top center',
+        offset: '0 10'
+      }
+    });
+  }, []);
+  
+  // Simple PDF export handler using DevExtreme's exportDataGridToPdf method
+  const handleExportToPdf = useCallback(() => {
+    try {
+      if (dataGridRef.current?.instance) {
+        const instance = dataGridRef.current.instance;
+        
+        const filename = exportConfig?.fileName || 
+          (exportFileName ? exportFileName.replace(/\s+/g, '_') : 
+          (title.trim() ? title.replace(/\s+/g, '_') : 'GridExport'));
+        
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'pt'
+        });
+        
+        exportDataGrid({
+          component: instance,
+          jsPDFDocument: doc,
+        }).then(() => {
+          doc.save(`${filename}.pdf`);
+          handleExportSuccess('PDF');
+        });
+      }
+    } catch (error) {
+      handleExportError('PDF', error);
+    }
+  }, [dataGridRef, title, exportFileName, exportConfig, handleExportSuccess, handleExportError]);
+
+  // Add custom toolbar items with export buttons
+  const onToolbarPreparing = useCallback((e: any) => {
+    if (!allowExporting) return;
+    
+    // Get the index of the Excel export button (if it exists)
+    const excelButtonIndex = e.toolbarOptions.items.findIndex(item => 
+      item.name === 'exportButton' || (item.options && item.options.hint === 'Export to Excel')
+    );
+    
+    // Add PDF export button to the toolbar - right after the Excel export button
+    if (excelButtonIndex !== -1) {
+
+      e.toolbarOptions.items.splice(excelButtonIndex + 1, 0, {
+        location: 'after',
+        widget: 'dxButton',
+        options: {
+          icon: 'exportpdf',
+          hint: 'Export to PDF',
+          onClick: handleExportToPdf
+        }
+      });
+    } else {
+
+      e.toolbarOptions.items.push({
+        location: 'after',
+        widget: 'dxButton',
+        options: {
+          icon: 'exportpdf',
+          hint: 'Export to PDF',
+          onClick: handleExportToPdf
+        }
+      });
+    }
+  }, [handleExportToPdf, allowExporting]);
+  
+
+  const onExporting = useCallback((e: any) => {
+    if (e.format === 'pdf') {
+      e.cancel = true;
+      handleExportToPdf();
+    }
+  }, [handleExportToPdf]);
+
+  const onExported = useCallback((e: any) => {
+    if (e.format !== 'pdf') {
+      const format = e.format || 'Excel';
+      handleExportSuccess(format);
+    }
+  }, [handleExportSuccess]);
+
   return (
     <React.Fragment>
       <h2 className={'content-block'}>{title}</h2>
@@ -462,6 +587,15 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           onEditorPreparing={onEditorPreparing}
           onInitialized={onInitialized}
           onSaving={onSaving}
+          onExported={onExported}
+          onExporting={onExporting}
+          onToolbarPreparing={onToolbarPreparing}
+          export={{
+            enabled: allowExporting,
+            allowExportSelectedData: exportConfig?.allowExportSelectedData || false,
+            fileName: exportConfig?.fileName || (exportFileName ? exportFileName.replace(/\s+/g, '_') : (title.trim() ? title.replace(/\s+/g, '_') : 'GridExport')),
+            texts: exportConfig?.texts
+          }}
         >
           <Sorting mode="multiple" />
           {screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? (

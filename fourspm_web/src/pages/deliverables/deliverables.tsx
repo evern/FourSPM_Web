@@ -60,6 +60,9 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
     project
   } = useDeliverables();
   
+  // Create a consistent title for display and export
+  const gridTitle = project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables';
+  
   // Use the permission check hook for proper permission checking
   const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
   
@@ -144,12 +147,13 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables'}
+          {gridTitle}
         </div>
         
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={DELIVERABLES_ENDPOINT}
             columns={mobileAdjustedColumns}
             keyField="guid"
