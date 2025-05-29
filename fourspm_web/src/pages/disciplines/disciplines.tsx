@@ -12,6 +12,7 @@ import { getToken } from '@/utils/token-store';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_DISCIPLINES } from '../../utils/grid-state-keys';
 
 // Main Disciplines component following the Collection View Doctrine
 export function Disciplines(): React.ReactElement {
@@ -114,6 +115,10 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
             allowAdding={canEditDisciplines()}
             allowUpdating={canEditDisciplines()}
             allowDeleting={canEditDisciplines()}
+            stateStorageKey={GRID_STATE_DISCIPLINES}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

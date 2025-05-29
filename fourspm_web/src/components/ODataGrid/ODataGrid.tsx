@@ -88,6 +88,7 @@ interface ODataGridProps {
   allowUpdating?: boolean;
   allowDeleting?: boolean;
   allowExporting?: boolean;
+  allowColumnReordering?: boolean;
   exportConfig?: {
     allowExportSelectedData?: boolean;
     fileName?: string;
@@ -117,7 +118,15 @@ interface ODataGridProps {
   allowGrouping?: boolean;
   showGroupPanel?: boolean;
   autoExpandAll?: boolean;
-
+  
+  // State storage configuration
+  stateStorageKey?: string; // A custom key for state persistence
+  stateStoring?: {
+    enabled?: boolean;
+    type?: 'localStorage' | 'sessionStorage' | 'custom';
+    storageKey?: string;
+    savingTimeout?: number;
+  };
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -153,6 +162,11 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   allowGrouping = false,
   showGroupPanel = false,
   autoExpandAll = true,
+  allowColumnReordering = true,
+  
+  // State storage parameters
+  stateStorageKey,
+  stateStoring,
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
@@ -468,41 +482,159 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     }
   }, [dataGridRef, title, exportFileName, exportConfig, handleExportSuccess, handleExportError]);
 
-  // Add custom toolbar items with export buttons
-  const onToolbarPreparing = useCallback((e: any) => {
-    if (!allowExporting) return;
+  // Handle explicit state saving
+  const handleSaveGridState = useCallback(() => {
+    if (!dataGridRef.current?.instance) return;
     
-    // Get the index of the Excel export button (if it exists)
-    const excelButtonIndex = e.toolbarOptions.items.findIndex(item => 
-      item.name === 'exportButton' || (item.options && item.options.hint === 'Export to Excel')
-    );
-    // If we find the export button, we'll insert the PDF button before it so Excel appears on the right
+    const gridInstance = dataGridRef.current.instance;
+    const storageKey = stateStoring?.storageKey ?? stateStorageKey ?? `fourspm_grid_${title.replace(/\s+/g, '_').toLowerCase()}_state`;
     
-    // Add PDF export button to the toolbar - before the Excel export button so Excel appears on the right
-    if (excelButtonIndex !== -1) {
-
-      e.toolbarOptions.items.splice(excelButtonIndex, 0, {
-        location: 'after',
-        widget: 'dxButton',
-        options: {
-          icon: 'exportpdf',
-          hint: 'Export to PDF',
-          onClick: handleExportToPdf
-        }
-      });
-    } else {
-
-      e.toolbarOptions.items.push({
-        location: 'after',
-        widget: 'dxButton',
-        options: {
-          icon: 'exportpdf',
-          hint: 'Export to PDF',
-          onClick: handleExportToPdf
-        }
+    // Get the current state
+    const currentState = gridInstance.state();
+    
+    // Save it to localStorage manually
+    if (storageKey && currentState) {
+      localStorage.setItem(storageKey, JSON.stringify(currentState));
+      
+      // Show a notification that state was saved
+      notify({
+        message: 'Grid layout saved successfully',
+        type: 'success',
+        displayTime: 2000,
+        position: { at: 'top center', my: 'top center' }
       });
     }
-  }, [handleExportToPdf, allowExporting]);
+  }, [dataGridRef, title, stateStoring, stateStorageKey]);
+
+  // Handle resetting grid state and column widths
+  const handleResetGridState = useCallback(() => {
+    if (!dataGridRef.current?.instance) return;
+    
+    const gridInstance = dataGridRef.current.instance;
+    const storageKey = stateStoring?.storageKey ?? stateStorageKey ?? `fourspm_grid_${title.replace(/\s+/g, '_').toLowerCase()}_state`;
+    
+    // Clear the state from localStorage
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+    
+    // Apply auto width to all columns - more aggressive approach
+    gridInstance.getVisibleColumns().forEach(column => {
+      if (column.dataField) {
+        // Clear any explicit width constraints
+        gridInstance.columnOption(column.dataField, 'width', null);
+        gridInstance.columnOption(column.dataField, 'minWidth', null);
+        
+        // For columns that might contain longer text, set a reasonable minimum width
+        if (['documentTitle', 'bookingCode', 'description'].includes(column.dataField)) {
+          gridInstance.columnOption(column.dataField, 'minWidth', 200);
+        }
+      }
+    });
+    
+    // Enable automatic width calculation
+    gridInstance.option('columnAutoWidth', true);
+    
+    // Reset scroll position
+    gridInstance.getScrollable().scrollTo({ left: 0, top: 0 });
+    
+    // Update dimensions to recalculate layout
+    gridInstance.updateDimensions();
+    
+    // Reset sorting, filtering, and grouping
+    gridInstance.state({});
+    
+    // Force complete grid redraw
+    gridInstance.refresh();
+    
+    notify({
+      message: 'Grid reset complete',
+      type: 'success',
+      displayTime: 3000,
+      position: {
+        at: 'top center',
+        my: 'top center',
+        offset: '0 10'
+      }
+    });
+  }, [dataGridRef, title, stateStoring, stateStorageKey]);
+
+  // Add custom toolbar items with export buttons
+  const onToolbarPreparing = useCallback((e: any) => {
+    // Always add the reset button, regardless of export settings
+    const buttonIndex = e.toolbarOptions.items.findIndex(item => 
+      item.name === 'exportButton' || (item.options && item.options.hint === 'Export to Excel')
+    );
+    
+    // Create Save Layout button
+    const saveLayoutButtonItem = {
+      location: 'after',
+      widget: 'dxButton',
+      options: {
+        icon: 'save',
+        hint: 'Save current grid layout',
+        stylingMode: 'text',
+        elementAttr: { class: 'grid-action-button' },
+        focusStateEnabled: false,
+        onClick: handleSaveGridState
+      }
+    };
+    
+    // Insert reset button (always add it, even if no export is allowed)
+    const resetButtonItem = {
+      location: 'after',
+      widget: 'dxButton',
+      options: {
+        icon: 'refresh',
+        hint: 'Reset grid state and column widths',
+        stylingMode: 'text',
+        elementAttr: { class: 'grid-action-button' },
+        focusStateEnabled: false,
+        onClick: handleResetGridState
+      }
+    };
+    
+    if (buttonIndex !== -1) {
+      // Insert before the export button
+      e.toolbarOptions.items.splice(buttonIndex, 0, resetButtonItem);
+      e.toolbarOptions.items.splice(buttonIndex, 0, saveLayoutButtonItem);
+    } else {
+      // Add to the end if no export button is found
+      e.toolbarOptions.items.push(saveLayoutButtonItem);
+      e.toolbarOptions.items.push(resetButtonItem);
+    }
+    
+    // Only add PDF export button if exporting is allowed
+    if (allowExporting) {
+      // Get the index again as it may have changed
+      const excelButtonIndex = e.toolbarOptions.items.findIndex(item => 
+        item.name === 'exportButton' || (item.options && item.options.hint === 'Export to Excel')
+      );
+      
+      // Add PDF export button to the toolbar
+      if (excelButtonIndex !== -1) {
+        e.toolbarOptions.items.splice(excelButtonIndex, 0, {
+          location: 'after',
+          widget: 'dxButton',
+          options: {
+            icon: 'exportpdf',
+            hint: 'Export to PDF',
+            onClick: handleExportToPdf
+          }
+        });
+      } else {
+        e.toolbarOptions.items.push({
+          location: 'after',
+          widget: 'dxButton',
+          options: {
+            icon: 'exportpdf',
+            hint: 'Export to PDF',
+            onClick: handleExportToPdf
+          }
+        });
+      }
+    }
+  }, [handleExportToPdf, handleResetGridState, allowExporting]);
   
 
   const onExporting = useCallback((e: any) => {
@@ -537,8 +669,23 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           showBorders={true}
           columnAutoWidth={true}
           allowColumnResizing={true}
-          columnResizingMode="widget"
+          columnResizingMode="nextColumn"
+          allowColumnReordering={allowColumnReordering}
           height={screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 550 : customGridHeight || 'calc(100vh - 185px)'}
+          stateStoring={{
+            enabled: stateStoring?.enabled ?? false,
+            type: stateStoring?.type ?? 'custom',
+            customLoad: () => {
+              // Load state from localStorage manually
+              const key = stateStoring?.storageKey ?? stateStorageKey ?? `fourspm_grid_${title.replace(/\s+/g, '_').toLowerCase()}_state`;
+              const stateString = localStorage.getItem(key);
+              return stateString ? JSON.parse(stateString) : null;
+            },
+            customSave: (gridState) => {
+              // This is intentionally empty - we'll save manually via the Save Layout button
+              // This prevents automatic saving
+            }
+          }}
           scrolling={{ 
             mode: "virtual",  
             useNative: false,  

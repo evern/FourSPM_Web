@@ -10,6 +10,7 @@ import { LoadPanel } from 'devextreme-react/load-panel';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { withPermissionCheck, showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_CLIENTS } from '../../utils/grid-state-keys';
 
 // Main Clients component following the Collection View Doctrine
 const Clients: React.FC = () => {
@@ -98,6 +99,10 @@ const ClientsContent = React.memo((): React.ReactElement => {
             allowAdding={canEditClients()}
             allowUpdating={canEditClients()}
             allowDeleting={canEditClients()}
+            stateStorageKey={GRID_STATE_CLIENTS}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

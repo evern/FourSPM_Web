@@ -5,6 +5,7 @@ import './deliverable-progress.scss';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_PROGRESS } from '../../utils/grid-state-keys';
 
 // Import custom hooks
 import { useScreenSizeClass } from '../../utils/media-query';
@@ -282,6 +283,10 @@ const DeliverableProgressContent = (): React.ReactElement => {
             countColumn="guid"
             customGridHeight={isMobile ? 500 : 800}
             defaultSort={[{ selector: 'created', desc: false }]}
+            stateStorageKey={GRID_STATE_PROGRESS}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         </ScrollView>
       )}

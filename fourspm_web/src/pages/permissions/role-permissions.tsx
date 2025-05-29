@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import { GRID_STATE_CLIENTS } from '../../utils/grid-state-keys';
 import { useParams } from 'react-router-dom';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
@@ -146,8 +147,12 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
               
               // Enable grouping by feature group
               allowGrouping={true}
-              showGroupPanel={false}
+              showGroupPanel={true}
               autoExpandAll={true}
+              
+              // State persistence
+              stateStorageKey={GRID_STATE_CLIENTS}
+              stateStoring={{ enabled: true }}
               
               // Event handlers
               onEditorPreparing={handleEditorPreparing}

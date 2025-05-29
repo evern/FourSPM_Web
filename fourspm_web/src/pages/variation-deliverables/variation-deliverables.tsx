@@ -3,6 +3,7 @@ import { ErrorMessage } from '@/components';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '@/components';
 import { createVariationDeliverableColumns, processVariationDeliverableColumns } from './variation-deliverable-columns';
+import { GRID_STATE_VARIATIONS } from '../../utils/grid-state-keys';
 import { ScrollToTop } from '@/components';
 import './variation-deliverables.scss';
 import { getVariationDeliverablesWithParamUrl } from '@/config/api-endpoints';
@@ -226,6 +227,10 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={!isReadOnly && canEditVariationDeliverables()}
             allowDeleting={false}
             customGridHeight={900}
+            stateStorageKey={GRID_STATE_VARIATIONS}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
             // The ref is passed to the grid via onInitialized instead of directly
             storeOptions={{
               fieldTypes: {

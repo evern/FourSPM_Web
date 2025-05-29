@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { roleColumns } from './role-columns';
+import { GRID_STATE_CLIENTS } from '../../utils/grid-state-keys';
 import { ROLES_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
@@ -136,6 +137,10 @@ const RolesContent = (): React.ReactElement => {
           defaultSort={[{ selector: 'displayName', desc: false }]}
           customGridHeight={900}
           countColumn="guid"
+          stateStorageKey={GRID_STATE_CLIENTS}
+          stateStoring={{ enabled: true }}
+          allowGrouping={true}
+          showGroupPanel={true}
         />
       </div>
       

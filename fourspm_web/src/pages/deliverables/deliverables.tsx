@@ -14,6 +14,7 @@ import { useDeliverableGridHandlers } from '@/hooks/grid-handlers/useDeliverable
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_DELIVERABLES, getProjectSpecificStateKey } from '../../utils/grid-state-keys';
 
 interface DeliverableParams {
   projectId: string;
@@ -168,6 +169,10 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
             allowUpdating={canEditDeliverables()}
             allowDeleting={canEditDeliverables()}
             customGridHeight={900}
+            stateStorageKey={GRID_STATE_DELIVERABLES}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

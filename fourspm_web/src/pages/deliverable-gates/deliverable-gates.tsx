@@ -10,6 +10,7 @@ import { ErrorMessage } from '@/components';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_DELIVERABLE_GATES } from '../../utils/grid-state-keys';
 
 // Main DeliverableGates component following the Collection View Doctrine pattern
 const DeliverableGates: React.FC = () => {
@@ -98,6 +99,10 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
             allowAdding={canEditDeliverableGates()}
             allowUpdating={canEditDeliverableGates()}
             allowDeleting={canEditDeliverableGates()}
+            stateStorageKey={GRID_STATE_DELIVERABLE_GATES}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

@@ -10,6 +10,7 @@ import './projects.scss';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_PROJECTS } from '../../utils/grid-state-keys';
 
 
 function Projects(): React.ReactElement {
@@ -136,6 +137,10 @@ const ProjectsContent = (): React.ReactElement => {
 
             countColumn="guid"
             customGridHeight={900}
+            stateStorageKey={GRID_STATE_PROJECTS}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

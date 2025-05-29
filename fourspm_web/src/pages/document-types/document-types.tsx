@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect } from 'react';
-import { ODataGrid } from '../../components';
+import { ODataGrid } from '../../components/ODataGrid/ODataGrid';
 import { documentTypeColumns } from './document-type-columns';
-
-import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
-import { LoadPanel } from 'devextreme-react/load-panel';
-import './document-types.scss';
+import { DOCUMENT_TYPES_ENDPOINT } from '../../config/api-endpoints';
 import { DocumentTypesProvider, useDocumentTypes } from '@/contexts/document-types/document-types-context';
-
 import { useDocumentTypeGridHandlers } from '@/hooks/grid-handlers/useDocumentTypeGridHandlers';
+import { LoadPanel } from 'devextreme-react/load-panel';
 import { ErrorMessage } from '@/components';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_DOCUMENT_TYPES } from '../../utils/grid-state-keys';
 
 // Main DocumentTypes component following the Collection View Doctrine
 export function DocumentTypes(): React.ReactElement {
@@ -115,6 +113,10 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
             allowAdding={canEditDocumentTypes()}
             allowUpdating={canEditDocumentTypes()}
             allowDeleting={canEditDocumentTypes()}
+            stateStorageKey={GRID_STATE_DOCUMENT_TYPES}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

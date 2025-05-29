@@ -13,6 +13,7 @@ import { ErrorMessage } from '@/components';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { withPermissionCheck, showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
+import { GRID_STATE_AREAS } from '../../utils/grid-state-keys';
 
 interface AreaParams {
   projectId: string;
@@ -134,6 +135,10 @@ const AreasContent = React.memo((): React.ReactElement => {
             allowAdding={canEditAreas()}
             allowUpdating={canEditAreas()}
             allowDeleting={canEditAreas()}
+            stateStorageKey={GRID_STATE_AREAS}
+            stateStoring={{ enabled: true }}
+            allowGrouping={true}
+            showGroupPanel={true}
           />
         )}
       </div>

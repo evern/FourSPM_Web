@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { ODataGrid } from '../../components';
 import { variationColumns } from './variation-columns';
+import { GRID_STATE_VARIATIONS } from '../../utils/grid-state-keys';
 import { VARIATIONS_ENDPOINT } from '../../config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import notify from 'devextreme/ui/notify';
@@ -161,6 +162,10 @@ const VariationsContent = (): React.ReactElement => {
           customGridHeight={900}
           // Add countColumn for proper OData count handling
           countColumn="guid"
+          stateStorageKey={GRID_STATE_VARIATIONS}
+          stateStoring={{ enabled: true }}
+          allowGrouping={true}
+          showGroupPanel={true}
         />
       </div>
       
