@@ -1,5 +1,6 @@
 import type { ODataGridColumn } from '../../components';
 import { Role } from '../../contexts/roles/roles-types';
+import { alert } from 'devextreme/ui/dialog';
 
 /**
  * Interface for the role columns configuration
@@ -38,8 +39,17 @@ export const roleColumns = (config: RoleColumnsConfig): ODataGridColumn[] => {
           text: 'View',
           visible: (e) => !e.row.isNewRow && e.row.data.guid,
           onClick: (e: any) => {
-            // Navigate to the role permissions component
-            window.location.href = `#/roles/${e.row.data.guid}/permissions`;
+            // Check if this is a system role
+            if (e.row.data.isSystemRole) {
+              // Show dialog for system roles
+              alert(
+                'Permissions for system roles cannot be managed because system roles have all permissions granted by default.',
+                'System Role Permissions'
+              );
+            } else {
+              // Navigate to the role permissions component for non-system roles
+              window.location.href = `#/roles/${e.row.data.guid}/permissions`;
+            }
           }
         }
       ]
@@ -79,13 +89,7 @@ export const roleColumns = (config: RoleColumnsConfig): ODataGridColumn[] => {
       trueText: 'Yes',
       falseText: 'No',
       alignment: 'center',
-      cellTemplate: (container, options) => {
-        if (options.data.isSystemRole) {
-          container.innerHTML = '<span class="system-role-badge">System</span>';
-        } else {
-          container.innerHTML = '<span class="custom-role-badge">Custom</span>';
-        }
-      }
+      hint: 'Enabling this will grant all permissions'
     },
     {
       dataField: 'created',
