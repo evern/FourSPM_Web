@@ -59,6 +59,9 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
   const isLoading = state.loading;
   const hasError = !!state.error;
 
+  // Create a consistent title for display and export
+  const gridTitle = 'Deliverable Gates';
+
   return (
     <div className="deliverable-gates-container">
       <LoadPanel
@@ -76,10 +79,11 @@ const DeliverableGatesContent = React.memo((): React.ReactElement => {
         />
       )}
       <div className="custom-grid-wrapper">
-        <div className="grid-custom-title">Deliverable Gates</div>
+        <div className="grid-custom-title">{gridTitle}</div>
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={DELIVERABLE_GATES_ENDPOINT}
             columns={deliverableGateColumns}
             keyField="guid"

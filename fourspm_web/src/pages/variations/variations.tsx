@@ -15,19 +15,12 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-/**
- * Variation params interface
- */
+// Variation params interface
 interface VariationParams {
   projectId: string;
 }
 
-/**
- * Variations component
- * 
- * Uses the Context + Reducer pattern for clean separation of view and logic.
- * This component follows the same pattern as other modules like Projects and DeliverableProgress.
- */
+// Variations component using the Context + Reducer pattern for clean separation of view and logic
 function Variations(): React.ReactElement {
   return (
     <VariationsProvider>
@@ -36,10 +29,7 @@ function Variations(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that consumes the context
- * Focuses purely on rendering and delegating events to the context
- */
+// Internal component that consumes the context
 const VariationsContent = (): React.ReactElement => {
   const { projectId } = useParams<VariationParams>();
   
@@ -121,7 +111,6 @@ const VariationsContent = (): React.ReactElement => {
 
   // Display error notifications whenever errors occur
   useEffect(() => {
-    // Show error notification if there is one
     if (error || editorError) {
       notify({
         message: `Error: ${error || editorError}`,
@@ -136,9 +125,11 @@ const VariationsContent = (): React.ReactElement => {
     }
   }, [error, editorError]);
   
+  // Create a consistent title for display and export
+  const gridTitle = project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations';
+
   return (
     <div className="variations-container">      
-      {/* Loading indicator */}
       <LoadPanel 
         visible={isLookupDataLoading} 
         message={loading ? 'Loading variations...' : 'Loading project data...'}
@@ -147,11 +138,12 @@ const VariationsContent = (): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {project ? `${project.projectNumber} - ${project.name} Variations` : 'Variations'}
+          {gridTitle}
         </div>
         
         <ODataGrid
           title=" "
+          exportFileName={gridTitle}
           endpoint={VARIATIONS_ENDPOINT}
           columns={variationColumns(variationColumnsConfig)}
           keyField="guid"

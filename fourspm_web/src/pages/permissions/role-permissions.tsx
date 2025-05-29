@@ -16,15 +16,12 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-// Type definition for route parameters
+
 interface RolePermissionParams {
   roleId: string;
 }
 
-/**
- * Main component that sets up context providers for Role Permissions
- * Following the Collection View Implementation Doctrine with two-layer architecture
- */
+// Main component that sets up context providers for Role Permissions
 export function RolePermissions(): React.ReactElement {
   // Get role ID from URL params
   const { roleId } = useParams<RolePermissionParams>();
@@ -41,10 +38,7 @@ export function RolePermissions(): React.ReactElement {
   );
 }
 
-/**
- * Nested component that consumes the permissions context
- * This pattern prevents using context before initialization
- */
+// Nested component that consumes the permissions context
 const RolePermissionsContent = React.memo((): React.ReactElement => {
   // Use the permissions context
   const {
@@ -104,9 +98,11 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
     canEditRoles
   ]);
   
+  // Create a consistent title for display and export
+  const gridTitle = role ? `Permissions for ${role.displayName}` : 'Role Permissions';
+
   return (
     <div className="role-permissions-container">
-      {/* Loading indicator */}
       <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={loading}
@@ -116,7 +112,7 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
         showPane={true}
       />
       
-      {/* Error message */}
+
       {error && (
         <ErrorMessage
           title="Error Loading Role Permissions"
@@ -126,13 +122,14 @@ const RolePermissionsContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {role ? `Permissions for ${role.displayName}` : 'Role Permissions'}
+          {gridTitle}
         </div>
         {!loading && !error ? (
           role?.guid ? (
             <ODataGrid
               key={`permissions-grid-${new Date().getTime()}`} // Force complete re-render on each render
               title=" "
+              exportFileName={gridTitle}
               endpoint={`${ROLE_PERMISSIONS_ENDPOINT}/GetPermissionSummary(roleId=${role.guid})`}
               columns={columns}
               keyField="featureKey"

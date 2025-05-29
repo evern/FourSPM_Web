@@ -26,15 +26,12 @@ import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
 import { getToken } from '../../utils/token-store'; // Import token-store for direct token access
 
-// URL params interface
+
 interface DeliverableProgressParams {
   projectId: string;
 }
 
-/**
- * Main component with Context Provider implementation
- * This follows the Collection View Doctrine pattern with a parent provider component
- */
+// Main component with Context Provider implementation
 export function DeliverableProgress(): React.ReactElement {
   // Extract project ID from URL params
   const { projectId } = useParams<DeliverableProgressParams>();
@@ -58,10 +55,7 @@ export function DeliverableProgress(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that consumes the context
- * This implements the Collection View Doctrine pattern for the content component
- */
+// Internal component that consumes the context
 const DeliverableProgressContent = (): React.ReactElement => {
   // Use the context for state and data - now including project data
   const { 
@@ -82,6 +76,9 @@ const DeliverableProgressContent = (): React.ReactElement => {
     // Token management is now handled by useToken directly
     // acquireToken removed from context
   } = useDeliverableProgress();
+
+  // Create a consistent title for display and export
+  const gridTitle = project ? `${project.projectNumber} - ${project.name} Progress` : 'Deliverable Progress';
 
   // Use the permission check hook for proper permission checking
   const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
@@ -270,6 +267,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
         
           <ODataGrid
             title=""
+            exportFileName={gridTitle}
             endpoint={endpoint}
             columns={columns}
             keyField="guid"

@@ -12,12 +12,7 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-/**
- * Roles component
- * 
- * Uses the Context + Reducer pattern for clean separation of view and logic.
- * This component follows the same pattern as other modules like Variations.
- */
+// Roles component using the Context + Reducer pattern for clean separation of view and logic
 function Roles(): React.ReactElement {
   return (
     <RolesProvider>
@@ -26,10 +21,7 @@ function Roles(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that consumes the context
- * Focuses purely on rendering and delegating events to the context
- */
+// Internal component that consumes the context
 const RolesContent = (): React.ReactElement => {
   // Get data from our roles context
   const { 
@@ -95,7 +87,6 @@ const RolesContent = (): React.ReactElement => {
   
   // Display error notifications whenever errors occur
   useEffect(() => {
-    // Show error notification if there is one
     if (error || editorError) {
       notify({
         message: `Error: ${error || editorError}`,
@@ -110,9 +101,11 @@ const RolesContent = (): React.ReactElement => {
     }
   }, [error, editorError]);
   
+  // Create a consistent title for display and export
+  const gridTitle = 'Roles';
+
   return (
     <div className="roles-container">      
-            {/* Loading indicator */}
             <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={loading}
@@ -123,11 +116,12 @@ const RolesContent = (): React.ReactElement => {
       />
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          Roles
+          {gridTitle}
         </div>
         
         <ODataGrid
           title=" "
+          exportFileName={gridTitle}
           endpoint={ROLES_ENDPOINT}
           columns={roleColumns(roleColumnsConfig)}
           keyField="guid"

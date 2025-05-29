@@ -59,6 +59,8 @@ const ProjectsContent = (): React.ReactElement => {
 
   const hasError = Boolean(error);
   
+  // Create a consistent title for display and export
+  const gridTitle = 'Projects';
 
   const { 
     handleRowValidating,
@@ -109,7 +111,7 @@ const ProjectsContent = (): React.ReactElement => {
       )}
       
       <div className="projects-grid">
-        <div className="grid-custom-title">Projects</div>
+        <div className="grid-custom-title">{gridTitle}</div>
         
 
         {clientDataLoaded && (
@@ -127,6 +129,7 @@ const ProjectsContent = (): React.ReactElement => {
             allowUpdating={canEditProjects()}
             allowDeleting={canEditProjects()}
             title=" "
+            exportFileName={gridTitle}
             expand={['Client']}
 
             defaultSort={[{ selector: 'created', desc: true }]}

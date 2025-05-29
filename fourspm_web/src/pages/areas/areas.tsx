@@ -18,9 +18,7 @@ interface AreaParams {
   projectId: string;
 }
 
-/**
- * Main Areas component following the Collection View Doctrine
- */
+// Main Areas component following the Collection View Doctrine
 function Areas(): React.ReactElement {
   // Extract project ID from URL params
   const { projectId } = useParams<AreaParams>();
@@ -37,9 +35,7 @@ function Areas(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that uses the areas context
- */
+// Internal component that uses the areas context
 const AreasContent = React.memo((): React.ReactElement => {
   // Use the areas context
   const {
@@ -90,9 +86,12 @@ const AreasContent = React.memo((): React.ReactElement => {
   // Check for errors - account for context errors
   const hasError = !!state.error;
   
+  // Create a consistent title for display and export
+  const gridTitle = project ? `${project.projectNumber} - ${project.name} Areas` : 'Areas';
+
   return (
     <div className="areas-container">
-      {/* Loading indicator */}
+
       <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={isLoading}
@@ -102,7 +101,7 @@ const AreasContent = React.memo((): React.ReactElement => {
         showPane={true}
       />
       
-      {/* Error message */}
+
       {hasError && (
         <ErrorMessage
           title="Error Loading Areas"
@@ -112,12 +111,13 @@ const AreasContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {project ? `${project.projectNumber} - ${project.name} Areas` : 'Areas'}
+          {gridTitle}
         </div>
         
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={AREAS_ENDPOINT}
             columns={areaColumns}
             keyField="guid"

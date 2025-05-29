@@ -13,9 +13,7 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-/**
- * Main Disciplines component following the Collection View Doctrine
- */
+// Main Disciplines component following the Collection View Doctrine
 export function Disciplines(): React.ReactElement {
   return (
     <DisciplinesProvider>
@@ -24,9 +22,7 @@ export function Disciplines(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that uses the disciplines context
- */
+// Internal component that uses the disciplines context
 const DisciplinesContent = React.memo((): React.ReactElement => {
   // No longer need local token state or direct MSAL access
   
@@ -75,9 +71,12 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
   // Check for errors - account for both context and query errors
   const hasError = contextError !== null || disciplinesError !== null;
   
+  // Create a consistent title for display and export
+  const gridTitle = 'Disciplines';
+
   return (
     <div className="disciplines-container">
-      {/* Loading indicator */}
+
       <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={isLoading}
@@ -87,7 +86,7 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
         showPane={true}
       />
       
-      {/* Error message */}
+
       {hasError && (
         <ErrorMessage
           title="Error Loading Disciplines"
@@ -96,10 +95,11 @@ const DisciplinesContent = React.memo((): React.ReactElement => {
       )}
       
       <div className="custom-grid-wrapper">
-        <div className="grid-custom-title">Disciplines</div>
+        <div className="grid-custom-title">{gridTitle}</div>
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={DISCIPLINES_ENDPOINT}
             columns={disciplineColumns}
             keyField="guid"

@@ -476,11 +476,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
     const excelButtonIndex = e.toolbarOptions.items.findIndex(item => 
       item.name === 'exportButton' || (item.options && item.options.hint === 'Export to Excel')
     );
+    // If we find the export button, we'll insert the PDF button before it so Excel appears on the right
     
-    // Add PDF export button to the toolbar - right after the Excel export button
+    // Add PDF export button to the toolbar - before the Excel export button so Excel appears on the right
     if (excelButtonIndex !== -1) {
 
-      e.toolbarOptions.items.splice(excelButtonIndex + 1, 0, {
+      e.toolbarOptions.items.splice(excelButtonIndex, 0, {
         location: 'after',
         widget: 'dxButton',
         options: {

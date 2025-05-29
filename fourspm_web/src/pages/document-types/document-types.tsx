@@ -1,21 +1,19 @@
 import React, { useCallback, useEffect } from 'react';
 import { ODataGrid } from '../../components';
 import { documentTypeColumns } from './document-type-columns';
-// Token management is now handled by the DocumentTypesContext
+
 import { DOCUMENT_TYPES_ENDPOINT } from '@/config/api-endpoints';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import './document-types.scss';
 import { DocumentTypesProvider, useDocumentTypes } from '@/contexts/document-types/document-types-context';
-// Token is now obtained directly from token-store via the context
+
 import { useDocumentTypeGridHandlers } from '@/hooks/grid-handlers/useDocumentTypeGridHandlers';
 import { ErrorMessage } from '@/components';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-/**
- * Main DocumentTypes component following the Collection View Doctrine
- */
+// Main DocumentTypes component following the Collection View Doctrine
 export function DocumentTypes(): React.ReactElement {
   return (
     <DocumentTypesProvider>
@@ -24,9 +22,7 @@ export function DocumentTypes(): React.ReactElement {
   );
 }
 
-/**
- * Internal component that uses the document types context
- */
+// Internal component that uses the document types context
 const DocumentTypesContent = React.memo((): React.ReactElement => {
   // Use the document types context
   const {
@@ -58,7 +54,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
     }
   }, [canEditDocumentTypes, loading, permissionsLoading]);
 
-  // Token now comes from the document types context which gets it from token-store
+
 
   // Use the dedicated grid handlers hook
   const { 
@@ -76,9 +72,12 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
   // Check for errors - account for both context and query errors
   const hasError = error !== null || documentTypesError !== null;
   
+  // Create a consistent title for display and export
+  const gridTitle = 'Document Types';
+
   return (
     <div className="document-types-container">
-      {/* Loading indicator */}
+
       <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={isLoading}
@@ -88,7 +87,7 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
         showPane={true}
       />
       
-      {/* Error message */}
+
       {hasError && (
         <ErrorMessage
           title="Error Loading Document Types"
@@ -97,10 +96,11 @@ const DocumentTypesContent = React.memo((): React.ReactElement => {
       )}
       
       <div className="custom-grid-wrapper">
-        <div className="grid-custom-title">Document Types</div>
+        <div className="grid-custom-title">{gridTitle}</div>
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={DOCUMENT_TYPES_ENDPOINT}
             columns={documentTypeColumns}
             keyField="guid"

@@ -59,6 +59,9 @@ const ClientsContent = React.memo((): React.ReactElement => {
   const isLoading = state.loading;
   const hasError = !!state.error;
 
+  // Create a consistent title for display and export
+  const gridTitle = 'Clients';
+
   return (
     <div className="clients-container">
       <LoadPanel
@@ -76,10 +79,11 @@ const ClientsContent = React.memo((): React.ReactElement => {
         />
       )}
       <div className="custom-grid-wrapper">
-        <div className="grid-custom-title">Clients</div>
+        <div className="grid-custom-title">{gridTitle}</div>
         {!isLoading && !hasError && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={CLIENTS_ENDPOINT}
             columns={clientColumns}
             keyField="guid"

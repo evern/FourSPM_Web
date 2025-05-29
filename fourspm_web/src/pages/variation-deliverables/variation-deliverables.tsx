@@ -19,15 +19,12 @@ import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
 import { PERMISSIONS } from '../../constants/permissions';
 
-// Type definition for route parameters
+
 interface VariationDeliverableParams {
   variationId: string;
 }
 
-/**
- * Main component that sets up context providers for Variation Deliverables
- * Following the Collection View Implementation Doctrine with two-layer architecture
- */
+// Main component that sets up context providers for Variation Deliverables
 export function VariationDeliverables(): React.ReactElement {
   // Get route parameters - ALWAYS call hooks at the top level
   const { variationId } = useParams<VariationDeliverableParams>();
@@ -60,10 +57,7 @@ export function VariationDeliverables(): React.ReactElement {
   );
 }
 
-/**
- * Nested component that consumes both contexts
- * This pattern prevents using context before initialization
- */
+// Nested component that consumes both contexts
 const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   // Get variation ID from URL params
   const { variationId } = useParams<VariationDeliverableParams>();
@@ -183,9 +177,13 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
       : columns;
   }, [columns, isMobile]);
   
+  // Create a consistent title for display and export
+  const gridTitle = project && variation 
+    ? `${project.name} - ${variation.name} Deliverables` 
+    : 'Variation Deliverables';
+
   return (
     <div className="variation-deliverables-container">
-      {/* Loading indicator */}
       <LoadPanel
         position={{ of: '.app-main-content' }}
         visible={isLoading}
@@ -195,7 +193,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
         showPane={true}
       />
       
-      {/* Error message */}
+
       {hasError && (
         <ErrorMessage
           title="Error Loading Variation Deliverables"
@@ -205,14 +203,13 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
       
       <div className="custom-grid-wrapper">
         <div className="grid-custom-title">
-          {project && variation 
-            ? `${project.name} - ${variation.name} Deliverables` 
-            : 'Variation Deliverables'}
+          {gridTitle}
         </div>
         
         {!isLoading && !hasError && variation && variationId && (
           <ODataGrid
             title=" "
+            exportFileName={gridTitle}
             endpoint={getVariationDeliverablesWithParamUrl(variationId)}
             columns={mobileAdjustedColumns.length > 0 ? mobileAdjustedColumns : []}
             keyField="guid"
