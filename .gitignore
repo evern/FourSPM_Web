@@ -12,6 +12,7 @@
 # Production
 /build
 /dist
+fourspm_web/build_v2/
 
 # IDE
 /.vscode
@@ -65,6 +66,11 @@ node_modules/
 *.sln
 *.sw?
 # OS specific
+
+# Theme generated files
+src/themes/generated/
+fourspm_web/src/themes/generated/
+
 # Task files
 tasks.json
 tasks/ 

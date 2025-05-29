@@ -14,7 +14,7 @@ interface ApiConfig {
 }
 
 const productionConfig: ApiConfig = {
-    baseUrl: 'https://api.4spm.org',  // All API endpoints through api.4spm.org
+    baseUrl: 'https://api.scopium-spm.com',  // All API endpoints through api.4spm.org
     endpoints: {
         login: '/api/auth/login',
         logout: '/api/auth/logout',

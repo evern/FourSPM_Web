@@ -29,6 +29,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
+    "build:v2": "set BUILD_PATH=build_v2&& craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
     "build-themes": "devextreme build",
@@ -60,7 +61,6 @@
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "@types/react-router-dom": "^5.3.3",
-    "@welldone-software/why-did-you-render": "^10.0.1",
     "ajv": "^7.2.4",
     "customize-cra": "^1.0.0",
     "devextreme-cli": "1.3.0",
