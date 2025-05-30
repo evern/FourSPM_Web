@@ -13,9 +13,9 @@ import { useAutoIncrement } from '../../hooks/utils/useAutoIncrement';
 
 export const PROJECT_VALIDATION_RULES: ValidationRule[] = [
   { field: 'projectNumber', required: true, maxLength: 50, errorText: 'Project Number is required' },
-  { field: 'name', required: true, maxLength: 200, errorText: 'Project Name is required and must be at most 200 characters' },
-  { field: 'projectStatus', required: true, errorText: 'Project Status is required' },
-  { field: 'clientGuid', required: true, errorText: 'Client is required' }
+  { field: 'name', maxLength: 200, errorText: 'Project Name must be at most 200 characters' },
+  { field: 'projectStatus', errorText: 'Invalid Project Status' },
+  { field: 'clientGuid', errorText: 'Invalid Client' }
 ];
 
 
