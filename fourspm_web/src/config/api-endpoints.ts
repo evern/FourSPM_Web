@@ -43,5 +43,5 @@ export const getVariationDeliverablesWithParamUrl = (variationGuid: string): str
 };
 
 export const getCancelDeliverableUrl = (originalDeliverableGuid: string, variationGuid: string): string => {
-  return `${VARIATION_DELIVERABLES_ENDPOINT}/CancelDeliverable(originalDeliverableGuid=${originalDeliverableGuid},variationGuid=${variationGuid})`;
+  return `${VARIATION_DELIVERABLES_ENDPOINT}/CancelDeliverable?originalDeliverableGuid=${originalDeliverableGuid}&variationGuid=${variationGuid}`;
 };
