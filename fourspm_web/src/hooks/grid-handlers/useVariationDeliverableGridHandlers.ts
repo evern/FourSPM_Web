@@ -74,10 +74,16 @@ export const useVariationDeliverableGridHandlers = (props?: {
     
     const update = async () => {
       try {
-        // Check if this deliverable is from a different variation by comparing variation names
-        const isFromDifferentVariation = newData.variationName && 
-                                      variationDeliverables.variation?.name && 
-                                      newData.variationName !== variationDeliverables.variation.name;
+        // Check if this is:
+        // 1. A variation copy from a different variation (has variationName that doesn't match current)
+        // 2. An original standard deliverable (no variationName and no variationGuid)
+        const isFromDifferentVariation = 
+          // Case 1: From a different variation
+          (newData.variationName && 
+           variationDeliverables.variation?.name && 
+           newData.variationName !== variationDeliverables.variation.name) ||
+          // Case 2: Original standard deliverable (no variation)
+          (!newData.variationGuid && !newData.variationName && newData.variationStatus === 'Standard');
         
         // If this is a variation hours change on a deliverable from another variation,
         // calculate the difference and update only the delta
@@ -103,7 +109,11 @@ export const useVariationDeliverableGridHandlers = (props?: {
           const hoursDifference = isVariationHoursChange ? 
                                (e.newData.variationHours - e.oldData.variationHours) : null;
           
-          let message = `A copy of this deliverable has been created for ${currentVariationName}`;
+          // Determine source of the deliverable for a more specific message
+          const isOriginalStandard = !newData.variationGuid && !newData.variationName && newData.variationStatus === 'Standard';
+          const source = isOriginalStandard ? 'standard deliverable' : `deliverable from ${newData.variationName || 'another variation'}`;
+          
+          let message = `A copy of this ${source} has been created for ${currentVariationName}`;
           if (isVariationHoursChange && hoursDifference) {
             message += ` with ${hoursDifference} variation hours`;
           }
