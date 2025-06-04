@@ -91,8 +91,6 @@ export function useAreaGridHandlers({}: UseAreaGridHandlersProps = {}) {
   // Handle row inserting event - track when inserts complete to refresh number
   const handleRowInserting = useCallback((e: any) => {
     if (e.data) {
-      // Apply the next area number to the new record
-      e.data.number = nextAreaNumber;
       e.data.projectGuid = projectId;
 
       // Watch for completion using native DataGrid CUD event pipeline
