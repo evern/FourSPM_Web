@@ -167,65 +167,70 @@ export function useVariationGridHandlers({
     // We'll temporarily cancel the default behavior
     e.cancel = true;
     
-    // Show confirmation dialog first
-    confirm(
-      'Are you sure you want to delete this variation?',
-      'Confirm Deletion'
-    ).then(confirmed => {
-      if (!confirmed) return;
+    try {
+      // Get data source components
+      const dataSource = e.component.getDataSource();
+      const store = dataSource.store();
+      const originalRemove = store.remove;
+      
+      // Get variation details before removing for better messaging
+      // In DevExtreme grid events, we need to use the data source to get the full row data by key
+      let variationName = 'Unknown';
       
       try {
-        // Get data source components
-        const dataSource = e.component.getDataSource();
-        const store = dataSource.store();
-        const originalRemove = store.remove;
-        
-        // Override remove temporarily to know when it completes
-        store.remove = function(key, ...args) {
-          // Call original remove and get the promise
-          const result = originalRemove.call(this, key, ...args);
-          
-          // When remove completes, refresh the next number and invalidate caches
-          if (result && result.then) {
-            result.then(() => {
-              refreshNextNumber();
-              invalidateAllLookups();
-              
-              // Restore original remove method
-              store.remove = originalRemove;
-              
-              // Show success message
-              alert('Variation deleted successfully', 'Success');
-            }).catch((error) => {
-              // Show error message
-              alert(`Error deleting variation: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
-              
-              // Restore on error too
-              store.remove = originalRemove;
-            });
-          } else {
-            // Restore immediately if no promise
-            store.remove = originalRemove;
-          }
-          
-          return result;
-        };
-        
-        // Now perform the deletion - this needs to use a mechanism that will trigger
-        // the intercepted store.remove method
-        // We need to re-create what the grid would do naturally
-        dataSource.store().remove(e.key)
-          .then(() => {
-            // Force grid to refresh after deletion
-            setTimeout(() => {
-              dataSource.reload();
-            }, 50);
-          });
-      } catch (error) {
-        // Show error message
-        alert(`Error in deletion process: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+        // Try to get the data for the row being deleted
+        if (e.data) {
+          variationName = e.data.name || 'Unknown';
+        }
+      } catch (err) {
+        console.warn('Could not retrieve variation details for deletion message', err);
       }
-    });
+      
+      // Override remove temporarily to know when it completes
+      store.remove = function(key, ...args) {
+        // Call original remove and get the promise
+        const result = originalRemove.call(this, key, ...args);
+        
+        // When remove completes, refresh the next number and invalidate caches
+        if (result && result.then) {
+          result.then(() => {
+            refreshNextNumber();
+            invalidateAllLookups();
+            
+            // Restore original remove method
+            store.remove = originalRemove;
+            
+            // Show success message with variation details
+            alert(`Variation ${variationName} deleted successfully`, 'Success');
+          }).catch((error) => {
+            // Show error message
+            alert(`Error deleting variation ${variationName}: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+            
+            // Restore on error too
+            store.remove = originalRemove;
+          });
+        } else {
+          // Restore immediately if no promise
+          store.remove = originalRemove;
+        }
+        
+        return result;
+      };
+      
+      // Now perform the deletion - this needs to use a mechanism that will trigger
+      // the intercepted store.remove method
+      // We need to re-create what the grid would do naturally
+      dataSource.store().remove(e.key)
+        .then(() => {
+          // Force grid to refresh after deletion
+          setTimeout(() => {
+            dataSource.reload();
+          }, 50);
+        });
+    } catch (error) {
+      // Show error message
+      alert(`Error in deletion process: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Error');
+    }
   }, [refreshNextNumber, invalidateAllLookups]);
   
   // Use the context's getDefaultVariationValues directly
