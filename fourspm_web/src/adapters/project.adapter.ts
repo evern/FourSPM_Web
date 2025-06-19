@@ -54,7 +54,8 @@ export const getProjectNavigation = async (token?: string): Promise<NavigationIt
       throw new Error('Authentication token is required for API requests');
     }
     
-    const response = await apiService.getAll<ProjectNavigationItem>(PROJECTS_ENDPOINT, authToken);
+    // Request projects with expanded client data to get client numbers
+    const response = await apiService.getAll<ProjectNavigationItem>(`${PROJECTS_ENDPOINT}?$expand=Client`, authToken);
     const projects: ProjectNavigationItem[] = response.value || [];
     
     // Create status-based navigation structure
@@ -64,8 +65,22 @@ export const getProjectNavigation = async (token?: string): Promise<NavigationIt
       expanded: true,
       items: projects
         .filter(p => p.projectStatus === status.id)
+        // Sort projects by client number first, then by project number
+        .sort((a, b) => {
+          // First sort by client number
+          const clientA = a.client?.number || '';
+          const clientB = b.client?.number || '';
+          const clientCompare = clientA.localeCompare(clientB);
+          
+          // If client numbers are the same, sort by project number
+          if (clientCompare === 0) {
+            return a.projectNumber.localeCompare(b.projectNumber);
+          }
+          
+          return clientCompare;
+        })
         .map(project => ({
-          text: `${project.projectNumber} - ${project.name}`,
+          text: `${project.client?.number ? `${project.client.number}-` : ''}${project.projectNumber} - ${project.name}`,
           icon: 'folder',
           id: `project_${project.guid}`,
           items: [

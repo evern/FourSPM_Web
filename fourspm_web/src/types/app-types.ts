@@ -13,6 +13,9 @@ export interface ProjectNavigationItem {
   projectNumber: string;
   name: string;
   projectStatus: string;
+  client?: {
+    number?: string;
+  };
 }
 
 // OData response format for DevExtreme data sources
