@@ -126,16 +126,17 @@ const ProjectProfileContent: React.FC = () => {
       name: '',
       clientGuid: '',
       clientName: '',
-      // Nested client object structure for the form fields
+      // Client object structure for reference data
       client: {
         guid: '',
         description: '',
         name: '',
-        number: '',
-        clientContactName: '',
-        clientContactEmail: '',
-        clientContactNumber: ''
+        number: ''
       },
+      // Direct contact fields
+      contactName: '',
+      contactNumber: '',
+      contactEmail: '',
       projectStatus: 'TenderInProgress',
       // Adding the missing required fields from Project type
       created: new Date().toISOString(),

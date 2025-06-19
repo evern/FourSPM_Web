@@ -61,6 +61,14 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
       errors.clientGuid = ['Client is required'];
     }
     
+    // Email validation if a value is provided
+    if (project.contactEmail) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(project.contactEmail)) {
+        errors.contactEmail = ['Please enter a valid email address'];
+      }
+    }
+    
     // Update validation errors state
     if (Object.keys(errors).length > 0) {
       if (isMountedRef.current) {
@@ -267,7 +275,11 @@ export function ProjectProfileProvider({ children, projectId }: ProjectProfilePr
         projectStatus: projectData.projectStatus,
         clientGuid: projectData.clientGuid,
         progressStart: projectData.progressStart,
-        purchaseOrderNumber: projectData.purchaseOrderNumber
+        purchaseOrderNumber: projectData.purchaseOrderNumber,
+        // Include the contact fields
+        contactName: projectData.contactName,
+        contactNumber: projectData.contactNumber,
+        contactEmail: projectData.contactEmail
       };
 
       const saveToken = getToken();

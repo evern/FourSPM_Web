@@ -37,6 +37,9 @@ export interface Project extends Entity {
   deleted?: string | null;
   deletedBy?: string | null;
   progressStart?: string | Date | null;
+  contactName?: string | null;
+  contactNumber?: string | null;
+  contactEmail?: string | null;
 }
 
 

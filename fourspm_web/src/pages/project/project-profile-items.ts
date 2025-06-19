@@ -109,27 +109,40 @@ export const createProjectFormItems = (
         itemType: 'empty',
         cssClass: 'loading-indicator-text'
       } : null,
-      // Client contact fields - using nested structure
+      // Project contact fields - using direct properties
       {
         itemType: 'simple',
-        dataField: 'client.clientContactName',
-        label: { text: 'Client Contact' },
+        dataField: 'contactName',
+        label: { text: 'Contact Name' },
         editorOptions: { readOnly: !isEditing }
       },
       {
         itemType: 'simple',
-        dataField: 'client.clientContactNumber',
+        dataField: 'contactNumber',
         label: { text: 'Contact Number' },
-        editorOptions: { readOnly: !isEditing }
+        editorOptions: { 
+          readOnly: !isEditing,
+          mask: '(+00)-000000000',
+          maskRules: {
+            '0': /[0-9]/
+          },
+          useMaskedValue: true
+        }
       },
       {
         itemType: 'simple',
-        dataField: 'client.clientContactEmail',
+        dataField: 'contactEmail',
         label: { text: 'Contact Email' },
         editorOptions: { 
           readOnly: !isEditing,
           mode: 'email'
-        }
+        },
+        validationRules: isEditing ? [
+          {
+            type: 'email',
+            message: 'Please enter a valid email address'
+          }
+        ] : []
       }
     ].filter(Boolean) // Filter out null items
   }
