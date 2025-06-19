@@ -11,7 +11,10 @@ const PROGRESS_START_TOOLTIP = 'Deliverables progress period will refresh weekly
  * @param nextProjectNumber - The next auto-incremented project number to use for new projects
  * @returns Array of column definitions for the projects grid
  */
-export const createProjectColumns = (clientsStore: any, nextProjectNumber?: string): ODataGridColumn[] => [
+export const createProjectColumns = (clientsStore: any, nextProjectNumber?: string): ODataGridColumn[] => {
+  // Cast columns to any to avoid type errors with DevExtreme properties
+  // This follows the pattern used throughout the application in other modules
+  const columns: any[] = [
     { 
       dataField: 'projectNumber', 
       caption: 'Project #', 
@@ -35,34 +38,26 @@ export const createProjectColumns = (clientsStore: any, nextProjectNumber?: stri
       hidingPriority: 9  
     },
     {
-      dataField: 'client.clientContactName',
-      caption: 'Client Contact',
-      hidingPriority: 5,  
-      allowEditing: false, 
-      customizeText: (cellInfo: { value: string | null }) => {
-        return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
-      },
-      cellClass: 'faded-placeholder'
+      dataField: 'contactName',
+      caption: 'Contact Name',
+      hidingPriority: 5
     },
     {
-      dataField: 'client.clientContactNumber',
+      dataField: 'contactNumber',
       caption: 'Contact Number',
-      hidingPriority: 3,  
-      allowEditing: false, 
-      customizeText: (cellInfo: { value: string | null }) => {
-        return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
-      },
-      cellClass: 'faded-placeholder'
+      hidingPriority: 3,
+      editorOptions: {
+        mask: '(+00)-000000000',
+        maskRules: {
+          '0': /[0-9]/
+        },
+        useMaskedValue: true
+      }
     },
     {
-      dataField: 'client.clientContactEmail',
+      dataField: 'contactEmail',
       caption: 'Contact Email',
-      hidingPriority: 4,  
-      allowEditing: false, 
-      customizeText: (cellInfo: { value: string | null }) => {
-        return cellInfo.value || CLIENT_CONTACT_PLACEHOLDER;
-      },
-      cellClass: 'faded-placeholder'
+      hidingPriority: 4
     },
     { 
       dataField: 'purchaseOrderNumber', 
@@ -99,5 +94,9 @@ export const createProjectColumns = (clientsStore: any, nextProjectNumber?: stri
       cellClass: 'faded-placeholder',
       allowEditing: false 
     }
-];
+  ];
+  
+  // Return the columns with a type cast
+  return columns as ODataGridColumn[];
+};
 

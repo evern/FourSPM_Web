@@ -64,10 +64,10 @@ const ProjectsContent = (): React.ReactElement => {
   const gridTitle = 'Projects';
 
   const { 
-    handleRowValidating,
-    handleRowUpdating,
-    handleRowInserting,
-    handleRowRemoving,
+    handleRowValidating, 
+    handleRowUpdating, 
+    handleRowInserting, 
+    handleRowRemoving, 
     handleInitNewRow,
     handleGridInitialized,
     resetGridState

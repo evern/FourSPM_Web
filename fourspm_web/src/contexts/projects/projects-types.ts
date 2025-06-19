@@ -34,7 +34,7 @@ export interface ProjectsContextType {
   // Token is available through useToken() directly
   
   // Core operations
-  validateProject: (project: Project, rules?: ValidationRule[]) => boolean;
+  validateProject: (project: Project, rules?: ValidationRule[], skipStateUpdate?: boolean) => { isValid: boolean; errorMessage?: string };
   generateProjectId: () => string;
   setProjectDefaults: (project: Partial<Project>, nextProjectNumber?: string) => Project;
   

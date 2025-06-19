@@ -43,55 +43,87 @@ export function useProjectGridHandlers({
 }): ProjectGridHandlersResult {
   // Grid reference for direct control access
   const dataGridRef = useRef<any>(null);
-  // Get business logic functions from projects context
-  const { validateProject, setProjectDefaults } = useProjects();
+  // Get access to the projects context state and functions
+  const { state, validateProject, setProjectDefaults } = useProjects();
   
   // Wrap the context's validation in a grid-friendly handler
   const handleRowValidating = useCallback((e: any) => {
-    // For row validation, we should specifically validate e.data
-    // This contains the complete row data being validated (either new or existing)
+    // In DevExtreme, for cell editing mode, the data is in e.newData
+    // For row editing mode, it might be in e.data
+    const dataToValidate = e.newData || e.data;
     
     // Check if we have valid data to validate
-    if (!e.data || typeof e.data !== 'object') {
+    if (!dataToValidate || typeof dataToValidate !== 'object') {
       // Allow operation to continue if we can't validate
       e.isValid = true;
       return;
     }
     
-    // Validate the row data
-    const isValid = validateProject(e.data);
+    // For updates, we need to combine oldData with newData
+    // For inserts, dataToValidate is already complete
+    const completeData = e.oldData 
+      ? { ...e.oldData, ...e.newData } 
+      : dataToValidate;
+    
+    // Validate the complete data using the context validator
+    // Skip state updates since we're directly using the validation result
+    const validationResult = validateProject(completeData, undefined, true);
     
     // Set validation result on the event
-    e.isValid = isValid;
+    e.isValid = validationResult.isValid;
     
     // If validation failed, we need to cancel the operation
-    if (!isValid) {
+    if (!validationResult.isValid) {
       e.cancel = true;
+      
+      // Set the errorText property to the validation error message
+      // This will be used by ODataGrid's notify function
+      if (validationResult.errorMessage) {
+        e.errorText = validationResult.errorMessage;
+      }
     }
   }, [validateProject]);
   
   // Handle row updating - validate before update
   const handleRowUpdating = useCallback((e: any) => {
+    // Ensure we have valid data objects
+    if (!e.oldData || !e.newData) {
+      e.isValid = false;
+      e.cancel = true;
+      return;
+    }
+    
     // Create a combined object with the changes applied
     const updatedProject = {
       ...e.oldData,
       ...e.newData
     };
     
-    // Validate the combined object
-    const isValid = validateProject(updatedProject);
-    
-    // Update the event with validation result
-    e.isValid = isValid;
-    
-    // If validation failed, cancel the operation
-    if (!isValid) {
+    try {
+      // Validate the combined object using the context validator
+      const validationResult = validateProject(updatedProject);
+      
+      // Update the event with validation result
+      e.isValid = validationResult.isValid;
+      
+      // If validation failed, cancel the operation
+      if (!validationResult.isValid) {
+        e.cancel = true;
+        
+        // Set the error message for the grid notification
+        if (validationResult.errorMessage) {
+          e.errorText = validationResult.errorMessage;
+        }
+      }
+    } catch (error) {
+      // If validation throws an error, cancel the operation
+      console.error('Validation error:', error);
+      e.isValid = false;
       e.cancel = true;
     }
     
     // Grid will handle the update through its OData endpoint after validation
   }, [validateProject]);
-  
   // Handle row inserting - let the grid handle the API call directly
   const handleRowInserting = useCallback((e: any) => {
     if (e.data) {

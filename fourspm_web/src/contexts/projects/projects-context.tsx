@@ -15,7 +15,8 @@ export const PROJECT_VALIDATION_RULES: ValidationRule[] = [
   { field: 'projectNumber', required: true, maxLength: 50, errorText: 'Project Number is required' },
   { field: 'name', maxLength: 200, errorText: 'Project Name must be at most 200 characters' },
   { field: 'projectStatus', errorText: 'Invalid Project Status' },
-  { field: 'clientGuid', errorText: 'Invalid Client' }
+  { field: 'clientGuid', errorText: 'Invalid Client' },
+  { field: 'contactEmail', pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, errorText: 'Invalid email format' }
 ];
 
 
@@ -42,8 +43,8 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   const { nextNumber: nextProjectNumber, refreshNextNumber } = useAutoIncrement({
     endpoint: PROJECTS_ENDPOINT,
     field: 'projectNumber',
-    padLength: 2,
-    startFrom: '01'
+    padLength: 3,
+    startFrom: '001'
   });
   
   React.useEffect(() => {
@@ -64,29 +65,36 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   });
   
 
-  const validateProject = useCallback((project: Project, rules: ValidationRule[] = PROJECT_VALIDATION_RULES) => {
-    if (!isMountedRef.current) return false;
+  const validateProject = useCallback((project: Project, rules: ValidationRule[] = PROJECT_VALIDATION_RULES, skipStateUpdate: boolean = false): { isValid: boolean; errorMessage?: string } => {
+    if (!isMountedRef.current) return { isValid: false };
     
-
     const validationResult = validateEntity(project);
     
-
     const errors: Record<string, string[]> = {};
     Object.entries(validationResult.errors).forEach(([key, value]) => {
       errors[key] = [value];
     });
     
-
     if (Object.keys(errors).length > 0) {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !skipStateUpdate) {
         dispatch({ type: 'SET_VALIDATION_ERRORS', payload: errors });
       }
-      return false;
+      
+      // Find the first field with errors
+      const firstErrorField = Object.keys(errors).find(field => 
+        errors[field] && errors[field].length > 0
+      );
+      
+      // Return validation result with the first error message
+      return { 
+        isValid: false, 
+        errorMessage: firstErrorField ? errors[firstErrorField][0] : 'Validation failed'
+      };
     } else {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !skipStateUpdate) {
         dispatch({ type: 'CLEAR_VALIDATION_ERRORS' });
       }
-      return true;
+      return { isValid: true };
     }
   }, [validateEntity]);
   
