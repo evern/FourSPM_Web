@@ -102,7 +102,17 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
         format: 'percent',
         valueChangeEvent: 'keyup change'
       },
-      hidingPriority: 19
+      hidingPriority: 19,
+      showSummary: true,
+      summaryType: 'custom',
+      customSummaryType: 'cumulativeEarntPercentage',
+      summaryFormat: 'Total: {0}',
+      
+      // Group summary properties
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
     // Current period percentage
     {
@@ -119,7 +129,17 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       editorOptions: {
         format: 'percent',
         step: 0.01
-      }
+      },
+      showSummary: true,
+      summaryType: 'custom',
+      customSummaryType: 'currentPeriodEarntPercentage',
+      summaryFormat: 'Total: {0}',
+      
+      // Group summary properties
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
     // Period earned hours
     {
@@ -137,7 +157,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       summaryType: 'sum',
       summaryFormat: {
         precision: 2
-      }
+      },
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
     {
       dataField: 'totalPercentageEarnt',
@@ -153,7 +177,15 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       editorOptions: {
         format: 'percent',
         step: 0.01
-      }
+      },
+      showSummary: true,
+      summaryType: 'custom',
+      customSummaryType: 'totalPercentageEarnt',
+      summaryFormat: 'Total: {0}',
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
     {
       dataField: 'totalEarntHours',
@@ -170,7 +202,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       summaryType: 'sum',
       summaryFormat: {
         precision: 2
-      }
+      },
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
     {
       dataField: 'totalHours',
@@ -187,7 +223,11 @@ export const createDeliverableProgressColumns = (deliverableGatesDataSource: any
       summaryType: 'sum',
       summaryFormat: {
         precision: 2
-      }
+      },
+      showGroupSummary: true,
+      groupSummaryFormat: 'Group: {0}',
+      alignByColumn: true,
+      showInGroupFooter: true
     },
   ];
 };

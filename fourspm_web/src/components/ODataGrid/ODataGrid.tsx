@@ -14,8 +14,7 @@ import DataGrid, {
   TotalItem,
   Grouping,
   GroupPanel,
-  Toolbar,
-  Item
+  GroupItem
 } from 'devextreme-react/data-grid';
 import ODataStore from 'devextreme/data/odata/store';
 import DataSource, { Options } from 'devextreme/data/data_source';
@@ -59,8 +58,15 @@ export interface ODataGridColumn extends Partial<Column> {
   hint?: string;
   visible?: boolean;
   showSummary?: boolean;
-  summaryType?: 'sum' | 'avg' | 'min' | 'max' | 'count';
+  summaryType?: 'sum' | 'avg' | 'min' | 'max' | 'count' | 'custom';
   summaryFormat?: string | object;
+  customSummaryType?: string;
+  
+  // Group summary properties
+  showGroupSummary?: boolean;
+  groupSummaryFormat?: string | object;
+  alignByColumn?: boolean;
+  showInGroupFooter?: boolean;
   
 
   type?: 'buttons' | 'detailExpand' | 'selection';
@@ -76,7 +82,7 @@ export interface ODataGridColumn extends Partial<Column> {
   cellTemplate?: (container: any, options: any) => void;
 }
 
-interface ODataGridProps {
+export interface ODataGridProps {
   title: string;
   exportFileName?: string;
   endpoint?: string;
@@ -112,9 +118,18 @@ interface ODataGridProps {
   showRecordCount?: boolean;
   countColumn?: string;
   customGridHeight?: string | number;
+  calculateCustomSummary?: (options: any) => void;
   loading?: boolean;
   storeOptions?: any;
-
+  groupSummaries?: Array<{
+    column: string;
+    summaryType: string;
+    displayFormat?: string;
+    valueFormat?: any;
+    alignByColumn?: boolean;
+    showInGroupFooter?: boolean;
+    customSummaryType?: string;
+  }>;
   allowGrouping?: boolean;
   showGroupPanel?: boolean;
   autoExpandAll?: boolean;
@@ -150,6 +165,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   onEditorPreparing,
   onInitialized,
   onSaving: onSavingProp,
+  calculateCustomSummary,
   defaultFilter = [],
   defaultSort,
   expand,
@@ -359,20 +375,55 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
 
   // Generate summary items for numeric fields
   const numericColumnSummaries = columns
-    .filter(column => 
-      column.showSummary && 
-      (column.dataType === 'number' || 
-       column.summaryType === 'count')
-    )
+    .filter(column => column.showSummary && ['sum', 'avg', 'min', 'max', 'count'].includes(column.summaryType || ''))
     .map(column => ({
       column: column.dataField,
-      summaryType: column.summaryType || 'sum',
+      summaryType: column.summaryType,
       valueFormat: column.summaryFormat,
       displayFormat: column.summaryType === 'count' 
         ? '{0} records' 
         : (column.summaryType === 'sum' 
             ? 'Total: {0}' 
             : `${column.summaryType}: {0}`)
+    }));
+    
+  // Custom summaries configuration
+  const customSummaries = columns
+    .filter(column => column.showSummary && column.summaryType === 'custom')
+    .map(column => ({
+      column: column.dataField,
+      name: column.customSummaryType || column.dataField,
+      displayFormat: column.summaryFormat 
+        ? (typeof column.summaryFormat === 'string' ? column.summaryFormat : '{0}') 
+        : '{0}'
+    }));
+    
+  // Generate group summary items for numeric fields
+  const groupColumnSummaries = columns
+    .filter(column => column.showGroupSummary && ['sum', 'avg', 'min', 'max', 'count'].includes(column.summaryType || ''))
+    .map(column => ({
+      column: column.dataField,
+      summaryType: column.summaryType,
+      valueFormat: column.summaryFormat,
+      displayFormat: column.groupSummaryFormat || column.summaryFormat || 
+        (column.summaryType === 'count' 
+          ? '{0} records' 
+          : (column.summaryType === 'sum' 
+              ? 'Total: {0}' 
+              : `${column.summaryType}: {0}`)),
+      alignByColumn: column.alignByColumn !== undefined ? column.alignByColumn : true,
+      showInGroupFooter: column.showInGroupFooter !== undefined ? column.showInGroupFooter : false
+    }));
+    
+  // Custom group summaries configuration
+  const groupCustomSummaries = columns
+    .filter(column => column.showGroupSummary && column.summaryType === 'custom')
+    .map(column => ({
+      column: column.dataField,
+      name: column.customSummaryType || column.dataField,
+      displayFormat: column.groupSummaryFormat || column.summaryFormat || '{0}',
+      alignByColumn: column.alignByColumn !== undefined ? column.alignByColumn : true,
+      showInGroupFooter: column.showInGroupFooter !== undefined ? column.showInGroupFooter : false
     }));
 
   const onCellPrepared = (e: any) => {
@@ -823,7 +874,10 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               </Column>
             );
           })}
-          <Summary>
+          <Summary
+            calculateCustomSummary={calculateCustomSummary}
+          >
+            {/* Total summary items */}
             {showRecordCount && (
               <TotalItem
                 summaryType="count"
@@ -838,6 +892,39 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
                 summaryType={summary.summaryType}
                 valueFormat={summary.valueFormat}
                 displayFormat={summary.displayFormat}
+              />
+            ))}
+            {customSummaries.map((summary, index) => (
+              <TotalItem
+                key={`custom-${index}`}
+                name={summary.name}
+                showInColumn={summary.column}
+                summaryType="custom"
+                displayFormat={summary.displayFormat}
+              />
+            ))}
+            
+            {/* Group summary items */}
+            {groupColumnSummaries.map((summary, index) => (
+              <GroupItem
+                key={index}
+                column={summary.column}
+                summaryType={summary.summaryType}
+                valueFormat={summary.valueFormat}
+                displayFormat={summary.displayFormat}
+                alignByColumn={summary.alignByColumn}
+                showInGroupFooter={summary.showInGroupFooter}
+              />
+            ))}
+            {groupCustomSummaries.map((summary, index) => (
+              <GroupItem
+                key={`custom-${index}`}
+                name={summary.name}
+                showInColumn={summary.column}
+                summaryType="custom"
+                displayFormat={summary.displayFormat}
+                alignByColumn={summary.alignByColumn}
+                showInGroupFooter={summary.showInGroupFooter}
               />
             ))}
           </Summary>

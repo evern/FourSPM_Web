@@ -110,7 +110,8 @@ const DeliverableProgressContent = (): React.ReactElement => {
     handleRowUpdating,
     handleRowValidating,
     handleEditorPreparing,
-    handleGridInitialized
+    handleGridInitialized,
+    calculateCustomSummary
   } = useDeliverableProgressGridHandlers({
     projectGuid: projectId || '',
     getSelectedPeriod: () => selectedPeriod || 0,
@@ -276,6 +277,7 @@ const DeliverableProgressContent = (): React.ReactElement => {
             onRowValidating={handleRowValidating}
             onInitialized={onGridInitialized}
             onEditorPreparing={handleEditorPreparing}
+            calculateCustomSummary={calculateCustomSummary}
             allowAdding={false}
             allowDeleting={false}
             allowUpdating={canEditDeliverableProgress()}

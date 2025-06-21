@@ -11,6 +11,7 @@ export interface DeliverableProgressGridHandlers {
   handleRowValidating: (e: any) => void;
   handleEditorPreparing: (e: any) => void;
   handleGridInitialized: (e: any) => void;
+  calculateCustomSummary: (options: any) => void;
   
   // Utility methods
   validateProgress: (progress: Record<string, any>) => ValidationResult;
@@ -190,11 +191,97 @@ export function useDeliverableProgressGridHandlers(options: {
     }
   }, [deliverableGates]);
 
+  /**
+   * Handles custom summary calculations for the grid
+   * - currentPeriodEarntPercentage: sum of currentPeriodEarntHours / sum of totalHours
+   * - totalPercentageEarnt: sum of totalEarntHours / sum of totalHours
+   */
+  const calculateCustomSummary = useCallback((options: any) => {
+    const { name, summaryProcess } = options;
+
+    if (name === 'cumulativeEarntPercentage') {
+      switch(summaryProcess) {
+        case 'start':
+          options.totalValue = 0;
+          options.totalHours = 0;
+          break;
+        case 'calculate':
+          if (options.value.cumulativeEarntHours !== undefined && 
+              options.value.cumulativeEarntHours !== null && 
+              options.value.totalHours !== undefined && 
+              options.value.totalHours > 0) {
+            options.totalValue += options.value.cumulativeEarntHours;
+            options.totalHours += options.value.totalHours;
+          }
+          break;
+        case 'finalize':
+          if (options.totalHours > 0) {
+            const percentage = options.totalValue / options.totalHours;
+            options.totalValue = (percentage * 100).toFixed(2) + '%';
+          } else {
+            options.totalValue = '0.00%';
+          }
+          break;
+      }
+    }
+    else if (name === 'totalPercentageEarnt') {
+      switch(summaryProcess) {
+        case 'start':
+          options.totalEarntHours = 0;
+          options.totalHours = 0;
+          break;
+        case 'calculate':
+          if (options.value.totalEarntHours !== undefined && 
+              options.value.totalEarntHours !== null && 
+              options.value.totalHours !== undefined && 
+              options.value.totalHours > 0) {
+            options.totalEarntHours += options.value.totalEarntHours;
+            options.totalHours += options.value.totalHours;
+          }
+          break;
+        case 'finalize':
+          if (options.totalHours > 0) {
+            const percentage = options.totalEarntHours / options.totalHours;
+            options.totalValue = (percentage * 100).toFixed(2) + '%';
+          } else {
+            options.totalValue = '0.00%';
+          }
+          break;
+      }
+    }
+    else if (name === 'currentPeriodEarntPercentage') {
+      switch(summaryProcess) {
+        case 'start':
+          options.totalValue = 0;
+          options.totalHours = 0;
+          break;
+        case 'calculate':
+          if (options.value.currentPeriodEarntHours !== undefined && 
+              options.value.currentPeriodEarntHours !== null && 
+              options.value.totalHours !== undefined && 
+              options.value.totalHours > 0) {
+            options.totalValue += options.value.currentPeriodEarntHours;
+            options.totalHours += options.value.totalHours;
+          }
+          break;
+        case 'finalize':
+          if (options.totalHours > 0) {
+            const percentage = options.totalValue / options.totalHours;
+            options.totalValue = (percentage * 100).toFixed(2) + '%';
+          } else {
+            options.totalValue = '0.00%';
+          }
+          break;
+      }
+    }
+  }, []);
+
   return {
     handleRowUpdating,
     handleRowValidating,
     handleEditorPreparing,
     handleGridInitialized,
+    calculateCustomSummary,
     validateProgress,
     validateGatePercentage
   };
