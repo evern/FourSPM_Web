@@ -7,9 +7,11 @@ export const createDeliverableColumns = (
   areasDataSource: any,
   disciplinesDataSource: any,
   documentTypesDataSource: any,
-  isMobile: boolean = false // Add screen size parameter with default
+  isMobile: boolean = false, // Add screen size parameter with default
+  showCostInformation: boolean = true // Add cost information visibility parameter with default
 ): ODataGridColumn[] => {
-  return [
+  // Define all possible columns
+  const allColumns: ODataGridColumn[] = [
     {
       dataField: 'clientNumber',
       caption: 'Client No.',
@@ -160,4 +162,14 @@ export const createDeliverableColumns = (
       cellClass: 'faded-placeholder'
     }
   ];
+  
+  // Filter columns based on permissions
+  return allColumns.filter(column => {
+    // Only include cost information columns when the user has permission
+    if (!showCostInformation && column.dataField === 'totalCost') {
+      return false;
+    }
+    
+    return true;
+  });
 };

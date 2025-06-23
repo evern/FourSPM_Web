@@ -76,5 +76,10 @@ export const PERMISSIONS = {
     ACCESS: 'admin.access',
     SETTINGS: 'admin.settings',
     USER_MANAGEMENT: 'admin.user-management'
+  },
+  
+  // Toggle permissions
+  TOGGLES: {
+    COST_INFORMATION: 'cost-information.toggle'
   }
 };

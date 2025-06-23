@@ -65,7 +65,7 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
   const gridTitle = project ? `${project.projectNumber} - ${project.name} Deliverables` : 'Deliverables';
   
   // Use the permission check hook for proper permission checking
-  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  const { canEdit, hasPermission, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
   
   // Load permissions when component mounts
   useEffect(() => {
@@ -77,6 +77,11 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
   const canEditDeliverables = useCallback(() => {
     return canEdit(PERMISSIONS.DELIVERABLES.EDIT.split('.')[0]); // Extract 'deliverables' from 'deliverables.edit'
   }, [canEdit]);
+  
+  // Check if user has permission to view cost information
+  const canViewCostInformation = useCallback(() => {
+    return hasPermission(PERMISSIONS.TOGGLES.COST_INFORMATION);
+  }, [hasPermission]);
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
@@ -116,8 +121,14 @@ const DeliverablesContent = React.memo((): React.ReactElement => {
       return [];
     }
     
-    return createDeliverableColumns(areasDataSource, disciplinesDataSource, documentTypesDataSource);
-  }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading]);
+    return createDeliverableColumns(
+      areasDataSource, 
+      disciplinesDataSource, 
+      documentTypesDataSource,
+      isMobile,
+      canViewCostInformation()
+    );
+  }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading, isMobile, canViewCostInformation]);
   
   // Adjust columns for mobile size if needed
   const mobileAdjustedColumns = React.useMemo(() => {

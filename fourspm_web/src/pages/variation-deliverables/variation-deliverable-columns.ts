@@ -13,9 +13,11 @@ export const createVariationDeliverableColumns = (
   documentTypesDataSource: any,
   isMobile: boolean = false,
   onCancellationClick?: (data: any, isReadOnly?: boolean) => void,
-  isReadOnly: boolean = false
+  isReadOnly: boolean = false,
+  showCostInformation: boolean = true // Add cost information visibility parameter with default
 ): ODataGridColumn[] => {
-  return [
+  // Define all possible columns
+  const allColumns: ODataGridColumn[] = [
     {
       dataField: 'uiStatus_statusButtons', // Make the dataField unique by incorporating the button name
       caption: 'Status',
@@ -256,6 +258,16 @@ export const createVariationDeliverableColumns = (
       ]
     }
   ];
+  
+  // Filter columns based on permissions
+  return allColumns.filter(column => {
+    // Only include cost information columns when the user has permission
+    if (!showCostInformation && column.dataField === 'totalCost') {
+      return false;
+    }
+    
+    return true;
+  });
 };
 
 /**

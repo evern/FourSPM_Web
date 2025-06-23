@@ -81,7 +81,7 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   } = useVariationDeliverables();
 
   // Use the permission check hook for proper permission checking
-  const { canEdit, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
+  const { canEdit, hasPermission, loadPermissions, loading: permissionsLoading } = usePermissionCheck();
   
   // Load permissions when component mounts
   useEffect(() => {
@@ -93,6 +93,11 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
   const canEditVariationDeliverables = useCallback(() => {
     return canEdit(PERMISSIONS.VARIATIONS.EDIT.split('.')[0]); // Extract 'variations' from 'variations.edit'
   }, [canEdit]);
+  
+  // Check if user has permission to view cost information
+  const canViewCostInformation = useCallback(() => {
+    return hasPermission(PERMISSIONS.TOGGLES.COST_INFORMATION);
+  }, [hasPermission]);
   
   // Show read-only notification on component mount if needed
   useEffect(() => {
@@ -163,12 +168,13 @@ const VariationDeliverablesContent = React.memo((): React.ReactElement => {
       documentTypesDataSource,
       isMobile,
       wrappedCancellationClick,
-      isReadOnly || !canEditVariationDeliverables() // Combined readonly flag for column configuration
+      isReadOnly || !canEditVariationDeliverables(), // Combined readonly flag for column configuration
+      canViewCostInformation() // Pass permission check for cost information
     );
     
     // Process columns to ensure all have a dataField property for ODataGrid compatibility
     return processVariationDeliverableColumns(baseColumns);
-  }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading, isMobile, handleCancellationClick, isReadOnly]);
+  }, [areasDataSource, disciplinesDataSource, documentTypesDataSource, isLoading, isMobile, handleCancellationClick, isReadOnly, canEditVariationDeliverables, canViewCostInformation]);
   
   // Adjust columns for mobile size if needed
   const mobileAdjustedColumns = useMemo(() => {
