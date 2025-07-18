@@ -19,8 +19,8 @@ declare global {
 }
 
 
-const CLIENT_ID = 'c67bf91d-8b6a-494a-8b99-c7a4592e08c1';
-const TENANT_ID = '3c7fa9e9-64e7-443c-905a-d9134ca00da9';
+const CLIENT_ID = 'e17d9613-f038-4302-9838-0ca806246462';
+const TENANT_ID = '83d9fae5-8296-4b92-99fe-b844e37d2ad5';
 const API_BASE_URL = `api://${CLIENT_ID}`;
 
 
