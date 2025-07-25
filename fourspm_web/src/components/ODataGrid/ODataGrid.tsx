@@ -144,6 +144,16 @@ export interface ODataGridProps {
     storageKey?: string;
     savingTimeout?: number;
   };
+  
+  // Remote operations configuration
+  remoteOperations?: {
+    filtering?: boolean;
+    paging?: boolean;
+    sorting?: boolean;
+    grouping?: boolean;
+    summary?: boolean;
+    groupPaging?: boolean;
+  };
 }
 
 export const ODataGrid: React.FC<ODataGridProps> = ({
@@ -186,6 +196,9 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   // State storage parameters
   stateStorageKey,
   stateStoring,
+  
+  // Remote operations configuration
+  remoteOperations,
 }) => {
   const dataGridRef = useRef<DataGrid>(null);
   const screenSizeClass = useScreenSizeClass();
@@ -748,12 +761,12 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
           }}
           errorRowEnabled={false}
           remoteOperations={{
-            filtering: true,
-            paging: true,
-            sorting: true,
-            grouping: true,
-            summary: false,
-            groupPaging: false
+            filtering: remoteOperations?.filtering ?? true,
+            paging: remoteOperations?.paging ?? true,
+            sorting: remoteOperations?.sorting ?? true,
+            grouping: remoteOperations?.grouping ?? true,
+            summary: remoteOperations?.summary ?? false,
+            groupPaging: remoteOperations?.groupPaging ?? false
           }}
           groupPanel={{ visible: showGroupPanel }}
           grouping={{

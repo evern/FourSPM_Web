@@ -289,6 +289,14 @@ const DeliverableProgressContent = (): React.ReactElement => {
             stateStoring={{ enabled: true }}
             allowGrouping={true}
             showGroupPanel={true}
+            remoteOperations={{
+              filtering: true,
+              paging: true,
+              sorting: false, // Disable remote sorting for custom function endpoint
+              grouping: true,
+              summary: false,
+              groupPaging: false
+            }}
           />
         </ScrollView>
       )}
