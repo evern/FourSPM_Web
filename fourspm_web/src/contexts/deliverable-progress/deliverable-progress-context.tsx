@@ -47,9 +47,17 @@ export function DeliverableProgressProvider({
     };
   }, []);
 
-  // Use the period manager with provided initial values from props
-  // This ensures the context uses the same period state that the component receives
-  const periodManager = usePeriodManager(initialPeriod, startDate);
+  // Use the useProjectInfo hook to fetch project details - no need for client expansion
+  const {
+    project,
+    isLoading: projectLoading,
+    error: projectError,
+    currentPeriod: projectCurrentPeriod
+  } = useProjectInfo(projectId, { expandClient: false });
+
+  // Use the period manager with project's progress start date
+  // This ensures the progress date updates when the period changes
+  const periodManager = usePeriodManager(initialPeriod, project?.progressStart as string | null);
 
   // Get deliverable gates data using the data provider hook
   // This follows the Collection View Doctrine by centralizing reference data in the context
@@ -206,14 +214,6 @@ export function DeliverableProgressProvider({
       );
     }
   }, [selectedPeriod]);
-
-  // Use the useProjectInfo hook to fetch project details - no need for client expansion
-  const {
-    project,
-    isLoading: projectLoading,
-    error: projectError,
-    currentPeriod: projectCurrentPeriod
-  } = useProjectInfo(projectId, { expandClient: false });
   
   // Combine loading states for lookup data - used to prevent flickering
   const isLookupDataLoading = state.loading || projectLoading || isGatesLoading;
