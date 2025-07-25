@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/auth';
 import './deliverable-progress.scss';
 import { usePermissionCheck } from '../../hooks/usePermissionCheck';
 import { showReadOnlyNotification } from '../../utils/permission-utils';
@@ -25,7 +24,6 @@ import { getDeliverablesWithProgressUrl } from '../../config/api-endpoints';
 
 // Import context
 import { DeliverableProgressProvider, useDeliverableProgress } from '../../contexts/deliverable-progress/deliverable-progress-context';
-import { getToken } from '../../utils/token-store'; // Import token-store for direct token access
 
 
 interface DeliverableProgressParams {

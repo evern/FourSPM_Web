@@ -29,7 +29,7 @@ export function DeliverableProgressProvider({
   startDate = undefined 
 }: DeliverableProgressProviderProps): React.ReactElement {
   // Initialize state with reducer - without period management which is now handled by usePeriodManager
-  const [state, dispatch] = useReducer(deliverableProgressReducer, {
+  const [state] = useReducer(deliverableProgressReducer, {
     loading: false,
     error: null
   });
@@ -50,9 +50,7 @@ export function DeliverableProgressProvider({
   // Use the useProjectInfo hook to fetch project details - no need for client expansion
   const {
     project,
-    isLoading: projectLoading,
-    error: projectError,
-    currentPeriod: projectCurrentPeriod
+    isLoading: projectLoading
   } = useProjectInfo(projectId, { expandClient: false });
 
   // Use the period manager with project's progress start date

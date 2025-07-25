@@ -701,7 +701,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
         });
       }
     }
-  }, [handleExportToPdf, handleResetGridState, allowExporting]);
+  }, [handleExportToPdf, handleResetGridState, handleSaveGridState, allowExporting]);
   
 
   const onExporting = useCallback((e: any) => {

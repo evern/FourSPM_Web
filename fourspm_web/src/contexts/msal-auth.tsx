@@ -143,10 +143,12 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
     };
     
     initializeMsal();
+  // This is initialization code that should only run once
+  // Adding handleAuthResult to dependencies would cause render loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check for existing account on load
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (msalInstance) {
       const accounts = msalInstance.getAllAccounts();
@@ -156,6 +158,9 @@ export function MSALAuthProvider({ children }: PropsWithChildren<{}>) {
         setLoading(false);
       }
     }
+  // Adding attemptSilentSignIn to deps would cause render loops since it depends on handleAuthResult
+  // which depends on msalInstance, creating a circular dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msalInstance]);
   
 
