@@ -38,6 +38,7 @@ export interface ODataGridColumn extends Partial<Column> {
   groupIndex?: number;
   fixed?: boolean;
   fixedPosition?: 'left' | 'right';
+  showWhenGrouped?: boolean;
   name?: string;
   editorOptions?: {
     mask?: string;
@@ -133,6 +134,7 @@ export interface ODataGridProps {
   allowGrouping?: boolean;
   showGroupPanel?: boolean;
   autoExpandAll?: boolean;
+  showAllColumnsWhenGrouped?: boolean;
   
   // State storage configuration
   stateStorageKey?: string; // A custom key for state persistence
@@ -179,6 +181,7 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
   showGroupPanel = false,
   autoExpandAll = true,
   allowColumnReordering = true,
+  showAllColumnsWhenGrouped = true,
   
   // State storage parameters
   stateStorageKey,
@@ -753,7 +756,10 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
             groupPaging: false
           }}
           groupPanel={{ visible: showGroupPanel }}
-          grouping={{ autoExpandAll: autoExpandAll }}
+          grouping={{
+            autoExpandAll: autoExpandAll,
+            ...(showAllColumnsWhenGrouped !== undefined ? { hideGroupedColumns: !showAllColumnsWhenGrouped } : {}) // When showAllColumnsWhenGrouped is true, don't hide grouped columns
+          } as any}
           onCellPrepared={onCellPrepared}
           editing={{
             mode: screenSizeClass === 'screen-x-small' || screenSizeClass === 'screen-small' ? 'popup' : 'cell',
@@ -827,7 +833,8 @@ export const ODataGrid: React.FC<ODataGridProps> = ({
               sortIndex: column.sortIndex,
               groupIndex: column.groupIndex,
               fixed: column.fixed,
-              fixedPosition: column.fixedPosition
+              fixedPosition: column.fixedPosition,
+              showWhenGrouped: showAllColumnsWhenGrouped ? true : column.showWhenGrouped,
             };
             
             // Handle command columns (type="buttons")
