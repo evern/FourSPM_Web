@@ -136,7 +136,7 @@ export const getSuggestedDocumentNumber = async (
  */
 export const updateDeliverableGate = async (
   deliverableKey: string, 
-  gateGuid: string,
+  deliverableGateGuid: string,
   token?: string
 ): Promise<void> => {
   // Use provided token or get directly from token-store (Optimized Direct Access Pattern)
@@ -150,7 +150,7 @@ export const updateDeliverableGate = async (
       throw new Error('Deliverable GUID is required');
     }
     
-    if (!gateGuid) {
+    if (!deliverableGateGuid) {
       throw new Error('Gate GUID is required');
     }
     
@@ -158,7 +158,7 @@ export const updateDeliverableGate = async (
     const url = `${DELIVERABLES_ENDPOINT}(${deliverableKey})`;
     
     // Only send the specific field being updated
-    const patchBody = { gateGuid };
+    const patchBody = { deliverableGateGuid };
     
     // Use baseApiService with token
     await baseApiService.request(url, {
