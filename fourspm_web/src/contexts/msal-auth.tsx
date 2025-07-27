@@ -10,6 +10,7 @@ import {
   LogLevel
 } from '@azure/msal-browser';
 import { User } from '@/types';
+import { CLIENT_ID, TENANT_ID, AZURE_AD_AUTHORITY, API_SCOPES } from '../config/deployment';
 
 
 declare global {
@@ -19,21 +20,13 @@ declare global {
 }
 
 
-const CLIENT_ID = 'e17d9613-f038-4302-9838-0ca806246462';
-const TENANT_ID = '83d9fae5-8296-4b92-99fe-b844e37d2ad5';
-const API_BASE_URL = `api://${CLIENT_ID}`;
-
-
-export const API_SCOPES = {
-  USER: `${API_BASE_URL}/Application.User`,
-  ADMIN: `${API_BASE_URL}/Application.Admin`
-} as const;
+export { API_SCOPES };
 
 
 const msalConfig = {
   auth: {
     clientId: CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+    authority: AZURE_AD_AUTHORITY,
     redirectUri: window.location.origin,
   },
   cache: {
