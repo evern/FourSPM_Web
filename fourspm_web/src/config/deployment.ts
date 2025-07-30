@@ -34,12 +34,12 @@ const developmentConfig: DeploymentConfig = {
 // Production Configuration
 const productionConfig: DeploymentConfig = {
   azureAd: {
-    clientId: 'b86ba6d7-c851-4725-8f6b-d7331813eb14',
+    clientId: 'e17d9613-f038-4302-9838-0ca806246462',
     tenantId: '83d9fae5-8296-4b92-99fe-b844e37d2ad5',
     instance: 'https://login.microsoftonline.com/',
   },
   api: {
-    baseUrl: 'https://fourspmwebservice20250725180206-ewb3e9gdgthjbmea.southeastasia-01.azurewebsites.net',
+    baseUrl: 'https://fourspm-webservice-drath4d7ema2cbft.southeastasia-01.azurewebsites.net',
   },
   environment: 'production'
 };
